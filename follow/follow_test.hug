@@ -1,0 +1,181 @@
+!::
+! New Game (Shell)
+!::
+constant GAME_TITLE	"GAME TITLE"
+
+!:: Flags
+!#set BETA                ! Compile with the comments-in-transcripts library
+                          !   addition (requires "beta.h")
+!#set CHEAP
+!#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
+                          !   available (type $? in game)
+!#set PRECOMPILED_LIBRARY ! Use a precompiled header library (see manual)
+!#set VERBSTUBS           ! Include the grammar and routines from verbstubs.g
+                          !   and verbstubs.h, respectively
+!#set USE_ATTACHABLES     ! Use attachable items
+!#set USE_PLURAL_OBJECTS  ! Use plural objects
+!#set USE_VEHICLES        ! Use vehicle objects
+!$set VERSIONS            ! Print library versions at compile time
+
+!:: switches              ! example how one can add compiler switches to source
+!#switches -ls            ! print compilation stats to .LST file
+
+#ifset HUGOFIX
+#set DEBUG
+#endif
+
+!:: Other pre-Hugolib.h Constants
+! (some constants must be set before hugolib is included)
+
+!constant AFTER_PERIOD " "     ! include one space after full stops (as opposed
+                               !   to two)
+!constant INDENT_SIZE 0        ! no indentation in room descriptions and room
+                               !   content listings
+
+!:: Grammar Library Inclusions (grammar must come first)
+#include "roodylib.g"
+verb "follow"
+	*	object					DoFollow
+
+verb "stop"
+	*								DoStop
+! new grammar needs to be defined before the including verblib
+#include "verblib.g"        ! Verb Library
+
+#include "hugolib.h"        ! Standard  Hugo Library
+#include "roodylib.h"         ! Hugo  Library Updates
+#include "follow.h"
+!::	Other Library Inclusions
+#ifset BETA
+#include "beta.h"
+#endif
+
+#ifset CHEAP
+#include "cheaplib.h"
+#endif
+
+!:: Other constants and global variables
+!constant IFID "put-IFID here"
+
+!::	Game Initialization	routine
+routine init
+{
+!: First Things First
+SetGlobalsAndFillArrays
+!: Screen clear section
+SimpleIntro
+InitScreen
+!: Set up any special libries
+Init_Calls
+!: Game opening
+IntroText
+MovePlayer(location)
+}
+
+
+routine SetGlobalsAndFillArrays
+{
+!\ Uncomment and modify this section if your game has scoring and ranking.
+	MAX_SCORE = 50
+	ranking[0] = "Amateur Adventurer"
+	ranking[1] = "Competent Door-Unlocker"
+	ranking[2] = "Bomb-Meddling Adventurer"
+	ranking[3] = "Master Magic Wand Finder"
+	ranking[4] = "The Genuine Article Sample Game Solver"
+	MAX_RANK = 4  \!
+
+	counter = -1                    ! 1 turn before turn 0
+	!ask_color = 0
+	STATUSTYPE = 1   ! 1 = score/turns, 2 = time, 3 = moves: score:
+	TEXTCOLOR = DEF_FOREGROUND
+	BGCOLOR = DEF_BACKGROUND
+	SL_TEXTCOLOR = DEF_SL_FOREGROUND
+	SL_BGCOLOR = DEF_SL_BACKGROUND
+	prompt = ">"
+	DEFAULT_FONT = PROP_ON
+	player = you
+	location = STARTLOCATION
+	StartFollowing
+}
+
+!::	Main game loop
+routine	main
+{
+	counter	= counter +	1
+	run	location.each_turn
+	runevents
+	RunScripts
+	if speaking	not	in location
+		speaking = 0
+	PrintStatusLine
+	Main_Calls
+}
+
+routine IntroText
+{
+
+}
+
+player_character you "you"
+{
+}
+
+room STARTLOCATION "Start Location"
+{
+	e_to east_room
+}
+
+character friendlygiant "friendly giant"
+{
+   article "the"
+   adjective "friendly"
+   noun "giant"
+	in STARTLOCATION
+   order_response
+      {
+      ! a response to GIANT, FOLLOW ME
+      if verbroutine = &DoFollow and object = player  ! DoFollow can be found in verbstub
+          {
+          if self is following
+              "The giant says, \"I'm already following you!\""
+          else
+              {
+              "The giant says, \"OK!\""
+              AddFollower(self)
+              }
+          return true
+          }
+      elseif verbroutine = &DoStop ! DoStop is made up for this example
+          {
+          if self is not following
+              "The giant says, \"I wasn't following you!\""
+          else
+              {
+              "The giant says, \"OK!\""
+              RemoveFollower(self)
+              }
+          return true
+          }
+      return false ! for other commands, do the normal behavior
+      }
+}
+
+
+routine DoFollow
+{}
+
+object table "table"
+{
+	noun "table"
+	article "the"
+	is container open enterable
+	in east_room
+}
+
+room east_room "East Room"
+{
+	w_to startlocation
+}
+
+routine DoStop
+{}

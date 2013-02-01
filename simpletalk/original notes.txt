@@ -1,0 +1,55 @@
+Some of this is out of date in this version but here are the notes that came with the original 2000 version.
+
+! Phototalk for Hugo
+! Ported by Robb Sherwin
+! Original source by Adam Cadre
+! Release 1.0
+! March 25th, 2000
+! This is a Hugo port of the Inform menu-based conversation system originally used in the 1998 release "Photopia." 
+!
+! The original Inform Phototalk source can be found here:
+!     ftp://ftp.gmd.de/if-archive/programming/inform6/library/contributions/phototalk.inf
+!
+! David Glasser's object-oriented Inform Phtalkoo.h port can be found here:
+!     ftp://ftp.gmd.de/if-archive/programming/inform6/library/contributions/phtalkoo.h
+!
+! I currently know of two Inform games that use these routines for conversation. They are here:
+!
+! ftp://ftp.gmd.de/if-archive/games/zcode/photopia.z5
+! ftp://ftp.gmd.de/if-archive/games/zcode/chix.z5
+!
+! Q: Why use Phototalk as opposed to normal ASK ABOUT and TELL ABOUT routines?
+! A: Phototalk helps a game with a well-defined player character to show off some of those
+!    character traits a little easier. The author is able to allow the player to choose
+!    from a series of different conversation quips and the player doesn't have to worry about
+!    guessing the correct phrasing for the (usually) single-word subject matter. 
+!
+!    Additionally, as an author, you will have all the game's conversations in one section of
+!    your game's code. Phototalk does not stop you from implementing ASK ABOUT and TELL ABOUT
+!    routines, so you could, of course, use both. 
+!
+! Q: Will this .HUG file compile?
+! A: This should compile under Hugo 2.5 and 3.0 without modification. 
+!
+! Q: What specifically do I need to throw into the Hugo source code of my own program?
+! A: You need the "phototalk" verb defined. You may want to replace the standard "TALK" verb with
+!    phototalk, of course. You need to set up the quip array declarations. The global variable "selected"
+!    need to be defined. And everything after "routine Phototalk" in this source code needs to be
+!    added to your code as well. 
+!
+!    The routine "ResetQuips" is what inititally sets up characters with their immediately-available
+!    conversations. You will want to put a call to that routine in your "init" routine. 
+!
+! Q: Are there any Hugo games that currently use the Phototalk routines?
+! A: At the time of this writing, no. I am planning on entering a very short Hugo game into 
+!    the upcoming Dragon-Comp, and when I do so I will make the source to that game available. 
+!    More, I fully intend to send the source code for any upcoming Hugo games to GMD to help
+!    support Phototalk for Hugo with more examples. 
+!
+! Q: I have a found a bug or have a question about this code. Who should I contact?
+! A: Please contact Robb Sherwin at robb_sherwin@juno.com regarding questions or comments with this
+!    Hugo port. I would be happy to help you get this code working correctly in your game. 
+!
+! Q: Which version of Hugo was this developed on?
+! A: It was developed on version 3.0. 
+!

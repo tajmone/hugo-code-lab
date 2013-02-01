@@ -1,0 +1,261 @@
+!::
+! NewSimpleTalk example game
+!
+constant GAME_TITLE	"NewSimpleTalk Example Game"
+
+!:: Flags
+!#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
+                          !   available (type $? in game)
+!#set VERSIONS            ! Print library versions at compile time
+!#set USE_ROODYLIB
+
+#ifset HUGOFIX
+#set DEBUG
+#endif
+
+!:: Other pre-Hugolib.h Constants
+! (some constants must be set before hugolib is included)
+
+constant RELEASE "1.3"         ! Game release number
+
+constant AFTER_PERIOD " "     ! include one space after full stops (as opposed to two)
+
+!:: Grammar Library Inclusions (grammar must come first)
+#ifset USE_ROODYLIB
+#include "roodylib.g"
+#endif
+
+! new grammar needs to be defined before the including verblib
+#include "verblib.g"        ! Verb Library
+
+verb "addscore"
+	*					DoAddScore
+#include "hugolib.h"        ! Standard  Hugo Library
+
+#ifset USE_ROODYLIB
+#include "roodylib.h"         ! Hugo  Library Updates
+#endif
+
+#include "newsimpletalk.h"
+
+!::	Other Library Inclusions
+#ifset BETA
+#include "beta.h"
+#endif
+
+#ifset CHEAP
+#include "cheaplib.h"
+#endif
+
+!::	Game Initialization	routine
+routine init
+{
+!: First Things First
+SetGlobalsAndFillArrays
+!: Screen clear section
+#ifset _ROODYLIB_H
+SimpleIntro
+InitScreen
+!: Set up any special libries
+Init_Calls
+#endif
+!: Game opening
+IntroText
+MovePlayer(location)
+}
+
+
+routine SetGlobalsAndFillArrays
+{
+	MAX_RANK = 2
+	MAX_SCORE = 300
+	ranking[0] = "Limey Bastard"
+	ranking[1] = "Neophyte"
+	ranking[2] = "Master of Souls"
+	TEXTCOLOR 	= WHITE
+	BGCOLOR 	= BLACK
+	SL_TEXTCOLOR    = BLACK
+	SL_BGCOLOR      = WHITE
+	FORMAT 		= NOINDENT_F + LIST_F
+#ifclear _ROODYLIB_H
+	color TEXTCOLOR, BGCOLOR
+	cls
+#endif
+	display.title_caption = "newsimpletalk game"
+	verbosity = 2
+	counter = -1                    ! 1 turn before turn 0
+	STATUSTYPE = 1   ! 1 = score/turns, 2 = time, 3 = moves: score:
+	prompt = ">"
+	DEFAULT_FONT = PROP_ON
+	player = you
+	location = bedroom
+}
+
+!::	Main game loop
+routine	main
+{
+	counter	= counter +	1
+	run	location.each_turn
+	runevents
+	RunScripts
+#ifset _ROODYLIB_H
+	if GrandParent(speaking) ~= location
+		speaking = 0
+#endif
+	PrintStatusLine
+#ifset _ROODYLIB_H
+	Main_Calls
+#endif
+}
+
+routine IntroText
+{
+        "\n\"Initial text goes here.\""
+        print ""    ! For a blank line between the intro and the game title
+
+	   Version
+	   "\n\"Secondary text goes here.\""
+}
+
+player_character you "you"
+{
+	long_desc
+	{
+		"You are a rather meager specimen of humanity."
+	}
+}
+
+room bedroom "Bedroom"
+{
+	long_desc
+	{
+		"You are within your bedroom."
+	}
+}
+
+character Brendon "Brendon"
+{
+	quips 1 1 0
+	in bedroom
+	nouns "brendon" "mccollough" "fighter" "warrior"
+	adjective "brendon"
+	long_desc
+		"Brendon is a handsome, healthy warrior of some small local acclaim."
+}
+
+character dwarf "dwarf"
+{
+	quips 1 1 1
+
+	in bedroom
+	nouns "dwarf" "fighter"
+	adjective "little"
+	long_desc
+		"The little dwarf is a mean, violent pug."
+}
+
+routine SayQ (char, line)
+{
+	select(char)
+	case Brendon
+		{
+		select(line)
+		case 1: {">This is the first thing you can say to char one."}
+		case 2: {">This is the second thing you can say to char one."}
+		}
+	case dwarf
+		{
+		select(line)
+		case 1: {">This is the first thing you can say to char two."}
+		case 2: {">This is the second thing you can say to char two."}
+		case 3: ">Tell me about Brendon's quips."
+		}
+}
+
+routine Respond (char, line)
+{
+	local dont_remove
+	select(char)
+	case Brendon
+		{
+		select(line)
+		case 1: "This is the first response from character number one."
+		case 2: "This is the second response from character number one."
+		}
+	 case dwarf
+	{
+		select(line)
+		case 1: "This is the first response from character number two."
+		case 2: "This is the second response from character number two."
+		case 3
+		{
+		"Brendon's first possible quip is ";
+		if not QuipOn(Brendon,1)
+			print "not ";
+		"available and has ";
+		if not BeenSpoken(Brendon,1)
+			print "not ";
+		"been spoken."
+		"Brendon's third possible quip is ";
+		if not QuipOn(Brendon,3)
+			print "not ";
+		"available and has ";
+		if not BeenSpoken(Brendon,3)
+			print "not ";
+		"been spoken."
+		dont_remove = true
+		}
+	}
+! Let's turn off whichever quip we selected unless we set dont_remove to true
+	if not dont_remove
+		SetQuip(char,line,0,1)
+	else
+		SetQuip(char,line,1,1)
+}
+
+
+routine Version
+{
+	color LIGHT_RED
+	print "\BNewSimpletalk\b"
+	color TEXTCOLOR
+	print "Release 1.1"
+!	print "Please use the verb phototalk instead of talk"
+	print "\BTalk To Brendon to see it in action.\b"
+	print "Any questions? http://www.joltcountry.com/phpBB2/viewforum.php?f=8"
+}
+
+#ifclear USE_ROODYLIB
+replace PrintScore(end_of_game)
+{
+	if STATUSTYPE = 1 and MAX_SCORE
+	{
+		if end_of_game:  print ""
+		print "You ";
+		if not end_of_game
+			print "have ";
+		print "scored a total of ";
+		print number score; " out of "; number MAX_SCORE;
+		if ranking[0] ~= ""
+		{
+			print ", giving you the rank of ";
+
+			! A complicated formula, since only
+			! integer division is allowed:
+			!
+			local rank
+			rank = (score*MAX_RANK)/MAX_SCORE
+			if rank > MAX_RANK
+				rank = MAX_RANK
+			print ranking[rank];
+		}
+		print "."
+	}
+}
+#endif ! ROODYLIB
+
+routine DoAddScore
+{
+	score += 150
+	return true
+}
