@@ -1,0 +1,109 @@
+!::
+! New Game (Shell)
+!::
+constant GAME_TITLE	"GAME TITLE"
+
+!:: Flags
+#include "flags.hug"   ! edit "flags.hug to fit your game
+
+!:: Switches and Grammar Library Inclusions (grammar must come first)
+#include "switchgram.g"
+
+!:: Constants and global variables (some constants must be set before hugolib is included):
+
+!constant IFID "put-IFID here"
+!constant AFTER_PERIOD " "     ! include one space after full stops (as opposed
+                               !   to two)
+!constant INDENT_SIZE 0        ! no indentation in room descriptions and room
+                               !   content listings
+
+! "Roody Inclusions"
+#include "roodyinc.h"
+
+
+!::	Game Initialization	routine
+routine init
+{
+!: First Things First
+	SetGlobalsAndFillArrays
+!: Screen clear section
+#ifclear _ROODYLIB_H
+	window 0
+	cls
+	CenterTitle("Hugo Interactive Fiction")
+#ifset USE_PLURAL_OBJECTS
+        InitPluralObjects
+#endif
+#else
+	SimpleIntro
+	InitScreen
+!: Set up any special libries
+	Init_Calls
+#endif
+!: Game opening
+	IntroText
+	MovePlayer(location)
+}
+
+
+routine SetGlobalsAndFillArrays
+{
+!\ Uncomment and modify this section if your game has scoring and ranking.
+	MAX_SCORE = 50
+	ranking[0] = "Amateur Adventurer"
+	ranking[1] = "Competent Door-Unlocker"
+	ranking[2] = "Bomb-Meddling Adventurer"
+	ranking[3] = "Master Magic Wand Finder"
+	ranking[4] = "The Genuine Article Sample Game Solver"
+	MAX_RANK = 4  \!
+	verbosity = 2
+	counter = -1                    ! 1 turn before turn 0
+	!ask_color = 0
+	STATUSTYPE = 1   ! 1 = score/turns, 2 = time, 3 = moves: score:
+	TEXTCOLOR = DEF_FOREGROUND
+	BGCOLOR = DEF_BACKGROUND
+	SL_TEXTCOLOR = DEF_SL_FOREGROUND
+	SL_BGCOLOR = DEF_SL_BACKGROUND
+	display.title_caption = GAME_TITLE
+	prompt = ">"
+	DEFAULT_FONT = PROP_ON
+	player = you
+	location = STARTLOCATION
+}
+
+routine IntroText
+{
+"Intro text goes here.\n"
+
+print "\B"; GAME_TITLE ; "\b"  ! prints game title
+
+}
+
+!::	Main game loop
+routine	main
+{
+	counter	= counter +	1
+	run	location.each_turn
+	runevents
+	RunScripts
+#ifset _ROODYLIB_H
+	if GrandParent(speaking) ~= location
+#else
+	if parent(speaking) ~= location
+#endif
+		speaking = 0
+	PrintStatusLine
+
+#ifset _ROODYLIB_H
+	Main_Calls
+#endif
+}
+
+
+player_character you "you"
+{
+}
+
+room STARTLOCATION "Start Location"
+{
+}
