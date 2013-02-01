@@ -1,0 +1,323 @@
+
+This file documents the file AUTOMAP.H. This edition, dated 4/23/00, brings
+Automap up to Hugo 2.5 standards. Some esoteric or unnecessary material has
+been edited out for the sake of clarity. 
+
+Also included in AUTOMAP.H are DrawMapLoc(), PreParse(), a replacement door
+class definition, a replacement DoWait() routine, and various variable
+declarations. All of these are necessary for the proper functioning of Map()
+and FullMap() within a Hugo game.
+
+
+
+WHAT THEY ARE:
+
+Map() and FullMap() are both routines that implement on-screen mapping for
+games written with Hugo v2.5. Map() is a routine that draws a small,
+localized map centered around a specified location, usually in the upper
+right corner of the screen and in reverse video. FullMap(), on the other
+hand, draws a full-screen map radiating from a specified location, which
+location is always positioned at center-screen. FullMap's scope includes
+every game location that is connected to the central one and will fit
+on the screen, and it is drawn in normal video rather than reverse.
+
+
+
+HOW THEY WORK:
+
+Both Map() and FullMap() work by reading the return values of the "dir_to"
+properties of room objects. In the case of Map(), a single iteration is
+performed outward from the central room of the map, revealing the position
+and exits of its immediate (visited) neighbors. In the case of FullMap(),
+a branching algorithm is employed which iterates outward through every
+connected location. When a location is reached that has more than one exit,
+the first one is chosen and that branch is followed. This process is repeated
+until the end of a branch is reached, at which point the routine backs up one
+room and tries any other existing exits, following them in turn to their ends.
+(A loop barrier is employed to prevent maps with circular paths from putting
+the routine into an infinite loop.) This continues on until the routine has
+backed up to the original central location and has no more paths left to
+follow, at which point it returns to the routine that called it.
+
+
+
+HOW TO USE THEM:
+
+The Map() routine takes two arguments, although one of these should not be
+supplied directly by the programmer. The first argument (called "from" in the
+code) indicates the location the map should center around. Typically, this
+will be the player's current location, and when this is the case no argument
+need be supplied, as the player's location is assumed by default. The
+second argument (called "full" in the code) is a switch that tells Map()
+whether it should display the map in full-screen mode or not. In full-screen
+mode, the screen is cleared of all existing text before the draw begins, so
+that the player is left with only a map and the normal command prompt at the
+end. Consequently, this mode is not appropriate for "real-time" mapping of
+the kind seen in games like Beyond Zork, and for this reason, unless the
+programmer has some specific need to employ full-screen mode with Map(),
+the second argument should be omitted and ignored completely.
+
+FullMap() takes only one argument, the location to be mapped from. Since
+FullMap() is not a stand-alone routine, but rather engages Map() to do its
+heavy lifting, it takes care of calling Map() with the "full" parameter set
+to true automatically.
+
+In essence, then, both Map() and FullMap() are called in one of the following
+two ways:
+
+        Map()                           FullMap()
+or
+        Map(some_location)              FullMap(some_location)
+
+When called without an argument, both routines will assume that the location
+to be mapped from is the player's current location. Otherwise, they will map
+from the location specified in the call. Note that any attempt to map from
+an object that is not a location (i.e. not an object of type "room") will
+result in the player's current location being substituted instead. Moreover,
+any attempt to map from an unvisited or dark room will result in the map
+being refused. In this latter case, nothing will be drawn and an error
+message ("You wish") will be issued to the player.
+
+
+
+IS THERE ANYTHING SPECIAL I NEED TO KNOW ABOUT THEM?
+
+Well, funny you should ask. Since both Map() and FullMap() function by
+reading the "dir_to" properties of rooms, it will no longer be possible to
+put printable text into those properties. This is because "reading the
+return values" involves actually running the property routines. Consequently,
+every time those properties are read (which in the mapping routines is quite
+often), all the code within them will execute and any text output you've
+included there will display to (weird areas of) the screen. To deal with
+this problem, a PreParse routine is supplied along with the mappers that
+allows the programmer to code movement conditions, printable text, and so
+on in a location's "before" property instead. Here's how a typical movement
+condition might be coded now:
+
+room white_house "White House"
+{
+  ...
+  before { location DoGo { if object = n_obj
+                           {
+                             if hillary in self
+                             {
+                               "The sight of Hillary and her shotgun
+                                changes your mind."
+                             }
+                             else
+                               return false
+                           }
+                         }
+         }
+  n_to { return north_lawn }
+}
+
+In this example, if the hillary object is in the white house, an attempt to
+move north is met with the message about the shotgun. Otherwise, the before
+routine is returned from with false, which causes the engine to check for a
+n_to property routine. Finding one, it executes the move to the north lawn.
+In general, this is the method one should always use when employing the
+mappers (indeed, a case can be made that this is the method that should be
+used always and everywhere--but that's an argument for a different time and
+place).
+
+Note two things, however. First, even though the cant_go property is never
+read by the mappers, it's advisable not to use it. Any cant_go material
+should be coded into the location's before routine just like all the rest.
+Second, even after I've insisted that all code be put in the before routine,
+it should be borne in mind that it's really only *printing* code that is
+forbidden in the dir_to's. Conditionals placed in those properties can still
+be of value for manipulating the contents of a map, so one shouldn't take
+the admonition as strongly for non-printing code as for printing code. In
+the case of *printing* code, nevertheless, there are no exceptions.
+
+Finally, note also that if a programmer wishes to do his own pre-parsing
+on top what is already supplied, he will have to take into account the
+fact that PreParse() has already been "replace"d in the AUTOMAP.H file. A
+bit of cutting and pasting may be in order in that case.
+
+
+
+WHAT REMAINS TO BE DONE:
+
+For FullMap()--though not for Map()--every room must be supplied with a
+"map_list" property. This property is thirteen elements long and can be
+declared this way:
+
+room factory "Soylent Green Factory"
+{
+  ...
+  map_list #13
+}
+
+Without this property, the full-screen mapper will not function. Indeed,
+without it, the game will likely crash from a stack overflow the first time
+a map is attempted. (What follows from this is that if you are experiencing
+stack overflow errors in your game while employing the full-screen mapper,
+this is the first--and probably only--place you need to look). The
+programmer need do nothing else with this property beyond declaring it--it
+is used only internally by the full-screen mapper.
+
+
+
+HOW TO MAKE AN AUTOMAPPER:
+
+Call Map() at the end of main(). This is currently as close as one can get.
+Hopefully, a junction routine may be supplied at some time in the future
+that will allow Map() to be called even when main() isn't, but right now
+only successful actions prompt a call to main() and, consequently, a map
+draw. For this reason, it is strongly recommended that a command grammar be
+provided for the player so that he can display the map manually if necessary.
+Here is a suggested standard for the grammar:
+
+        "map on"                  turn automapping on
+        "map off"                 turn automapping off
+
+        "map"                     display automap (small map), reckoning from
+                                  player's location
+        "map from <object>"       display automap (small map), reckoning from
+                                  specified location
+
+        "map game"                display full-screen map, reckoning from
+                                  player's location
+        "map game from <object>"  display full-screen map, reckoning from
+                                  specified location
+
+Note that rooms are not typically given nouns, which means that there is
+typically no way for a player to refer to them directly, which means that
+"map from <object>" and "map game from <object>" won't work in that case.
+If these commands are desired, nouns will have to be given to all the room
+objects, necessitating a lot of care on the programmer's part. After all,
+if a player can "map from kitchen," he can also try to "throw kitchen,"
+"talk to kitchen," or anything else he can think of. In general, the "map
+from" command is probably better off avoided, but the potential for its use
+has been included for the sake of programmers who might nonetheless need it
+or want it.
+
+
+
+MAP DESIGN RESTRICTIONS:
+
+While both Map() and FullMap() can display weird room layouts without
+self-destructing, they nevertheless cannot always do so *correctly*. In
+order to ensure that the maps displayed by both mappers are accurate, the
+following rules must be adhered to when designing a game:
+
+        1. No cross connections.
+        2. No "strange" connections.
+
+An example of the first would be (where "*" represents a room):
+
+        * *         <--don't design a layout so that something such as
+         X          <--this results
+        * *
+
+An example of the second would be something like: room A connects south
+to room B, while room B connects north to some room other than room A. Or,
+room A connects to room B, but it does so by "jumping over" several other
+rooms that should logically fall in between.
+
+(Since what is meant here may be difficult to grasp when merely described
+this way, a sample "game" is included with AUTOMAP.H that gives a fairly
+clear indication of how maps ought to be laid out when coding.)
+
+Actually, cross connections are handled properly for the rooms immediately
+surrounding the central room. Thus, if only Map() is being employed, there
+should be no problem in having them. Beyond that, however, there is just no
+feasible or practical way to code for such connections, so they are not
+supported. (Like most things, cross connections won't blow up the mappers,
+though; they'll simply not be displayed accurately. In the little picture
+above, for example, the "X" would be replaced by a "/" or a "\", giving
+the misleading impression that two of the rooms are not connected to each
+other.)
+
+Note: the mappers *can* handle rooms that connect to themselves. These are
+always indicated on the map by a symbol pointing in the appropriate
+direction, but without any neighboring room attached to it. In other words,
+such a connection will always look like a connection to a room that hasn't
+been visited yet.
+
+
+
+HOW THE MAPPERS HANDLE DOORS:
+
+They ignore them. For map-drawing purposes, the doors might as well not
+even be there. There is no provision made for open/closed status, so if
+a programmer wants to, say, stop mapping at closed doors, he'll have to
+figure out how to do that himself (or contact the author, who will try to
+remember his own code well enough to advise him).
+
+
+
+HOW THE MAPPERS HANDLE UP, DOWN, IN, AND OUT:
+
+These exit directions are indicated in the rooms that have them with the
+letters "u", "d", "i", and "o" respectively. That's all. The rooms they
+lead to are ignored completely. For all intents and purposes, maps
+are conceived as "levels", with the neighbors of a room only displayed if
+they occupy the same "level" as the room itself. (To speak of "in" and
+"out" as pointing to different "levels" is perhaps misleading, but the case
+of "up" and "down" should be clear enough, so that just thinking of "in"
+and "out" as being a kind of "up" and "down" for purposes of map-drawing
+shouldn't be too confusing.)
+
+
+
+HOW THE MAPPERS HANDLE USER-DEFINED DIRECTION OBJECTS:
+
+Contrary to what was stated in the first draft of this document, user-defined
+direction objects are not a problem. Neither Map() nor FullMap() ever
+addresses direction *objects* at all. It is the dir_to properties of rooms
+that matter. Thus, if one doesn't employ the normal n_to, s_to, etc.
+properties for moving around, the mappers won't work. If one does, they
+will. End of story.
+
+(An interesting aside somewhat related to this topic: since what happens
+when the mappers don't find a room connection is nothing, it's possible
+to hide rooms from the player by coding their return values in the before
+routine(s) of the room(s) that lead to them instead of in the dir_to
+properties. Such a strategy could be quite useful, particularly, in the
+creation of mazes. The exits from maze rooms are often meant to be kept
+hidden from the player, which means he shouldn't be able to see a map of
+them--nor, indeed (in the case of the full-screen mapper), the layout of
+the maze at large. Hiding the exits and neighboring rooms with null dir_to
+properties is a very good way to keep a player from seeing what you don't
+want him to see. Using hidden rooms, moreover, cross connections and strange
+connections are still very possible, inasmuch as such connections won't
+ever be seen or displayed by the mappers.)
+
+
+
+OVERWHELMED? FOLLOW THESE STEPS:
+
+1. #include AUTOMAP.H in your source immediately prior to main().
+
+3. Declare your new command grammar, if any (the sample game can be
+   looked to for an example).
+
+4. If you want to use Map() as an automapper, put a call to Map() at the
+   end of main(). If you are providing a "map on" and "map off" facility,
+   then use an "if" conditional with the global variable AUTOMAP_ON to act
+   as a switch. You should use AUTOMAP_ON instead of creating one of
+   your own, since AUTOMAP.H depends on it for proper handling of the
+   "wait" commands. (Again, see the sample game for guidance if you need
+   help.)
+
+5. Other than adhering to the coding and design rules, you're done. Remember
+   that, for the full-screen mapper, every room MUST have a "map_list #13"
+   property. Must, must, must. Don't forget it.
+
+
+
+CREDITS (from the "it goes without saying" department):
+
+The author wishes to thank in particular Kent Tessman and Julian Arnold for
+their help in the production of the mappers--Kent for his technical
+assistance and support, Jools for his playtesting, and both for their
+admirable discipline in not simply bursting out laughing when this project
+was proposed. May they both live long and Prosser.
+
+
+Enjoy!
+This file and AUTOMAP.H (c) 1997-2000 by Cardinal Teulbachs, Archbishop of
+Frith. The Cardinal can be insult--er, consulted--at jnewl@pacbell.net

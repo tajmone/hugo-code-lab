@@ -1,0 +1,76 @@
+!----------------------------------------------------------------------------
+!* New flags
+!----------------------------------------------------------------------------
+!#set HUGOFIX             ! Compile with HugoFix Debugging Library
+                          !    commands available   (type $? in game)
+!#set VERSIONS            ! Have compiler list library versions
+
+!----------------------------------------------------------------------------
+!*Hugolib inclusions
+!----------------------------------------------------------------------------
+!#set RESOURCES           ! include resource.h
+!#set SYSTEM              ! include system.h
+!#set VERBSTUBS           ! Include the grammar and routines from
+                          !    verbstubs.g and verbstubs.h, respectively
+!#set WINDOWS             ! include window.h
+
+!----------------------------------------------------------------------------
+!* Library contribution inclusions
+!----------------------------------------------------------------------------
+#set USE_ROODYLIB        ! Compile with Roodylib
+!#set BETA                ! Compile with the comments-in-transcripts library
+                          !  addition (requires "beta.h")
+!#set CHEAP               ! Compile with cheaplib
+!#set NEW_MENU            ! Compile with newmenu
+!#set USE_DEFAULT_MENU    ! Use newmenu's default menu functionality
+!#set PASTTENSE           ! Compile with "pasttense.h"
+
+!----------------------------------------------------------------------------
+!*Hugolib flags
+!----------------------------------------------------------------------------
+!#set HDX                 ! Compile as Hugo Debuggable Executable (see
+                          !    below for details)
+!#set USE_ATTACHABLES     ! Use attachable items
+!#set USE_CHECKHELD       ! Use checkheld system (held-requiring actions
+                          ! automatically pick up unheld objects)
+!#set USE_PLURAL_OBJECTS  ! Use plural objects
+!#set USE_VEHICLES        ! Use vehicle objects
+!#set VERSIONS            ! Print library versions at compile time
+
+! Note: the OLD_STYLE_PRONOUNS flag is currently forced by hugolib
+
+#ifset HUGOFIX
+#set DEBUG
+#endif
+
+!----------------------------------------------------------------------------
+!* Hugolib "NO_*" flags (flags for turning stuff off)
+! [ NOTE: Some of these may not work with Roodylib ]
+!----------------------------------------------------------------------------
+!#set NO_AUX_MATH         ! No advanced math needed
+!#set NO_FONTS            ! Don't use font effects
+!#set NO_FUSES            ! Don't use fuses
+!#set NO_MENUS            ! Don't use menus
+!#set NO_OBJLIB           ! Don't use objlib
+!#set NO_RECORDING        ! Don't allow transcripts
+!#set NO_SCRIPTS          ! Don't use character scripts
+!#set NO_STRING_ARRAYS    ! Don't use string arrays
+!#set NO_UNDO             ! Make UNDO completely unimplemented
+!#set NO_VERBS            ! Don't use any standard verbs
+!#set NO_XVERBS           ! Don't use any standard "out-of-world" verbs
+
+!----------------------------------------------------------------------------
+!* Roodylib flags
+!----------------------------------------------------------------------------
+
+!#set NEW_STYLE_PRONOUNS       ! Use New Style Pronouns (see comments)
+!#set NO_AUTOMATIC_DOOR_UNLOCK ! Don't allow automatic door-unlocking
+!#set NO_SORTING               ! Don't use sorting routines
+!#set NO_XYZZY                 ! Don't use >XYZZY response code
+!#set ROUTINE_GRAMMAR_HELPER   ! Use Routine Grammar Helper (see comments)
+!#set USE_AFTER_UNDO           ! Use after_undo array to call routines
+                               ! after successful UNDOs
+!#set USE_EXTENSION_CREDITING  ! Use routines for listing all included
+                               ! libraries
+!#set USE_ROLLABLES            ! Include Roodylib's object-rolling code
+!#set USE_STRING_MANIPULATION  ! Include string manipulation routines

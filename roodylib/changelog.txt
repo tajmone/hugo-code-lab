@@ -1,0 +1,54 @@
+Ok, I've started a changelog!
+v 2.9 - * Added Object Sorting section to complement ListChildren routine
+v 2.8 - * Made characters default to having exclude_from_all true
+        * Added a ClearArray call to FindStatusHeight to prevent room from being printed twice
+          in statustype-less games
+        * Updated rdyshell to call flags.hug, switchgram.g, and inclusions.h
+	* new "New Style Pronouns" and "Routine Grammar Helper" sections added
+v 2.7 - * Added ROODYBANNER and ROODYVERSION constants to make it easier for games to proclaim
+	the Roodylib version in DoVersion and/or the game title segment, if they choose.
+	* Added default "XYZZY" response so Hugo authors aren't bugged to provide responses.
+	* Use the NO_XYZZY flag if you'd like to turn it off.
+	* Added USE_EXTENSION_CREDITING section for listing included extensions in CREDITS responses
+	* Added a status_top property to the printstatuslib system so status windows can coexist
+	with graphical windows in multimedia games (status_top should equal the top row number of
+	the status window)
+	* Added asterisks to section headings to make it easier for my text editor (EditPlus) to jump
+	to sections (so now I can set my Function List search to look for lines that begin with "!*")
+	* Updated PropertyList, ListObjects, and PrintArrayList (the last is in extraroutines.hug)
+	to add optional "conjunction" argument, so object listing can be a means of providing
+        choices. Created ListChildren routine which sets the list_count global so ListObjects works
+	correctly in such cases.
+v 2.6 - Modified DoUndo so it resets verbroutine to &DoUndo after successful UNDO
+	( a successful UNDO changes the verbroutine to the routine that was successfully
+	UNDOne, but that leaves the door open to after and react_after properties being run
+	again)
+	changed "test" local variable in RedrawScreen to something less generic
+	updated CenterTitle to work with strings bigger than screen width
+	tweaked some door code,
+	Updated PrintScore to give the top ranking in games even when score surpasses MAX_SCORE (so
+	ranking still works in games with broken scoring or games with extra easter egg points)
+v 2.5 - Added NO_AUTOMATIC_DOOR_UNLOCK flag for disabling door-auto-unlocking (that is,
+	doors that your player automatically unlocks if you go in their direction with the
+	proper key)
+	Fixed status-window-clearing code in DoUndo
+v 2.4 - Cosmetic release. Organized roodylib, grouping similar routines.
+	Moved uncommonly-used routines to "extraroutines.h" file.
+	#set USE_STRING_MANIPULATION to use string manipulation routines
+	#set USE_AFTER_UNDO if you want after_undo array capabilities
+	(others- NO_SORTING, USE_ROLLABLES)
+v 2.3 - Improved ProcessKey routine, added "checkheld_holder" object,
+        fixed DoGo problem ("A bit redundant, don't you think?" wasn't getting
+        called)
+	Created ClearWordArray routine
+	Added ClearWordArray calls to DoUndo and DoRestore
+	Found a huge Hugo bug where multi-line xverb definitions only understand
+	the first line as xverb. Now roodylib pre-declares the xverbs and splits them
+	all into one line definitions.
+	Changed the DoEnter grammar definition so it made use of some unused code in DoEnter
+	Tweaked DoEnter
+
+V. 2.2 - Added an improved door class and RlibOMessage, a Roodylib object message routine
+         Made DoListen and DoSmell give non-helpful responses to objects
+
+pre V. 2.1- Who can remember?

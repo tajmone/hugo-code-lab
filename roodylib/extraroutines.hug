@@ -1,0 +1,295 @@
+!::
+! ROODYLIB EXTRA ROUTINES
+!::
+
+!\#ifset VERSIONS
+#message "extraroutines.hug Version 1.1"
+#endif \!
+
+
+!\ Roody's note: Future Boy!'s AddPropValue and RemovePropValue are like
+the routines AddToScope and RemoveFromScope except they aren't limited to
+one property (like in those cases, "scope").
+As such, they are very useful routines. Written by Kent Tessman.
+\!
+
+! AddPropValue(obj, prop, value)
+! Adds 'value' as a property value for obj, if possible
+
+routine AddPropValue(obj, prop, val)
+{
+	local i
+	for (i=1; i<=obj.#prop; i++)
+	{
+		if obj.prop #i = 0
+		{
+			obj.prop #i = val
+			return i
+		}
+	}
+}
+
+
+! RemovePropValue(obj, prop, value)
+! Removes 'value' as a property value for obj, if applicable
+
+routine RemovePropValue(obj, prop, val)
+{
+	local i
+	for (i=1; i<=obj.#prop; i++)
+	{
+		if obj.prop #i = val
+		{
+			obj.prop #i = 0
+			return i
+		}
+	}
+}
+
+! CenterLine is a one-line only version of CenterTitle, printing
+! string "a" in the center of the current line. Its accuracy will
+! probably be affected by the current font, but it still could be useful.
+! Add an override value if you *don't* want Indent-ing where there isn't
+! enough room to center.
+
+routine CenterLine(a,override,drawthrough)
+{
+	print newline ! make sure we are at the start of a line
+	local l
+	l = string(_temp_string, a)
+	if l < display.linelength
+		print to (display.linelength / 2 - l/2);
+	elseif not override	! if we don't have enough line width to center it, we'll
+		Indent	! show the line's importance by indenting
+	print a;
+	if drawthrough
+		print to display.linelength
+	else
+		""
+}
+
+
+!\ Roody's note: FindObjectOfType and FindObjectWithAttribute both look
+for an object of a certain type or attribute in the scope of the given
+location. If there are none or more than one, it returns false. Otherwise,
+it returns the object. Written by Kent Tessman for Future Boy!
+\!
+
+! FindObjectOfType(t, location)
+! Used to find an object of type t; returns either the single available
+! object, or nothing.
+
+routine FindObjectOfType(t, loc)
+{
+	local i, obj, suspect
+
+	if loc = 0:  loc = location
+
+	for i in loc
+	{
+		if i.type = t
+		{
+			if suspect
+				return nothing
+			suspect = i
+		}
+		elseif children(i) and (i is not container or i is open or i is not openable)
+		{
+			obj = FindObjectOfType(t, i)
+			if obj
+			{
+				if suspect
+					! More than 1
+					return nothing
+				else
+					suspect = obj
+			}
+		}
+	}
+
+	! Only do the whole-tree check when loc is a room-level object:
+	if parent(loc) = nothing and not suspect
+	{
+		for (i=1; i<=objects; i++)
+		{
+			if i.type = t and i ~= suspect
+			{
+				if FindObject(i, location)
+				{
+					if suspect
+						! More than one
+						return nothing
+					else
+						suspect = obj
+				}
+			}
+		}
+	}
+	return suspect
+}
+
+
+! FindObjectWithAttribute(attr, location)
+! Used to find an object with attribute attr; returns either the
+! single available object, or nothing.
+
+routine FindObjectWithAttribute(attr, loc)
+{
+	local i, obj, suspect
+
+	if loc = 0:  loc = location
+
+	for i in loc
+	{
+		if i is attr and i ~= player
+		{
+			if suspect
+				return nothing
+			suspect = i
+		}
+		elseif children(i) and (i is not container or i is open or i is not openable)
+		{
+			obj = FindObjectWithAttribute(attr, i)
+			if obj
+			{
+				if suspect
+					! More than 1
+					return nothing
+				else
+					suspect = obj
+			}
+		}
+	}
+
+	! Only do the whole-tree check when loc is a room-level object:
+	if parent(loc) = nothing and not suspect
+	{
+		for (i=1; i<=objects; i++)
+		{
+			if i is attr and i ~= suspect and i ~= player
+			{
+				if FindObject(i, location)
+				{
+					if suspect
+						! More than one
+						return nothing
+					else
+						suspect = obj
+				}
+			}
+		}
+	}
+
+	return suspect
+}
+
+!----------------------------------------------------------------------------
+! GetPrompt
+! receives input from the keyboard, parsing into the word[] array; unknown
+! words--i.e. those that aren't in the dictionary--are equated to the null
+! string ("")
+!
+! GetPrompt(prompt)
+! where the optional <prompt> represents a dictionary word, prints <prompt>
+! before receiving input, otherwise it prints the global-variable prompt
+
+!\ Roody's note: This is basically GetInput except it always prints some kind
+of prompt. Changing GetInput would break a million things, so here's a new
+alternative (you can always just call "input" if you don't want to print a
+prompt). \!
+
+routine GetPrompt(p)
+{
+	if p
+		print p;
+	else
+		print ">";
+	input
+}
+
+
+
+! Roody's note: IsYounger by Kent Tessman for Future Boy!
+! IsYounger
+!
+! returns true if object1 is younger (i.e., further down in the children list)
+! than object2
+
+routine IsYounger(object1, object2)
+{
+	local p, obj
+	p = parent(object1)
+	if parent(object2) ~= p
+		return false
+
+	obj = object1
+	while (obj)
+	{
+		if obj = object2
+			return false
+		obj = sibling(obj)
+	}
+	return true
+}
+
+!\ Roody's note: PrintArrayList is like PropertyList except it doesn't
+print the total of objects (and it uses arrays and not property arrays).
+Written by Kent Tessman for Future Boy!
+\!
+
+! PrintArrayList(list, count)
+! Prints count elements of the array list.
+
+routine PrintArrayList(list, count, conjunction)
+{
+	if not conjunction
+		conjunction = AND_WORD
+	local i
+	for (i=1; i<=count; i++)
+	{
+		if i > 1:  " ";
+		The(array list[i-1])
+		if i < count and count > 2:  ",";
+		if i = count-1:  print " "; conjunction;
+	}
+	return false
+}
+
+!\ Roody's note: Routine for quickly moving objects from one object to another.
+Written by Kent Tessman for Future Boy!
+\!
+
+routine TransferObjects(from_obj, to_obj)
+{
+	local i
+
+	i = child(from_obj)
+	while i
+	{
+		local j
+		j = sibling(i)
+		move i to to_obj
+		i = j
+	}
+}
+
+!\ Roody's note: WordInCommand- a routine by Kent Tessman for checking if a
+particular word is in a command. Probably could have some novel uses.
+I imagine you'd use it in PreParse to catch whatever you're looking for. \!
+
+! WordInCommand(word)
+!
+! Returns true if 'word' was used as part of the player's command (i.e., is
+! part of the word[] array).
+
+routine WordInCommand(w)
+{
+	local i
+	for (i=1; i<=words; i++)
+	{
+		if word[i] = w
+			return true
+		elseif word[i] = ""
+			return false
+	}
+}

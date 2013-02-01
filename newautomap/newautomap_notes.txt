@@ -1,0 +1,40 @@
+NewAutomap-
+This version can be used with glk interpreters. If you'd like to change
+the characters used in the map, replace the map_chars object:
+
+object map_chars
+{
+	u_to "u"
+	d_to "d"
+	in_to "i"
+	out_to "o"
+	room_char
+		{
+		if system(61) ! glk in this instance
+			return "\#164"
+		else
+			return " "
+		}
+	player_char
+		{
+		if system(61) ! glk in this instance
+			return "O"
+		else
+			return "*"
+		}
+}
+
+If used with "window.h", setting the map_window global to a window object
+will send a map to that window each turn.
+
+                - Roody Yogurt, 2012
+
+Old notes (automap v2)-
+
+This is a tweaked version of Cardinal Teulbach's automap.h contribution. Very little is changed, so be sure to read the original docs.
+Added was a couple "locate"'s to return the cursor to the original part of the screen after drawing a map. Also, the AUTOMAP ("map on") command
+now draws a window so the map doesn't slide off the screen after a slew of xverbs or unsuccessful commands.
+
+Also, personally, if I were to use the full map command, I'd probably include a pause and clear the screen afterwards or something. Anyhow, play around with automap2.h and maptest.hug. I don't think any one game is expected to use every part of it, so go ahead and just take what you like!
+
+                  - Roody Yogurt, 2011

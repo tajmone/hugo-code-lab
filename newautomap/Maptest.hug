@@ -1,0 +1,458 @@
+!\---------------------------------------------------------------------------
+
+        A SAMPLE "GAME" DEMONSTRATING THE WONDERS OF MAPPING
+        by Cardinal Teulbachs, (c) 1997
+
+        ** updated 4-23-00 for compatibility with Hugo 2.5+ **
+	   ** updated July 2011 for compatibility with glk interpreters **
+---------------------------------------------------------------------------\!
+
+!#set DEBUG
+#set VERBSTUBS
+
+! #switches -ls
+
+xverb "map", "m"
+        *                                       DoMap
+xverb "map", "m"
+        * "on"                                  DoMapOn
+xverb "map", "m"
+        * "off"                                 DoMapOff
+xverb "map", "m"
+        * "from" object                         DoMap
+xverb "map", "m"
+        * "game"                                DoFullMap
+xverb "map", "m"
+        * "game" "from" object                  DoFullMap
+
+                                        ! verbroutines are at end of file
+
+
+#ifset DEBUG
+#switches -d
+#endif
+
+#include "verblib.g"			! grammar must come first
+
+#include "hugolib.h"
+
+#include "roodylib.h"
+#include "window.h"
+#include "newautomap.h"
+
+!::	Game Initialization	routine
+routine init
+{
+!: First Things First
+SetGlobalsAndFillArrays
+#ifset _ROODYLIB_H
+!: Screen clear section
+SimpleIntro
+InitScreen
+!: Set up any special libries
+Init_Calls
+#else ! _ROODYLIB_H
+color TEXTCOLOR, BGCOLOR
+cls
+#endif
+!: Game opening
+IntroText
+MovePlayer(location)
+#ifclear _ROODYLIB_H
+	CalculateHolding(player)
+
+#ifset USE_PLURAL_OBJECTS
+	InitPluralObjects
+#endif
+#endif ! #ifclear _ROODYLIB_H
+}
+
+routine IntroText
+{
+	Font(BOLD_ON | DEFAULT_FONT)
+	"ADVENTURES IN MAPPING"
+	Font(BOLD_OFF| DEFAULT_FONT)
+	"An Interactive Whiz-Bang"
+	"by Cardinal Teulbachs (c) 2000"
+	print "for use with "; BANNER; " and up\n"
+	"Type \"map on\" to turn automapper on, \"map off\" to
+	turn automapper off, and \"map game\" to display a full
+	page map of places you've visited (for this demo, all
+	rooms are presumed to have been visited). You can also
+	simply type \"map\" if all you want is a one-time display
+	of your immediate surroundings."
+}
+
+routine SetGlobalsAndFillArrays
+{
+!\ Uncomment and modify this section if your game has scoring and ranking.
+	MAX_SCORE = 50
+	ranking[0] = "Amateur Adventurer"
+	ranking[1] = "Competent Door-Unlocker"
+	ranking[2] = "Bomb-Meddling Adventurer"
+	ranking[3] = "Master Magic Wand Finder"
+	ranking[4] = "The Genuine Article Sample Game Solver"
+	MAX_RANK = 4  \!
+
+	counter = -1                    ! 1 turn before turn 0
+	STATUSTYPE = 3   ! 1 = score/turns, 2 = time, 3 = moves: score:
+	TEXTCOLOR = WHITE
+	BGCOLOR = BLACK
+	SL_TEXTCOLOR = BGCOLOR
+	SL_BGCOLOR = TEXTCOLOR
+	INPUTCOLOR = MATCH_FOREGROUND
+	prompt = ">"
+	DEFAULT_FONT = PROP_ON
+	Font(DEFAULT_FONT)
+	player = you
+	location = room4
+!	map_window = sample_window
+}
+
+!::	Main game loop
+routine	main
+{
+	counter	= counter +	1
+	run	location.each_turn
+	runevents
+	RunScripts
+#ifset _ROODYLIB_H
+	if GrandParent(speaking) ~= location
+		speaking = 0
+	PrintStatusLine
+	Main_Calls
+#else
+	if parent(speaking)~=location
+		speaking = 0
+	PrintStatusLine
+	MapSet
+#endif
+}
+
+player_character you "you"
+{
+}
+
+room dummyroom "dummyroom"              ! this is just to connect rooms with
+{                                       ! in the up, down, in, and out
+!  is visited                            ! directions for purposes of
+}                                       ! illustration
+
+room room1 "room 1"                     ! All rooms creatively named with
+{                                       ! numbers. Notice how no long_descs
+  is visited                            ! are given. Notice how, using the
+  s_to { return room2 }                 ! automapper, none are needed (for
+  n_to { return room33 }                ! announcing exits, anyway)
+  map_list #13
+}
+
+room room2 "room 2"
+{
+  is visited
+  n_to { return room1 }                 ! Notice how no printable code is
+  se_to { return room3 }                ! found in the dir_to's
+  d_to { return dummyroom }
+  out_to { return dummyroom }
+  map_list #13                          ! Notice how every room has a map_list
+}                                       ! property for the full-screen mapper
+
+room room3 "room 3"
+{
+  is visited                            ! Notice how I've given every room
+  nw_to { return room2 }                ! "visited" in order to make things
+  e_to { return room4 }                 ! easier on you. Change some of these
+  map_list #13                          ! if you want to and view the results
+}
+
+room room4 "room 4"                     ! Notice how I didn't give the rooms
+{                                       ! any noun properties. You'll have to
+  is visited                            ! add them yourself if you want to
+  w_to { return room3 }                 ! see "map from <room>" in action.
+  n_to { if object = n_obj
+		return a_door.door_to
+	else
+		return room5}        ! (You'll have to do some other
+  ne_to { return room6 }                ! juggling besides.)
+  sw_to { return room7 }
+
+
+  map_list #13
+}
+
+door a_door "door"                      ! Notice how I've put a door here
+{                                       ! just to prove the mappers can
+  between room4, room5                  ! handle it
+}
+
+room room5 "room 5"
+{
+  is visited
+  s_to { if object = s_obj
+		return a_door.door_to
+	else
+		return room4}
+  map_list #13
+}
+
+room room6 "room 6"
+{
+  is visited
+  sw_to { return room4 }
+  map_list #13
+}
+
+room room7 "room 7"
+{
+ ! is visited
+  ne_to { return room4 }
+  s_to { return room8 }
+  u_to { return dummyroom }
+  map_list #13
+}
+
+room room8 "room 8"
+{
+  is visited
+  n_to { return room7 }
+  w_to { return room9 }
+  e_to { return room10 }
+  sw_to { return room14 }
+  s_to { return room15 }
+  se_to { return room16 }
+  map_list #13
+}
+
+room room9 "room 9"
+{
+  is visited
+  e_to { return room8 }
+  out_to { return dummyroom }
+  map_list #13
+}
+
+room room10 "room 10"
+{
+  is visited
+  w_to { return room8 }
+  n_to { return room11 }
+  ne_to { return room12 }
+  map_list #13
+}
+
+room room11 "room 11"
+{
+  is visited
+  s_to { return room10 }
+  map_list #13
+}
+
+room room12 "room 12"
+{
+  is visited
+  sw_to { return room10 }
+  se_to { return room24 }
+  map_list #13
+}
+
+room room13 "room 13"
+{
+  is visited
+  e_to { return room14 }
+  w_to { return room29 }
+  in_to { return dummyroom }
+  map_list #13
+}
+
+room room14 "room 14"
+{
+  is visited
+  w_to { return room13 }
+  ne_to { return room8 }
+  map_list #13
+}
+
+room room15 "room 15"
+{
+  is visited
+  n_to { return room8 }
+  u_to { return dummyroom }
+  out_to { return dummyroom }
+  map_list #13
+}
+
+room room16 "room 16"
+{
+  is visited
+  nw_to { return room8 }
+  se_to { return room17 }
+  map_list #13
+}
+
+room room17 "room 17"
+{
+  is visited
+  nw_to { return room16 }
+  e_to { return room18 }
+  map_list #13
+}
+
+room room18 "room 18"
+{
+  is visited
+  w_to { return room17 }
+  ne_to { return room20 }
+  sw_to { return room26 }
+  nw_to { return room23 }
+  map_list #13
+}
+
+room room19 "room 19"
+{
+  is visited
+  n_to { return room20 }
+  map_list #13
+}
+
+room room20 "room 20"
+{
+  is visited
+  sw_to { return room18 }
+  s_to { return room19 }
+  w_to { return room22 }
+  n_to { return room21 }
+  d_to { return dummyroom }
+  in_to { return dummyroom }
+  map_list #13
+}
+
+room room21 "room 21"
+{
+  is visited
+  s_to { return room20 }
+  w_to { return room24 }
+  map_list #13
+}
+
+room room22 "room 22"
+{
+  is visited
+  e_to { return room20 }
+  w_to { return room23 }
+  n_to { return room24 }
+  map_list #13
+}
+
+room room23 "room 23"
+{
+  is visited
+  ne_to { return room24 }
+  e_to { return room22 }
+  u_to { return dummyroom }
+  se_to { return room18 }
+  map_list #13
+}
+
+room room24 "room 24"
+{
+  is visited
+  sw_to { return room23 }
+  e_to { return room21 }
+  s_to { return room22 }
+  ne_to { return room25 }
+  nw_to { return room12 }
+  map_list #13
+}
+
+room room25 "room 25"
+{
+  is visited
+  sw_to { return room24 }
+  map_list #13
+}
+
+room room26 "room 26"
+{
+  is visited
+  ne_to { return room18 }
+  s_to { return room27 }
+  d_to { return dummyroom }
+  map_list #13
+}
+
+room room27 "room 27"
+{
+  is visited
+  n_to { return room26 }
+  sw_to { return room28 }
+  map_list #13
+}
+
+room room28 "room 28"
+{
+  is visited
+  ne_to { return room27 }
+  in_to { return dummyroom }
+  u_to { return dummyroom }
+  s_to { return room28 }                  ! Notice how I've made rooms 28
+  map_list #13                            ! and 33 connect to themselves
+}                                         ! just to prove the mappers
+                                          ! can handle it
+room room29 "room 29"
+{
+  is visited
+  e_to { return room13 }
+  w_to { return room30 }
+  map_list #13
+}
+
+room room30 "room 30"
+{
+  is visited
+  e_to { return room29 }
+  w_to { return room31 }
+  map_list #13
+}
+
+room room31 "room 31"
+{
+  is visited
+  e_to { return room30 }
+  w_to { return room32 }
+  out_to { return dummyroom }
+  d_to { return dummyroom }
+  map_list #13
+}
+
+room room32 "room 32"                     ! Notice how, when mapping from
+{                                         ! an easternmost room, the western
+  is visited                              ! ones are lopped off neatly at
+  e_to { return room31 }                  ! the edge of the screen (and
+  map_list #13                            ! vice versa). The same holds true
+}                                         ! for north and south.
+
+room room33 "room 33"
+{
+  is visited
+  s_to { return room1 }
+  n_to { return self }
+  map_list #13
+}
+
+#ifset _WINDOW_H
+window_class sample_window
+{
+  win_left     2  ! leftmost column
+  win_top
+		return (display.statusline_height + 2)! topmost row
+  win_right    29 !rightmost column
+  win_bottom
+		return (self.win_top + 18 )! bottommost row
+
+  win_textcolor  WHITE    ! text color for any output
+  win_backcolor  BLUE    ! background color
+
+}
+#endif
+
+
+
