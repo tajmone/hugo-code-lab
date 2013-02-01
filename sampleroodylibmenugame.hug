@@ -1,0 +1,218 @@
+!::
+! New Game (Shell)
+!::
+constant GAME_TITLE "NEW MENU SAMPLE GAME"
+
+!:: Flags
+!#set BETA                ! Compile with the comments-in-transcripts library
+                          !   addition (requires "beta.h")
+!#set CHEAP
+!#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
+                          !   available (type $? in game)
+!#set PRECOMPILED_LIBRARY ! Use a precompiled header library (see manual)
+#set VERBSTUBS           ! Include the grammar and routines from verbstubs.g
+                          !   and verbstubs.h, respectively
+!#set USE_ATTACHABLES     ! Use attachable items
+!#set USE_PLURAL_OBJECTS  ! Use plural objects
+!#set USE_VEHICLES        ! Use vehicle objects
+!$set VERSIONS            ! Print library versions at compile time
+#set USE_DEFAULT_MENU
+!:: switches              ! example how one can add compiler switches to source
+!#switches -ls            ! print compilation stats to .LST file
+
+#ifset HUGOFIX
+#set DEBUG
+#endif
+
+!:: Other pre-Hugolib.h Constants
+! (some constants must be set before hugolib is included)
+
+!constant AFTER_PERIOD " "     ! include one space after full stops (as opposed
+                               !   to two)
+!constant INDENT_SIZE 0        ! no indentation in room descriptions and room
+                               !   content listings
+#set CHEAP
+
+!:: Grammar Library Inclusions (grammar must come first)
+verb "about"
+*								DoAbout
+#include "cheaplib.g"
+#include "roodylib.g"
+! new grammar needs to be defined before the including verblib
+#include "verblib.g"        ! Verb Library
+
+#include "hugolib.h"        ! Standard  Hugo Library
+
+#include "roodylib.h"         ! Hugo  Library Updates
+!#include "cheaplib.h"
+#include "newmenu.h"
+
+!::	Other Library Inclusions
+#ifset BETA
+#include "beta.h"
+#endif
+
+#ifset CHEAP
+#include "cheaplib.h"
+#endif
+
+!:: Other constants and global variables
+!constant IFID "put-IFID here"
+
+!::	Game Initialization	routine
+routine init
+{
+!: First Things First
+SetGlobalsAndFillArrays
+!: Screen clear section
+SimpleIntro
+InitScreen
+!: Set up any special libries
+Init_Calls
+!: Game opening
+IntroText
+MovePlayer(location)
+}
+
+
+routine SetGlobalsAndFillArrays
+{
+!\ Uncomment and modify this section if your game has scoring and ranking.
+	MAX_SCORE = 50
+	ranking[0] = "Amateur Adventurer"
+	ranking[1] = "Competent Door-Unlocker"
+	ranking[2] = "Bomb-Meddling Adventurer"
+	ranking[3] = "Master Magic Wand Finder"
+	ranking[4] = "The Genuine Article Sample Game Solver"
+	MAX_RANK = 4  \!
+
+	counter = -1                    ! 1 turn before turn 0
+	!ask_color = 0
+	STATUSTYPE = 1   ! 1 = score/turns, 2 = time, 3 = moves: score:
+	TEXTCOLOR = DEF_FOREGROUND
+	BGCOLOR = DEF_BACKGROUND
+	SL_TEXTCOLOR = DEF_SL_FOREGROUND
+	SL_BGCOLOR = DEF_SL_BACKGROUND
+	prompt = ">"
+	DEFAULT_FONT = PROP_ON
+	player = you
+	location = STARTLOCATION
+}
+
+!::	Main game loop
+routine	main
+{
+	counter	= counter +	1
+	run	location.each_turn
+	runevents
+	RunScripts
+	if speaking	not	in location
+		speaking = 0
+	PrintStatusLine
+	Main_Calls
+}
+
+routine IntroText
+{
+        print ""    ! For a blank line between the intro and the game title
+
+        Font(BOLD_ON)
+        print GAME_TITLE
+        Font(BOLD_OFF)
+        "Game Blurb"
+#ifset BETA
+	string(_temp_string, serial$, 8)
+	"beta build: \B20";
+	StringPrint(_temp_string, 6, 8)
+	StringPrint(_temp_string, 0, 2)
+	StringPrint(_temp_string, 3, 5)
+	"\b"
+#endif
+        print BANNER;
+        #ifset HUGOFIX
+        print " (Now with HugoFix Technology TM!)"
+        #else
+        print ""
+        #endif
+#if defined IFID
+        print IFID
+#endif
+		print "Type \BABOUT\b to see the cool new menu system."
+#ifset BETA
+	"\n(\INOTE:  This beta release is intended for testing only, not for
+	distribution to the general public.  Please report any errors,
+	bugs, etc. to the author. To make a comment, type \"\B* COMMENT TEXT\b\" at the prompt.\i)"
+#endif
+}
+
+player_character you "you"
+{
+}
+
+room STARTLOCATION "Start Location"
+{
+	long_desc
+		"This is the Start Location."
+}
+
+routine DoAbout
+{
+	MakeMenu
+	return false
+}
+
+#ifclear USE_DEFAULT_MENU
+menu_category main_menu "TITLE OF YOUR MAIN MENU"
+{
+	title_gap 1
+	options_gap 1
+}
+#endif
+
+option contact_choice "Contact"
+{
+	in main_menu    ! which menu it is
+	menu_text	{
+						""
+					"\_ Feel free to send me your thoughts and suggestions at roody.yogurt@gmail.com! What an amazing discourse we will have!\n"
+					CoolPause(1)
+					}
+	priority 3
+}
+
+option submenu_choice "Choice Leading To Your Submenu"
+{
+	priority -1
+	in main_menu
+	menu_link	hint_menu
+}
+
+menu_category hint_menu "WHOA IT'S A HINT MENU"
+{
+	title_gap {return main_menu.title_gap}
+	page_text_color LIGHT_RED
+	page_bg_color GREEN
+	title_color LIGHT_BLUE
+	title_bg DARK_GRAY
+}
+
+hint_option studiopass_hints "How do I get on the studio lot?"
+{
+	in hint_menu
+	hint1
+	{
+		"Movie studio security is on par with Area 51.  To get on
+		the lot, you'll need a pass."
+	}
+	hint2
+	{
+		"There's a studio pass in the envelope that was slipped
+		under the door of your hotel room."
+	}
+	hint3
+	{
+		"Drive to the studio lot.  Make sure you've got the pass
+		handy.  Get out of the car and go north."
+	}
+}
+
