@@ -225,7 +225,7 @@ replace CalculateHolding(obj)
 	obj.holding = 0
 	for i in obj
 	{
-		if i is not worn or i is not clothing and obj ~= player
+		if not (i is worn and i is clothing and obj = player)
 			obj.holding = obj.holding + i.size
 	}
 }
