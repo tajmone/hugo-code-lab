@@ -1,5 +1,8 @@
 Ok, I've started a changelog!
 v 2.9 - * Added Object Sorting section to complement ListChildren routine
+	* Fixed CalculateHolding bug
+	* Fixed DoUnlock/DoLock. some messages weren't called correctly and now it makes sure that
+	keys are available (and not in a closed box or something).
 v 2.8 - * Made characters default to having exclude_from_all true
         * Added a ClearArray call to FindStatusHeight to prevent room from being printed twice
           in statustype-less games

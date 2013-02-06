@@ -5784,7 +5784,7 @@ thing is Jason McWright's multikey.h extension.
 \!
 replace DoUnlock
 {
-   local a,b
+   local a, list_key, cant_reach
    if not CheckReach(object):  return false
 
 	!\ because setupdirectionobjects can sometimes dictate an xobject where we
@@ -5805,16 +5805,24 @@ replace DoUnlock
    {
       for (a=1; a <= object.#key_object ; a++)
       {
-      if Contains(player, object.key_object #a)
-         {
-         xobject = object.key_object #a
-			b = true
-         break
-         }
-      }
+			if Contains(player, object.key_object #a)
+			{
+				if FindObject(object.key_object #a,location) = 1
+				{
+					xobject = object.key_object #a
+					list_key = true
+					break
+				}
+				else
+					cant_reach = object.key_object #a
+			}
+		}
       if not xobject
       {
-         VMessage(&DoUnlock, 2)           ! no key that fits
+			if cant_reach
+				RLibMessage(&DoUnLock, 2, cant_reach)     ! "You can't reach the..."
+			else
+				VMessage(&DoUnlock, 2)           ! no key that fits
          return true
       }
    }
@@ -5827,16 +5835,15 @@ replace DoUnlock
       if not object.after
       {
          if not xobject.after
-            RLibMessage(&DoUnlock, b)   ! "Unlocked."
+            RLibMessage(&DoUnlock, 1, list_key)   ! "Unlocked."
       }
    }
    return true
 }
 
-
 replace DoLock
 {
-   local a,b
+   local a,cant_reach,list_key
    if not CheckReach(object):  return false
 
    if xobject ~= 0
@@ -5852,16 +5859,24 @@ replace DoLock
    {
       for (a=1; a <= object.#key_object ; a++)
       {
-      if Contains(player, object.key_object #a)
-         {
-         xobject = object.key_object #a
-			b = true
-         break
-         }
-      }
+			if Contains(player, object.key_object #a)
+			{
+				if FindObject(object.key_object #a,location) = 1
+				{
+					xobject = object.key_object #a
+					list_key = true
+					break
+				}
+				else
+					cant_reach = object.key_object #a
+			}
+		}
       if not xobject
       {
-         VMessage(&DoUnlock, 2)           ! no key that fits
+			if cant_reach
+				RLibMessage(&DoUnLock, 2, cant_reach)     ! "You can't reach the..."
+			else
+				VMessage(&DoUnlock, 2)           ! no key that fits
          return true
       }
    }
@@ -5876,12 +5891,11 @@ replace DoLock
       if not object.after
       {
          if not xobject.after
-            RLibMessage(&DoLock, b)     ! "Locked."
+            RLibMessage(&DoLock, 1, list_key)     ! "Locked."
       }
    }
    return true
 }
-
 
 ! Roody's note- Replaced to disallow looking through characters
 replace DoLookThrough
@@ -6818,17 +6832,31 @@ routine RLibMessage(r, num, a, b)
 				case 2 : "Why do that?"
 		}
 		case &DoUnlock
+		{
+			select num
+			case 1
 			{
-			if b
-				print "(with "; The(xobject); ")"
-			print "Unlocked."
+				if a
+					print "(with "; The(xobject); ")"
+				print "Unlocked."
 			}
+			case 2
+			{
+				print capital player.pronoun #1;
+				print " can't reach "; The(a); ", which is currently in ";
+				print The(parent(a)); "."
+			}
+		}
 		case &DoLock
+		{
+			select num
+			case 1
 			{
-			if b
-				print "(with "; The(xobject); ")"
-			print "Locked."
+				if a
+					print "(with "; The(xobject); ")"
+				print "Locked."
 			}
+		}
 		case &DoXYZZY
 		{
 		! text suggested by Rob O'Hara. Approved by Ben Parrish.
