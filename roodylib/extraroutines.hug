@@ -293,3 +293,108 @@ routine WordInCommand(w)
 			return false
 	}
 }
+
+!\ PickAChild and PickAnElement - These are routines for picking objects
+ from a parent or elements from an array. The argument routine determines
+ which objects/elements are eligible. If rand is true, one of the eligible
+ objects/elements is randomly selected. \!
+
+#if undefined MAX_SUSPECTS
+constant MAX_SUSPECTS 5
+#endif
+
+array suspects_array[MAX_SUSPECTS]
+
+routine PickAChild(par,arg, rand)
+{
+	local obj, qualify, n, val,obj2
+
+	for obj in par
+	{
+		obj2 = val
+		qualify = call arg(obj, obj2)
+		if qualify
+		{
+			val = obj
+			suspects_array[n] = obj
+			n++
+		}
+	}
+
+	if rand
+	{
+		n = random(n)
+		n--
+		val = suspects_array[n]
+	}
+	return val
+}
+
+!\ Usage Example:
+
+routine DoPick
+{
+	local a
+	select word[2]
+		case "1": a = PickAChild(basket, &IsGreater)
+		case "2": a = PickAChild(basket, &IsEdible, true)
+	print "The item is "; a.name
+}
+
+routine IsEdible(obj)
+{
+	return (obj is edible)
+}
+
+routine IsGreater(obj,obj2)
+{
+	if obj2
+	{
+		return (obj.misc > obj2.misc)
+	}
+	else
+		return true
+}  \!
+
+
+! An array-based version of the above next:
+
+routine PickAnElement(arr,arg, rand)
+{
+	local obj, qualify, n, val,obj2
+
+	for (i = 0;i < array arr ;i++ )
+	{
+		obj = array arr[i]
+		obj2 = val
+		qualify = call arg(obj, obj2)
+		if qualify
+		{
+			val = obj
+			suspects_array[n] = obj
+			n++
+		}
+	}
+
+	if rand
+	{
+		n = random(n)
+		n--
+		val = suspects_array[n]
+	}
+	return val
+}
+
+! sample routine calling PickAnElement
+!routine DoPick
+!{
+!	local a
+!	select word[2]
+!	! first case picks the item in basket_array that has the greatest
+!	!   misc property value
+!		case "1": a = PickAnElement(basket_array, &IsGreater)
+!	! second case picks random value from all items in basket_array that
+!	! are edible
+!		case "2": a = PickAnElement(basket_array, &IsEdible, true)
+!	print "The item is "; a.name
+!}

@@ -3,6 +3,12 @@ v 2.9 - * Added Object Sorting section to complement ListChildren routine
 	* Fixed CalculateHolding bug
 	* Fixed DoUnlock/DoLock. some messages weren't called correctly and now it makes sure that
 	keys are available (and not in a closed box or something).
+	* Added ability to string manipulation to write the results to a second array (instead
+	of overwriting the original array)
+	* Added optional NO_LOOK_TURNS flag to quickly allow games where DoLookAround, DoLook,
+	DoLookIn, and DoLookThrough do not take a turn.
+	* Added some object-picking code to extraroutines.hug to make it easier to pick 
+	objects/elements from parents or arrays based on routine-based criteria
 v 2.8 - * Made characters default to having exclude_from_all true
         * Added a ClearArray call to FindStatusHeight to prevent room from being printed twice
           in statustype-less games

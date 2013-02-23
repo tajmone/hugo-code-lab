@@ -5897,6 +5897,106 @@ replace DoLock
    return true
 }
 
+! Replaced LOOK routines\
+
+!\ Roody's note: I added a flag called NO_LOOK_TURNS. #set it if you want your
+game to not count LOOK moves (LOOK, EXAMINE <object>, LOOK THROUGH <object)
+as turns. \!
+
+replace DoLook
+{
+	local i
+
+	if not light_source
+		VMessage(&DoLook, 1)     ! "It's too dark to see anything."
+	else
+	{
+		if not object.long_desc
+			! "Looks just like you'd expect..."
+			VMessage(&DoLook, 2)
+
+!		if object is living, transparent, not quiet
+		if ((object is living, transparent) or
+			object is platform or
+			(object is container and (object is open or object is not openable))) and
+			object is not quiet and object is not already_listed
+		{
+			for i in object
+			{
+				if i is not hidden
+					break
+			}
+			if i and object ~= player
+			{
+				local tempformat
+				tempformat = FORMAT
+				FORMAT = FORMAT | NOINDENT_F
+				list_nest = 0
+				print ""
+				WhatsIn(object)
+				FORMAT = tempformat
+			}
+		}
+
+		run object.after
+#ifclear NO_LOOK_TURNS
+		return true
+#endif
+	}
+}
+
+replace DoLookAround
+{
+	DescribePlace(location, true)
+#ifclear NO_LOOK_TURNS
+	return true
+#endif
+}
+
+!\ Roody's note: I was unsure whether to have LOOK IN work like other LOOK
+verbs when the NO_LOOK_TURNS flag is set, as it could be argued that LOOK IN
+is more of an action-oriented verb, like SEARCH. For instance, I have LOOK UNDER
+still take a turn (so if you DON'T want that, you'll have to replace it).
+
+Just the same, I decided that with NO_LOOK_TURNS, LOOK IN defaults to
+not-taking-a-turn, so if you want it to take a turn, you'll have to replace it.
+\!
+
+replace DoLookIn
+{
+	local tempformat
+
+	if not CheckReach(object):  return false
+
+	if not light_source
+		VMessage(&DoLook, 1)     ! "It's too dark to see anything."
+	else
+	{
+		if object is container and (object is openable and
+			object is not open and object is not transparent):
+			VMessage(&DoLookIn, 1)           ! "It's closed."
+		else
+		{
+			if not object.after
+			{
+				object is not quiet
+
+				tempformat = FORMAT
+				FORMAT = FORMAT | NOINDENT_F
+				list_nest = 0
+
+				if WhatsIn(object) = 0
+					VMessage(&DoLookIn, 2)   ! "It's empty."
+
+				FORMAT = tempformat
+			}
+		}
+#ifclear NO_LOOK_TURNS
+		return true
+#endif
+	}
+}
+
 ! Roody's note- Replaced to disallow looking through characters
 replace DoLookThrough
 {
@@ -5927,9 +6027,11 @@ replace DoLookThrough
 			else
 				print The(object.found_in #1); "."
 		}
+#ifclear NO_LOOK_TURNS
 		return true
-	}
 #endif
+	}
+#endif  ! NO_OBJLIB
 	else
 		VMessage(&DoLookThrough, 2)  ! "You can't see through that."
 }
@@ -6604,54 +6706,97 @@ routine IsEdible(obj)
 ! Some string manipulation routines
 #ifclear NO_STRING_ARRAYS
 #ifset USE_STRING_MANIPULATION
-! Lowercase- a routine for changing every letter in a string array to
-! lowercase
-routine Lowercase(stringarray)
-{
-	local len, i
-	len = StringLength(array stringarray)
-	for (i=0; i<len; i=i+1) ! the actual case-conversion loop
-		{
-		if array stringarray[i] >= 'A' and array stringarray[i] <= 'Z'
-			array stringarray[i] = array stringarray[i] + ('a'-'A')
-		}
-}
 
 ! CapitalizeEveryFirstLetter - Capitalizes every first letter of a string array
-routine CapitalizeEveryFirstLetter(stringarray)
+! (specify a "newarray" array if you want the results copied to a different
+!  array than the source)
+routine CapitalizeEveryFirstLetter(stringarray,newarray)
 {
-	local len, i, new
+	local len, i, new, finalarray
+	finalarray = stringarray
+
+	if newarray
+		finalarray = newarray
+
 	len = StringLength(array stringarray)
 	for (i=0; i<len; i=i+1) ! the actual case-conversion loop
 		{
 		if new or i=0
 			{
 			if array stringarray[i] >= 'a' and array stringarray[i] <= 'z'
-				array stringarray[i] = array stringarray[i] - ('a'-'A')
+				array finalarray[i] = array stringarray[i] - ('a'-'A')
 			new = 0
 			}
 		elseif array stringarray[i] >= 'A' and array stringarray[i] <= 'Z'
-			array stringarray[i] = array stringarray[i] + ('a'-'A')
-
+			array finalarray[i] = array stringarray[i] + ('a'-'A')
+		else
+			array finalarray[i] = array stringarray[i]
 		if array stringarray[i] = ' '          ! a space
 			new = 1
 		}
+	array finalarray[i] = 0
+}
+
+! Convert To All Caps - Capitalizes every letter of a string array
+! (specify a "newarray" array if you want the results copied to a different
+!  array than the source)
+routine ConvertToAllCaps(stringarray,newarray)
+{
+	local len, i, finalarray
+	finalarray = stringarray
+	if newarray
+		finalarray = newarray
+
+	len = StringLength(array stringarray)
+	for (i=0; i<len; i=i+1) ! the actual case-conversion loop
+		{
+		if array stringarray[i] >= 'a' and array stringarray[i] <= 'z'
+			array finalarray[i] = array stringarray[i] - ('a'-'A')
+		else
+			array finalarray[i] = array stringarray[i]
+		}
+	array finalarray[i] = 0
+}
+
+! Lowercase- a routine for changing every letter in a string array to
+! lowercase
+! (specify a "newarray" array if you want the results copied to a different
+!  array than the source)
+routine Lowercase(stringarray,newarray)
+{
+	local len, i, finalarray
+	finalarray = stringarray
+	if newarray
+		finalarray = newarray
+
+	len = StringLength(array stringarray)
+	for (i=0; i<len; i=i+1) ! the actual case-conversion loop
+		{
+		if array stringarray[i] >= 'A' and array stringarray[i] <= 'Z'
+			array finalarray[i] = array stringarray[i] + ('a'-'A')
+		else
+			array finalarray[i] = array stringarray[i]
+		}
+	array finalarray[i] = 0
 }
 
 ! StringAddTo - Adds second string array to first string array, with optional
 ! space between them
-routine StringAddTo(original_array, addition_array, add_space)
+! (specify a "newarray" array if you want the results copied to a different
+!  array than the original array)
+routine StringAddTo(original_array, addition_array, add_space,newarray)
 {
 	local f
-	for (f=0;f< array original_array[] ; f++ )
-		{
-		if (array original_array[f] = 0)
-			{
-			break
-			}
-		}
-
-	text to (array original_array + f)
+	if newarray
+	{
+		text to (array newarray)
+		StringPrint(original_array)
+	}
+	else
+	{
+		f = StringLength(array original_array)
+		text to (array original_array + f)
+	}
 	if (add_space)
 		print " ";
 	StringPrint(array addition_array)
