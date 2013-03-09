@@ -1,18 +1,18 @@
 !::
-! COLORLIB Library Extension V. 1.3
+! COLORLIB Library Extension V. 1.4
 ! (For games with changing colors)
-! To-do: have support for starting game off in non-default colors
+! Updated to work with config_sys.h
 !::
 
 #ifclear _COLORLIB_H
 #set _COLORLIB_H
 
 #ifset VERSIONS
-#message "ColorLib.h Version 1.3"
+#message "ColorLib.h Version 1.4"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
-version_obj colorlib_version "ColorLib Version 1.3"
+version_obj colorlib_version "ColorLib Version 1.4"
 {
 	in included_extensions
 	desc_detail
@@ -57,6 +57,9 @@ object colorlib "color"
 	IDEAL_INPUTCOLOR MATCH_FOREGROUND
 ! if roodylib.h has been included before color.h, nothing needs to be
 ! added to the init routine
+#ifclear USE_CONFIG_SYSTEM
+	did_print 0
+	in init_instructions
 	save_info
 		{
 		SaveColorSettings
@@ -72,6 +75,7 @@ object colorlib "color"
 		else
 			ResetColorSettings
 		}
+#endif ! ifclear USE_CONFIG_SYSTEM
 #ifset _NEWMENU_H
 	usage_desc
 		{
@@ -84,10 +88,134 @@ object colorlib "color"
 		}
 #endif
 	type settings
-	did_print 0
-	in init_instructions
 }
 
+#ifset USE_CONFIG_SYSTEM
+object color_config "Color Configuration Info v1"
+{
+	in config_instructions
+	name_sum 0
+	load_info
+	{
+		colorlib.default_colors = readval
+		colorlib.TEXTCOLOR_save = readval
+		colorlib.BGCOLOR_save = readval
+		colorlib.SL_TEXTCOLOR_save = readval
+		colorlib.SL_BGCOLOR_save = readval
+		colorlib.INPUTCOLOR_save = readval
+		self.first_time = readval
+	}
+	save_info
+	{
+		writeval colorlib.default_colors
+		writeval colorlib.TEXTCOLOR_save
+		writeval colorlib.BGCOLOR_save
+		writeval colorlib.SL_TEXTCOLOR_save
+		writeval colorlib.SL_BGCOLOR_save
+		writeval colorlib.INPUTCOLOR_save
+		writeval self.first_time
+	}
+	setup
+	{
+		local tc, bg, sl_tc, sl_bg, ic, different, ret
+		if system(61) ! simple_port
+			return false
+		else ! save the current colors, just in case
+			{
+			tc = TEXTCOLOR
+			bg = BGCOLOR
+			sl_tc = SL_TEXTCOLOR
+			sl_bg = SL_BGCOLOR
+			ic = INPUTCOLOR
+			if (tc and tc ~= DEF_FOREGROUND) or (bg and bg ~= DEF_BACKGROUND) or
+			(sl_tc and sl_tc ~= DEF_SL_FOREGROUND) or
+			(sl_bg and sl_bg ~= DEF_SL_BACKGROUND) or ic ~= INPUTCOLOR
+				different = true
+			}
+
+		if self.first_time and ask_color
+		{
+			self.first_time = 0
+			if different
+			{
+				TEXTCOLOR = DEF_FOREGROUND
+				BGCOLOR = DEF_BACKGROUND
+				SL_TEXTCOLOR = DEF_SL_FOREGROUND
+				SL_BGCOLOR = DEF_SL_BACKGROUND
+				INPUTCOLOR = MATCH_FOREGROUND
+				color TEXTCOLOR, BGCOLOR, INPUTCOLOR
+				cls
+				locate 1, LinesFromTop
+			}
+			ColorLibMessage(&ColorSettings,1) ! This game uses non-default colors
+	!: fancy pause stuff below
+			local key
+			if system_status or system(61) ! if simple port
+			{
+				pause
+			}
+			else
+			{
+				while true
+				{
+					key = system(11) ! READ_KEY
+					if key
+					{
+						word[0] = key
+						break
+					}
+					system(32) ! PAUSE_100TH_SECOND
+				}
+			}
+			""
+			if word[0] = 'd','D'
+			{
+				colorlib.default_colors = true
+				ColorLibMessage(&ColorSettings, 2) ! Default colors will be used.
+			}
+			else
+			{
+				colorlib.default_colors = false
+				ColorLibMessage(&ColorSettings, 3) ! Author-defined colors are a go.
+			}
+			""
+			ColorLibMessage(&ColorSettings,4) ! "[press a key]"
+			HiddenPause
+			""
+			ret = true
+		}
+		! let's save settings
+		if different
+		{
+			colorlib.IDEAL_TEXTCOLOR = tc
+			colorlib.IDEAL_BGCOLOR = bg
+			colorlib.IDEAL_SL_TEXTCOLOR = sl_tc
+			colorlib.IDEAL_SL_BGCOLOR = sl_bg
+			colorlib.IDEAL_INPUTCOLOR = ic
+		}
+		if not colorlib.default_colors and different
+		{
+			TEXTCOLOR = tc
+			BGCOLOR = bg
+			SL_TEXTCOLOR = sl_tc
+			SL_BGCOLOR = sl_bg
+			INPUTCOLOR = ic
+			ret = true
+		}
+		else ! if colorlib.default_colors
+		{
+			TEXTCOLOR = DEF_FOREGROUND
+			BGCOLOR = DEF_BACKGROUND
+			SL_TEXTCOLOR = DEF_SL_FOREGROUND
+			SL_BGCOLOR = DEF_SL_BACKGROUND
+			INPUTCOLOR = MATCH_FOREGROUND
+		}
+		return ret ! only InitScreen if we've printed something or there are new
+		! colors
+	}
+	first_time 1
+}
+#endif
 routine ColorSettings
 {
 	local tc, bg, sl_tc, sl_bg, ic, different
@@ -154,7 +282,9 @@ routine ColorSettings
 		ColorLibMessage(&ColorSettings,4) ! "[press a key]"
 		HiddenPause
 		""
+#ifclear USE_CONFIG_SYSTEM
 		colorlib.did_print = true
+#endif
 	}
 ! let's save settings
 	if different
@@ -195,6 +325,7 @@ routine SaveColorSettings
 	colorlib.SL_BGCOLOR_save = SL_BGCOLOR
 	colorlib.INPUTCOLOR_save = INPUTCOLOR
 
+#ifclear USE_CONFIG_SYSTEM
 	local test2
 	writefile COLOR_FILE
 		{
@@ -211,13 +342,17 @@ routine SaveColorSettings
 		{
           print "\n[Error saving file.]"
       }
+#else
+	return SaveSettings
+#endif
 }
 
 routine LoadColorSettings
 {
-	local test2
 	if system(61) ! MINIMUM_INTERFACE.. will affect glk ports, too
 		return
+#ifclear USE_CONFIG_SYSTEM
+	local test2
 	readfile COLOR_FILE
 		{
 		colorlib.default_colors = readval
@@ -233,95 +368,18 @@ routine LoadColorSettings
 		return false
       }
 	return true
+#else
+	return LoadSettings
+#endif
 }
-
-!routine ResetColorSettings
-!{
-!	local test2, change, tc,bg, sl_tc, sl_bg, ic
-!	if system(61) ! MINIMUM_INTERFACE.. will affect glk ports, too
-!		return
-!	readfile COLOR_FILE
-!		{
-!		colorlib.default_colors = readval
-!		tc = readval
-!		bg = readval
-!		sl_tc = readval
-!		sl_bg = readval
-!		ic = readval
-!		test2 = readval
-!		}
-!	if CheckWordSetting("undo")
-!		{
-!		if SL_TEXTCOLOR ~= sl_tc or
-!		SL_BGCOLOR ~= sl_bg
-!			{
-!			change = true
-!			}
-!
-!		if TEXTCOLOR ~= tc or
-!		BGCOLOR ~= bg
-!			{
-!			color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-!			cls
-!			locate 1, LinesFromTop
-!			ColorLibMessage(&ResetColorSettings,1)
-!			change = true
-!			}
-!		if INPUTCOLOR ~= ic and change ~= true
-!			color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-!		}
-!	else  ! restoring then
-!		{
-!		if colorlib.default_colors
-!			{
-!			if (tc and tc ~= DEF_FOREGROUND) or (bg and bg ~= DEF_BACKGROUND) or
-!			(sl_tc and sl_tc ~= DEF_SL_FOREGROUND) or
-!			(sl_bg and sl_bg ~= DEF_SL_BACKGROUND) or ic ~= MATCH_FOREGROUND
-!				{
-!				TEXTCOLOR = DEF_FOREGROUND
-!				BGCOLOR = DEF_BACKGROUND
-!				SL_TEXTCOLOR = DEF_SL_FOREGROUND
-!				SL_BGCOLOR = DEF_SL_BACKGROUND
-!				INPUTCOLOR = MATCH_FOREGROUND
-!				change = true
-!				color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-!				cls
-!				locate 1, LinesFromTop
-!				}
-!			}
-!		else
-!			{
-!			if (tc and tc ~= colorlib.IDEAL_TEXTCOLOR) or
-!			(bg and bg ~= colorlib.IDEAL_BGCOLOR) or
-!			(sl_tc and sl_tc ~= colorlib.IDEAL_SL_TEXTCOLOR) or
-!			(sl_bg and sl_bg ~= colorlib.IDEAL_SL_BGCOLOR)
-!				{
-!				TEXTCOLOR = colorlib.IDEAL_TEXTCOLOR
-!				BGCOLOR = colorlib.IDEAL_BGCOLOR
-!				SL_TEXTCOLOR = colorlib.IDEAL_SL_TEXTCOLOR
-!				SL_BGCOLOR = colorlib.IDEAL_SL_BGCOLOR
-!				change = true
-!				color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-!				cls
-!				locate 1, LinesFromTop
-!				}
-!			if ic ~= colorlib.IDEAL_INPUTCOLOR
-!				{
-!				INPUTCOLOR = colorlib.IDEAL_INPUTCOLOR
-!				color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-!				change = true
-!				}
-!			}
-!		}
-!	if change
-!		SaveColorSettings
-!}
 
 routine ResetColorSettings
 {
-	local test2, change, tc,bg, sl_tc, sl_bg, ic
+	local change, tc,bg, sl_tc, sl_bg, ic
 	if system(61) ! MINIMUM_INTERFACE.. will affect glk ports, too
 		return
+#ifclear USE_CONFIG_SYSTEM
+	local test2
 	readfile COLOR_FILE
 		{
 		colorlib.default_colors = readval
@@ -332,6 +390,30 @@ routine ResetColorSettings
 		ic = readval
 		test2 = readval
 		}
+#else
+	readfile DATA_FILE
+	{
+		local i
+		while true
+		{
+			i = readval
+			select i
+				case color_config.name_sum
+				{
+					colorlib.default_colors = readval
+					tc = readval
+					bg = readval
+					sl_tc = readval
+					sl_bg = readval
+					ic = readval
+					break
+				}
+				case FILE_CHECK : break
+			if system_status
+				break
+		}
+	}
+#endif
 	if CheckWordSetting("undo")
 	{
 		if SL_TEXTCOLOR ~= sl_tc or

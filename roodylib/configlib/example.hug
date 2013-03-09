@@ -1,0 +1,51 @@
+!::
+! Config_sys-compatible Configuration Object Example
+!::
+
+!\
+	Notes:
+	I like to write my configuration files to load/save object properties just
+	to keep my info all in one place, but you could also use global variables
+	if you wanted.
+
+	In the code below, if you had a >MUSIC OFF command, you'd have it first
+	set jukebox_config.play_music to 0 and then you'd run config_sys.h's
+	SaveSettings routine.
+\!
+property play_music ! just a property for us to save/load today
+
+!\ Notice the version info in the object's name. If you change the order or the
+number of things you are saving/loading in a configuration object, it's
+preferable to change the version number in the name. This will give the object
+a new name_sum value. All of your old configuration file info will be lost, but
+you won't have to worry about info being misinterpreted, which can be worse.
+\!
+
+object jukebox_config "Next Day Jukebox v1"
+{
+	in config_instructions
+	name_sum 0  ! we don't need a value here but we need the slot
+	play_music 1
+	first_time 1 ! set true if you want something to check for on the first play
+	load_info
+	{
+		self.play_music = readval
+		self.first_time = readval
+	}
+	save_info
+	{
+		writeval self.play_music
+		writeval self.first_time
+	}
+	setup
+	{
+		if self.first_time
+		{
+			self.first_time = 0
+			print "Do you want to play this game with music? ";
+			self.play_music = YesOrNo
+			return true ! returning true will cause InitScreen to be called
+		}
+	}
+}
+

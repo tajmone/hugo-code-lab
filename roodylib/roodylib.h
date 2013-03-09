@@ -5,11 +5,11 @@
 #ifclear _ROODYLIB_H
 #set _ROODYLIB_H
 
-constant ROODYBANNER "RoodyLib Version 2.9"
-constant ROODYVERSION "2.9"
+constant ROODYBANNER "RoodyLib Version 3.0"
+constant ROODYVERSION "3.0"
 
 #ifset VERSIONS
-#message "roodylib.h version 2.9"
+#message "roodylib.h version 3.0"
 #endif
 
 !----------------------------------------------------------------------------
@@ -5573,7 +5573,8 @@ replace DoGo
 #endif
 		local b
 		b = parent(player).before	! i.e., a vehicle, etc.
-		if b > 1 ! is b a direction?
+		if b > 1  or ! is b a direction?
+		((word[2] = "out","off") and object = parent(player)) ! "go out of <object>"
 			return Perform(&DoExit,parent(player))
 		elseif b
 			return false ! so the error message doesn't take up a turn

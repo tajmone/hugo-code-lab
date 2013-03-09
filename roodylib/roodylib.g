@@ -3,9 +3,17 @@
 !::
 
 #ifset VERSIONS
-#message "roodylib.g Grammar Version 1.8"
+#message "roodylib.g Grammar Version 1.9"
 #endif
 
+!\ Roody's note: Redefined "go" so that the somewhat ingrammatical phrase
+"go off of <object>" can be supported. We'll see if this causes any problems.\!
+verb "go", "walk"
+	*							DoGo
+	* "to"/"in"/"into"/"inside"/"through" object            DoEnter
+	* "out"/"off" object                                          DoGo
+	* "out"/"outside"                                       DoExit
+	* object                                                DoGo
 
 verb "push","pull","press","move","roll"
 	* object "to" xobject			DoPushDirTo
