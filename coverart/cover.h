@@ -1,5 +1,5 @@
 !::
-! Cover.h by Roody Yogurt   Version 2.0
+! Cover.h by Roody Yogurt   Version 2.1
 !::
 
 !\ The "Cover Art" Extension-
@@ -98,11 +98,11 @@ roody.yogurt@gmail.com!
 \!
 
 #ifset VERSIONS
-#message "CoverArt.h Version 2.0"
+#message "CoverArt.h Version 2.1"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
-version_obj cover_version "CoverArt Version 2.0"
+version_obj cover_version "CoverArt Version 2.1"
 {
 	in included_extensions
 	desc_detail
@@ -145,11 +145,11 @@ property two_box alias u_to
 global coverforeground = DEF_SL_FOREGROUND
 global coverbackground = DEF_SL_BACKGROUND
 
-property nocovers alias e_to
+property nocovers alias sw_to
 property alwayscovers alias w_to
 property coveronce alias in_to
 
-object coverlib
+object coverlib "coverlib v1"
 {
 	two_box 0
 	nocovers 0
@@ -160,6 +160,7 @@ object coverlib
 #ifset _ROODYLIB_H
 	type settings
 	did_print 0
+#ifclear USE_CONFIG_SYSTEM
 	in init_instructions
 	execute
 		{
@@ -169,17 +170,51 @@ object coverlib
 				self.did_print = true
 			}
 		}
+#else
+	in config_instructions
+	name_sum 0
+	load_info
+	{
+		coverlib.nocovers = readval
+		coverlib.alwayscovers = readval
+		coverlib.coveronce = readval
+		coverlib.first_time = readval
+	}
+	save_info
+	{
+		writeval coverlib.nocovers
+		writeval coverlib.alwayscovers
+		writeval coverlib.coveronce
+		writeval coverlib.first_time
+	}
+	setup
+	{
+		if CheckWordSetting("restart") or coverlib.nocovers
+		{
+			cover_fuse.in_scope = 0
+			return true
+		}
+		if (self.first_time or coverlib.alwayscovers)
+		{
+			self.first_time = 0
+			return CoverArt
+		}
+	}
+	first_time 1
+#endif
 #ifset _NEWMENU_H
 	usage_desc
 		{
 		if system(61) ! MINIMAL_PORT
 			return false
 		Indent
-		"\BCOVERS ON/ALWAYS\b- Turns cover art on always."
+		"\BCOVERS ON\b- Turns cover art on."
 		Indent
-		"\BCOVERS OFF/NEVER\b- Never show cover art."
+		"\BCOVERS OFF\b- Turns cover art off."
+#if defined GAMECOVER
 		Indent
 		"\BCOVERS ONCE\b- Displays cover art once."
+#endif
 		}
 #endif  ! NEWMENU
 #endif  ! _ROODYLIB_H
@@ -188,20 +223,23 @@ object coverlib
 
 routine CoverArt
 {
-	local a
-	if system(MINIMAL_INTERFACE) or not display.hasgraphics or
-		not CoverSettings
-		{
+	local a, not_stay
+	not_stay = system(MINIMAL_INTERFACE) or (not display.hasgraphics)
+#ifclear #USE_CONFIG_SYSTEM
+	not_stay = not_stay or (not CoverSettings)
+#endif
+	if not_stay
+	{
 #ifset COVER_INSTRUCT
 		cover_fuse.in_scope = 0
 #endif
 		return false! returning false / cover art not shown
-		}
+	}
 	if not coverforeground and not coverbackground
-		{
+	{
 		coverforeground = DEF_SL_FOREGROUND
 		coverbackground = DEF_SL_BACKGROUND
-		}
+	}
 
 	cls ! clear screen, just in case the author forgot
 
@@ -667,7 +705,11 @@ routine DoCoverSettings
 			}
 #endif
 	CoverArtMessage(&DoCoverSettings, a)
+#ifclear USE_CONFIG_SYSTEM
 	SaveCoverSettings
+#else
+	SaveSettings
+#endif
 }
 
 routine SaveCoverSettings
@@ -736,8 +778,8 @@ routine CoverArtMessage(r, num, a, b)
 			select num
 				case 1
 					{
-					"To turn on cover art permanently, type \BCOVERS ALWAYS\b or
-					\BCOVERS ON\b. This is the default behavior. To turn cover art
+					"To turn on cover art, type \BCOVERS ON\b.
+					This is the default behavior. To turn cover art
 					off permenantly, type \BCOVER NEVER\b or \BCOVERS OFF\b.";
 					}
 				case 2
@@ -751,9 +793,9 @@ routine CoverArtMessage(r, num, a, b)
 			{
 			select num
 				case 1
-					"Cover art always on."
+					"Cover art on."
 				case 2
-					"Cover art always off."
+					"Cover art off."
 				case 3
 					"Cover art shows once."
 			}

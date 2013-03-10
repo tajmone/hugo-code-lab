@@ -2,6 +2,7 @@
 !     CoverArt GRAMMAR V 1.5
 !::
 #ifclear _COVER_G
+#set _COVER_G
 
 #ifset VERSIONS
 #message "cover.g Version 1.5"
@@ -16,4 +17,6 @@ xverb "cover","covers"
 #if defined GAMECOVER
 xverb "cover","covers"
 	*	"once"						DoCoverSettings
+#endif ! GAMECOVER
+
 #endif !_COVER_G
