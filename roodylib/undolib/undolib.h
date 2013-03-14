@@ -52,6 +52,9 @@
 #endif
 
 #ifset USE_EXTENSION_CREDITING
+#ifclear _ROODYLIB_H
+#message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
+#endif
 version_obj undolib_version "UNDOlib Version .5"
 {
 	in included_extensions

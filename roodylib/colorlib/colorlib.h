@@ -11,6 +11,10 @@
 #message "ColorLib.h Version 1.4"
 #endif
 
+#ifclear _ROODYLIB_H
+#message error "ColorLib requires \"roodylib.h\". Be sure to include it first!"
+#endif
+
 #ifset USE_EXTENSION_CREDITING
 version_obj colorlib_version "ColorLib Version 1.4"
 {
@@ -18,10 +22,6 @@ version_obj colorlib_version "ColorLib Version 1.4"
 	desc_detail
 		" by Roody Yogurt";
 }
-#endif
-
-#ifclear _ROODYLIB_H
-#message error "ColorLib requires \"roodylib.h\". Be sure to include it first!"
 #endif
 
 #if undefined COLOR_FILE

@@ -14,6 +14,9 @@ Provides text like "You score has gone up by [x] points!"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
+#ifclear _ROODYLIB_H
+#message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
+#endif
 version_obj scorenotify_version "ScoreNotify Version 1.2"
 {
 	in included_extensions

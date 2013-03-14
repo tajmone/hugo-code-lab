@@ -25,6 +25,10 @@
 #message "Config_sys.h Version 1.0"
 #endif
 
+#ifclear _ROODYLIB_H
+#message error "Config_Sys requires \"roodylib.h\". Be sure to include it first!"
+#endif
+
 #ifset USE_EXTENSION_CREDITING
 version_obj config_sys_version "Config_Sys.h Version 1.0"
 {
