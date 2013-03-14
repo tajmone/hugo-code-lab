@@ -1,6 +1,6 @@
 !\---------------------------------------------------------------------------
 
-	follow.h version 1.9
+	follow.h version 2.0
 
 	Mechanisms for enabling NPCs to follow the player
 
@@ -18,11 +18,14 @@
 #set _FOLLOW_H
 
 #ifset VERSIONS
-#message "Follow.h Version 1.9"
+#message "Follow.h Version 2.0"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
-version_obj follow_version "Follow Version 1.9"
+#ifclear _ROODYLIB_H
+#message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
+#endif
+version_obj follow_version "Follow Version 2.0"
 {
 	in included_extensions
 	desc_detail

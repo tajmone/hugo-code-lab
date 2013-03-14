@@ -29,8 +29,8 @@ constant AFTER_PERIOD " "     ! include one space after full stops (as opposed t
 
 verb "phototalk"
 verb "phototalk"
-     * xobject                           DoPhototalk
-	* "to" xobject					 DoPhototalk
+     * xobject                           DoTalk
+	* "to" xobject					 DoTalk
 
 ! new grammar needs to be defined before the including verblib
 #include "verblib.g"    ! Verb Library
@@ -87,7 +87,8 @@ routine init
 
         player = you
         location = bedroom
-
+			loop_talk = true
+			can_quit = true
         move player to location
         old_location = location
         FindLight(location)

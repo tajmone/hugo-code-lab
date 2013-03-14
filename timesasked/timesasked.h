@@ -63,6 +63,9 @@ by checking Asked(<other object>) or Told(<other object>)
 #endif
 
 #ifset USE_EXTENSION_CREDITING
+#ifclear _ROODYLIB_H
+#message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
+#endif
 version_obj timesasked_version "TimesAsked Version 1.2"
 {
 	in included_extensions

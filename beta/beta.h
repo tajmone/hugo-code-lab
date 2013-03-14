@@ -1,5 +1,5 @@
 !\-----------------------------------------------------------------------
-Beta.h version 2.6, based on code written by Bert Byfield, updated by Mike
+Beta.h version 2.7, based on code written by Bert Byfield, updated by Mike
 Snyder, and turned into this by Jon Blask.
 
 If you are including "roodylib" and have an init routine that calls Init_Calls,
@@ -52,11 +52,14 @@ routine Version
 #set _BETA_H
 
 #ifset VERSIONS
-#message "Beta.h Version 2.6"
+#message "Beta.h Version 2.7"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
-version_obj beta_version "Beta Version 2.6"
+#ifclear _ROODYLIB_H
+#message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
+#endif
+version_obj beta_version "Beta Version 2.7"
 {
 	in included_extensions
 	desc_detail

@@ -102,6 +102,9 @@ roody.yogurt@gmail.com!
 #endif
 
 #ifset USE_EXTENSION_CREDITING
+#ifclear _ROODYLIB_H
+#message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
+#endif
 version_obj cover_version "CoverArt Version 2.1"
 {
 	in included_extensions

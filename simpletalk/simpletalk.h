@@ -1,10 +1,20 @@
 !\-----------------------------------------------------------------------
-Simpletalk.h version 2.0, based on code written by Robb Sherwin, updated and
+Simpletalk.h version 2.1, based on code written by Robb Sherwin, updated and
 turned into an includable library by Roody Yogurt.
 
 This is a simplified version of Sherwin's Phototalk port. This one drops support
 for contextualized multiple-choice menus (which it seems the original Inform 6
 version had) and is just a bare-bones list-all-available-quips system.
+
+changelog
+	V 2.1 - added can_quit and loop_talk globals. can_quit defaults to true
+	but if set false, players can't quit out of conversations. loop_talk
+	defaults to false but if set true, loops conversation menus while options are
+	available.
+
+	In games with non-disappearing conversation options, authors should be wary
+	of loop_talk and no-can_quit combinations.
+
 
 Usage notes:
 
@@ -90,11 +100,14 @@ routine SetUpQuips
 #set _SIMPLETALK_H
 
 #ifset VERSIONS
-#message "Simpletalk.h version 1.9"
+#message "Simpletalk.h version 2.1"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
-version_obj simpletalk_version "SimpleTalk Version 1.9"
+#ifclear _ROODYLIB_H
+#message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
+#endif
+version_obj simpletalk_version "SimpleTalk Version 2.1"
 {
 	in included_extensions
 	desc_detail
@@ -104,19 +117,22 @@ version_obj simpletalk_version "SimpleTalk Version 1.9"
 
 property charnumber
 
+global loop_talk
+global can_quit = true
 constant NOT_AVAILABLE 0
 constant AVAILABLE 1
 constant SPOKEN 2
 
 replace DoTalk
 {
+	speaking = 0
 	if word[2] = "to" and not xobject
 	{
 		if object is unfriendly
 		{
 			if not object.ignore_response
 				Message(&Speakto, 4)    ! "X ignores you."
-			speaking = 0
+			!	speaking = 0
 		}
 		elseif object = player
 		{
@@ -130,10 +146,20 @@ replace DoTalk
 		}
 		else
 		{
-			speaking = object
-			DoPhototalk
+			local a,b
+			! speaking = object ! this speech system doesn't really need to keep
+							! track of who's speaking
+			while true
+			{
+				b = Phototalk
+				a = higher(a,b)
+				if not loop_talk or (loop_talk and (not MoreTalk or not b))
+					break
+				""
+			}
 #ifclear NO_SCRIPTS
-			SkipScript(object)
+			if a        ! only successful conversations pause scripts
+				SkipScript(object)
 #endif
 		}
 		return true
@@ -143,73 +169,102 @@ replace DoTalk
 	return false
 }
 
-routine DoPhototalk
+routine Phototalk
 {
 	local x, y, z, ok = 0
 	local selected
 
 ! Count up all the lines by previous characters.
 	if object.charnumber
-		{
+	{
 		for (x=0; x < object.charnumber; x++)
-			{
+		{
 			y += quips[x]
-			}
 		}
+	}
 
 ! Check and make sure you have something to say.
 	for (x=y; x<(y+quips[object.charnumber]); x++)
+	{
+		if (QuipOn(object,x-y))
 		{
-		if (QuipOn(object,x-y)) ! and not BeenSpoken(object, x-y)
-			{
 			ok++
 			break
-			}
 		}
+	}
 
 ! Write contents to the screen
 	if ok
-		{
-		PhotoMessage(&DoPhotoTalk, 1) ! "Please select one:"
+	{
+		PhotoMessage(&PhotoTalk, 1) ! "Please select one:"
 		""
 
 ! List the player's choices
 		for (x=y;  x < (y+(quips[object.charnumber])); x++)
-			{
+		{
 			if (QuipOn(object,x-y))
-				{
+			{
 				z++
 				print "("; number z; ")";
 				SayQ(object.charnumber,x-y)
-				}
 			}
+		}
 
-! Get the choice
-!		"\n"
 		""
-		selected = GetDial(z)
-   		if (selected ~= 0)
- 			{
+		while true
+		{
+			selected = GetDial(z)
+			if can_quit or (not can_quit and selected)
+				break
+		}
+		""
+   	if (selected ~= 0)
+ 		{
 			ok=0
-			""
-        		for (x=y;  x < (y+quips[object.charnumber]); x++)
-				{
+      	for (x=y;  x < (y+quips[object.charnumber]); x++)
+			{
 				if (QuipOn(object,x-y))
-					{
+				{
 					ok++
 					if (ok = selected)
-						{
+					{
 				  		Respond(object.charnumber,x-y)
-						}
 					}
 				}
 			}
-		return(true);
+		}
+		else
+		{
+		PhotoMessage(&Phototalk,2) ! "Eeeagh! Stage fright! Abort!"
+		}
+
+		return selected
 	}
 
-	PhotoMessage(&DoPhotoTalk,2) ! "You really have nothing to say right now."
+	PhotoMessage(&PhotoTalk,3) ! "You really have nothing to say right now."
 }
 
+
+routine MoreTalk
+{
+	local x, y
+
+	if object.charnumber
+	{
+		for (x=0; x < object.charnumber; x++)
+		{
+			y += quips[x]
+		}
+	}
+
+	for (x=y; x<(y+quips[object.charnumber]); x++)
+	{
+		if (QuipOn(object,x-y)) ! and not BeenSpoken(object, x-y)
+		{
+			return true
+		}
+	}
+}
 
 routine GetDial(max)
 {
@@ -233,11 +288,6 @@ routine GetDial(max)
 		temp = 0
 	}
 
-	if not temp
-		{
-		""
-		PhotoMessage(&GetDial,2) ! "Eeeagh! Stage fright! Abort!"
-		}
 	return temp
 }
 
@@ -312,21 +362,26 @@ routine PhotoMessage(r, num, a, b)
 	if NewPhotoMessages(r, num, a, b):  return
 
 	select r
-		case &DoPhotoTalk
+		case &PhotoTalk
 			{
 			select num
 				case 1: "Please select one:"
-				case 2: "You really have nothing to say right now."
+				case 2: "Eeeagh! Stage fright! Abort!"
+				case 3: "You really have nothing to say right now."
+
 			}
 		case &GetDial
 			{
 			select num
 				case 1
-					return "Select a choice or 0 to keep quiet. >> "
+				{
+					if can_quit
+						return "Select a choice or 0 to keep quiet. >> "
+					else
+						return "Select a choice>> "
+				}
 !\ If you want a custom prompt, make sure &GetDial case 1 is
 	{ return "prompt text" } , not just "prompt text"     \!
-				case 2
-					"Eeeagh! Stage fright! Abort!"
 			}
 		case &DoTalk
 			{

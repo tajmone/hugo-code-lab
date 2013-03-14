@@ -1,3 +1,4 @@
+
 !\-----------------------------------------------------------------------
 Opportune.h, a Hugo library contribution for WINDOWS OF OPPORTUNITY
 version 1.4 by Jon Blask
@@ -53,6 +54,9 @@ replace NewParseError(errornumber, obj)
 #endif
 
 #ifset USE_EXTENSION_CREDITING
+#ifclear _ROODYLIB_H
+#message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
+#endif
 version_obj opportune_version "Opportune Version 1.4"
 {
 	in included_extensions

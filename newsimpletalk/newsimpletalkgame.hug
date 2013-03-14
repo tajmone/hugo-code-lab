@@ -89,6 +89,8 @@ routine SetGlobalsAndFillArrays
 	DEFAULT_FONT = PROP_ON
 	player = you
 	location = bedroom
+!	loop_talk = true
+	can_quit = false
 }
 
 !::	Main game loop
@@ -258,4 +260,10 @@ routine DoAddScore
 {
 	score += 150
 	return true
+}
+
+character fred "Fred"
+{
+	noun "fred"
+	in bedroom
 }

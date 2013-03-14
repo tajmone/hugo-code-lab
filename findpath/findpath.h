@@ -11,6 +11,9 @@
 #endif
 
 #ifset USE_EXTENSION_CREDITING
+#ifclear _ROODYLIB_H
+#message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
+#endif
 version_obj findpath_version "FindPath Version 1.8"
 {
 	in included_extensions

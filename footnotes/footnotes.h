@@ -46,6 +46,9 @@ routine PrintFootnote(num)
 #endif
 
 #ifset USE_EXTENSION_CREDITING
+#ifclear _ROODYLIB_H
+#message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
+#endif
 version_obj footnotes_version "Footnotes Version 1.3"
 {
 	in included_extensions

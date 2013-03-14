@@ -82,10 +82,13 @@ this thing couldn't have been written without Kent's original work.
 First things first-
 Include this file after "hugolib.h".
 
-This extension *expects* a menu_category object named main_menu. Add the following to your code.
+This extension *expects* a menu_category object named main_menu. One is
+provided by newmenu.h, but if you need to replace it, do the following:
 
-menu_category main_menu "TITLE OF YOUR MAIN MENU"
-{}
+replace main_menu "TITLE OF YOUR MAIN MENU"
+{
+	inherits menu_category
+}
 
 Now, calling MakeMenu from a DoAbout or DoHelp routine will automaticaly bring up that menu. (if
 you have several different menus that can be called by different commands, call MakeMenu([other_menu_object]).
@@ -186,6 +189,9 @@ hint_option studiopass_hints "How do I get on the studio lot?"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
+#ifclear _ROODYLIB_H
+#message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
+#endif
 version_obj newmenu_version "NewMenu Version 3.0"
 {
 	in included_extensions

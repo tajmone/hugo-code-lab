@@ -16,6 +16,9 @@ Changelog:
 #endif
 
 #ifset USE_EXTENSION_CREDITING
+#ifclear _ROODYLIB_H
+#message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
+#endif
 version_obj pasttense_version "PastTense Version 1.3"
 {
 	in included_extensions
