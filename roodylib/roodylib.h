@@ -5,11 +5,11 @@
 #ifclear _ROODYLIB_H
 #set _ROODYLIB_H
 
-constant ROODYBANNER "RoodyLib Version 3.0"
-constant ROODYVERSION "3.0"
+constant ROODYBANNER "RoodyLib Version 3.1"
+constant ROODYVERSION "3.1"
 
 #ifset VERSIONS
-#message "roodylib.h version 3.0"
+#message "roodylib.h version 3.1"
 #endif
 
 !----------------------------------------------------------------------------
@@ -4159,6 +4159,351 @@ routine RedrawScreen
 }
 
 !----------------------------------------------------------------------------
+!* SUPERCONTAINER CLASS
+!----------------------------------------------------------------------------
+
+!\ Roody's note: Added Kent Tessman's Supercontainer class to Roodylib so
+player_character code could be automatically added to supercontainer-using
+games. Just #set USE_SUPERCONTAINER to use. \!
+
+!\---------------------------------------------------------------------------
+	SuperContainer class by Kent Tessman
+
+	The SuperContainer class can be a platform and/or a container,
+	and has its own routines for handling objects, for describing
+	its contents, etc.
+
+	Always use MoveInto() and MoveOnto() to move objects into or
+	onto a SuperContainer.
+
+	Version 1.01 - Robb Sherwin. Added code to check if an item is worn, in addition to being clothing.
+	Version 1.00 - Kent Tessman. An implementation of a new, relatively untested SuperContainer container/platform combo class.
+
+---------------------------------------------------------------------------\!
+#ifset USE_SUPERCONTAINER
+
+! These can be modified in objects derived from SuperContainer:
+property capacity_in alias n_to
+property capacity_on alias ne_to
+
+attribute actually_transparent
+
+! You can change define this constant beforehand if you want more (or less)
+! than the default maximum:
+#if undefined MAX_SUPERCONTAINER_CONTENTS
+constant MAX_SUPERCONTAINER_CONTENTS 32
+#endif
+
+
+!----------------------------------------------------------------------------
+! The SuperContainer class itself
+!----------------------------------------------------------------------------
+
+! For SuperContainer internal use:
+property contents_in
+property count_in
+property contents_on
+property count_on
+property reset_contents
+attribute supposed_to_be_closed
+
+class SuperContainer
+{
+	type SuperContainer
+
+	capacity_in 100
+	capacity_on 100
+
+	preposition "in", "on"	! can be changed, but both are needed
+
+	! To disable either container or platform behavior, use
+	! "is not [container or platform]" in the object definition
+	is container
+	is platform
+
+! Contents display:
+
+	list_contents
+	{
+		run self.reset_contents
+		if self.count_in and self is container and
+			(self is open or self is transparent)
+		{
+			local temp_word
+			! So we can hijack object.before:DoLookIn
+			temp_word = word[1]
+			word[1] = "in"
+			Indent
+			Perform(&DoLookIn, self)
+			word[1] = temp_word
+		}
+		if self.count_on
+		{
+			Indent
+			Perform(&DoLookIn, self)
+		}
+	}
+
+! SuperContainer internals:
+
+	contents_in #MAX_SUPERCONTAINER_CONTENTS
+	count_in 0
+	contents_on #MAX_SUPERCONTAINER_CONTENTS
+	count_on 0
+
+	react_before
+	{
+		if self = parent(object)
+		{
+			if InList(self, contents_on, object) and self is not open
+			{
+				self is open
+				self is supposed_to_be_closed
+			}
+		}
+		return false
+	}
+
+	before
+	{
+		xobject		! anytime we're an xobject
+		{
+			run self.reset_contents
+			return false
+		}
+		object		! anytime we're an object
+		{
+			run self.reset_contents
+			return false
+		}
+		xobject DoPutIn
+		{
+			! "in"
+			if PrepWord("in") or PrepWord("into") or PrepWord("inside")
+			{
+				if self is openable and self is not open
+				{
+					CThe(self)
+					" is closed."
+					return true
+				}
+				elseif object is clothing and object is worn
+				{
+					VMessage(&DoDrop, 1)     ! "Have to take it off first..."
+				}
+				elseif not MoveInto(xobject, object)
+				{
+					"There is no room for ";
+					print The(object); " ";
+					print self.prep #1; " "; The(self); "."
+				}
+				else
+				{
+					print CThe(player); " put"; MatchSubject(player); \
+						" "; The(object);
+					print " "; xobject.prep #1; " ";
+					print The(xobject); "."
+				}
+			}
+
+			! "on"
+			else
+			{
+				if not MoveOnto(xobject, object)
+				{
+					"There is no room for ";
+					print The(object); " ";
+					print self.prep #2; " "; The(self); "."
+				}
+				elseif object is clothing and object is worn
+				{
+					VMessage(&DoDrop, 1)     ! "Have to take it off first..."
+				}
+				else
+				{
+					print CThe(player); " put"; MatchSubject(player); \
+						" "; The(object);
+					print " "; xobject.prep #2; " ";
+					print The(xobject); "."
+				}
+			}
+		}
+		object DoLookIn
+		{
+			! "in"
+			if PrepWord("in") or PrepWord("into") or PrepWord("inside")
+			{
+				if self is openable and self is not open
+				{
+					CThe(self)
+					" is closed."
+					return true
+				}
+
+				CThe(self)
+				if self.count_in = 0
+				{
+					" is empty."
+				}
+				else
+				{
+					" contains ";
+					PropertyList(self, contents_in)
+					print "."
+				}
+			}
+
+			! "on"
+			else
+			{
+				CThe(self)
+				" has ";
+				if self.count_on = 0
+				{
+					"nothing";
+				}
+				else
+					PropertyList(self, contents_on)
+				print " "; self.prep #2; " it."
+			}
+		}
+	}
+	after
+	{
+		xobject		! anytime we're an xobject
+		{
+			run self.reset_contents
+			return false
+		}
+		object		! anytime we're an object
+		{
+			run self.reset_contents
+			return false
+		}
+	}
+
+	reset_contents
+	{
+		local i, obj
+		self.count_in = 0
+		for (i=1; i<=self.#contents_in; i++)
+		{
+			obj = self.contents_in #i
+			if obj and obj not in self
+			{
+				self.contents_in #i = 0
+			}
+			elseif obj
+			{
+				self.count_in++
+				if obj is plural
+					self.count_in++
+			}
+		}
+		self.count_on = 0
+		for (i=1; i<=self.#contents_on; i++)
+		{
+			obj = self.contents_on #i
+			if obj and obj not in self
+			{
+				self.contents_on #i = 0
+			}
+			elseif obj
+			{
+				self.count_on++
+				if obj is plural
+					self.count_on++
+			}
+		}
+		if self is supposed_to_be_closed
+			self is not open
+		self is not supposed_to_be_closed
+	}
+}
+
+
+!----------------------------------------------------------------------------
+! Always use MoveInto() and MoveOnto() to move objects into or onto a
+! SuperContainer.  Returns false if there's no room to do so.
+!----------------------------------------------------------------------------
+
+routine MoveInto(p, obj)
+{
+	if not p.#contents_in:  return false
+	run p.reset_contents
+
+	! Search for an empty "in" slot
+	local i, slot, bulk
+	for (i=1; i<=p.#contents_in; i++)
+	{
+		if p.contents_in #i = 0
+		{
+			if not slot
+				slot = i
+		}
+		else
+			bulk += (p.contents_in #i).size
+	}
+
+	! If we didn't find an empty slot, there's no room
+	if not slot:  return false
+	if bulk > p.capacity_in:  return false
+
+	! Put the object in the contents_in list
+	p.contents_in #slot = obj
+	move obj to p
+	return true
+}
+
+routine MoveOnto(p, obj)
+{
+	if not p.#contents_on:  return false
+	run p.reset_contents
+
+	! Search for an empty "on" slot
+	local i, slot, bulk
+	for (i=1; i<=p.#contents_on; i++)
+	{
+		if p.contents_on #i = 0
+		{
+			if not slot
+				slot = i
+		}
+		else
+			bulk += (p.contents_in #i).size
+	}
+
+	! If we didn't find an empty slot, there's no room
+	if not slot:  return false
+	if bulk > p.capacity_on:  return false
+
+	! Put the object in the contents_on list
+	p.contents_on #slot = obj
+	move obj to p
+	return true
+}
+
+
+! PrepWord(str) return true if the word "str" is the preposition used
+! in the player input.
+
+routine PrepWord(str)
+{
+	local i
+	for (i=1; i<=words; i++)
+	{
+		if not ObjWord(word[i], object)
+		{
+			if word[i] = str
+				return true
+			if word[i] = ""
+				break
+		}
+	}
+}
+
+#endif ! USE_SUPERCONTAINER
+!----------------------------------------------------------------------------
 !* REPLACED OBJLIB.H CODE
 !----------------------------------------------------------------------------
 
@@ -4342,23 +4687,40 @@ replace player_character
 		print "Looking good."
 	}
 	before
-		{
+	{
 		actor
-			{
+		{
 			if verbroutine = &PreParse
 				return false
 			if AnyVerb(location)
 				last_turn_true = false
 			return false
+		}
+#ifset USE_SUPERCONTAINER
+		actor
+		{
+			if parent(object).type = SuperContainer
+			{
+				if Inlist(parent(object), contents_in, object) and
+					parent(object) is not open
+				{
+					print capital player.pronoun #1;
+					MatchPlural(player, "doesn't", "don't")
+					" see that."
+					return true
+				}
 			}
+			return false
+		}
+#endif  ! USE_SUPERCONTAINER
 #ifset HUGOFIX
 		actor DoVerbTest
-			{
+		{
 			DoVerbTest
 			return true
-			}
-#endif
 		}
+#endif
+	}
 	capacity 100
 	holding 0
 	is hidden, living, transparent, static

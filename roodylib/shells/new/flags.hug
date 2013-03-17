@@ -74,3 +74,4 @@
                                ! libraries
 !#set USE_ROLLABLES            ! Include Roodylib's object-rolling code
 !#set USE_STRING_MANIPULATION  ! Include string manipulation routines
+!#set USE_SUPERCONTAINER       ! Use supercontainer object class
