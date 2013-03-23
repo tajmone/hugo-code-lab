@@ -1,11 +1,12 @@
 !::
-! NEWMENU.H  Version 3.0 by Roody Yogurt
+! NEWMENU.H  Version 3.1 by Roody Yogurt
 !::
 !\
 
 	For a nice overview of this contribution, check out:
 	http://hugo.gerynarsabode.org/index.php?title=NewMenu.h
 
+	version 3.1 - added NEW_FUSE code
 	version 3.0 - Added USE_EXTENSION_CREDITING object stuff
 	version 2.9 - Fixed some flags so the default menu works without Roodylib
 	              Cleaned up command-printing page in default menu; added
@@ -185,14 +186,14 @@ hint_option studiopass_hints "How do I get on the studio lot?"
 #set _NEWMENU_H
 
 #ifset VERSIONS
-#message "NewMenu.h Version 3.0"
+#message "NewMenu.h Version 3.1"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj newmenu_version "NewMenu Version 3.0"
+version_obj newmenu_version "NewMenu Version 3.1"
 {
 	in included_extensions
 	desc_detail
@@ -531,6 +532,9 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 						PrintStatusline
 					Font(DEFAULT_FONT) ! just in case
 					DescribePlace(location, true)
+#ifset NEW_FUSE
+					runevents
+#endif
 				}
 			}
 			return false
@@ -1056,6 +1060,9 @@ routine ShowPage(page,end_o_game)
 			PrintStatusline
 		Font(DEFAULT_FONT) ! just in case
 		DescribePlace(location, true)
+#ifset NEW_FUSE
+		fake_runevents
+#endif
 	}
 }
 

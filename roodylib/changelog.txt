@@ -1,5 +1,9 @@
 Ok, I've started a changelog!
 v 3.1 - * Added Supercontainer object class code. #set USE_SUPERCONTAINER to include.
+	* Added NEW_FUSE code
+	* fixed ClearArray memory-hogging bug
+	* tweaked PrintStatusLine code to not loop when there is only one printstatuslib child
+	* SetUpDirectionObjects isn't run so often
 v 3.0 - * Changed some DoGo code and grammar to allow "go out/off of <object>"
 	* Added "config_sys.h", a configuration file manager (helps games write data to one file instead of several). Sort of experimental but hopefully it's ready for release. Colorlib has been updated to use it, even if it's currently a bit ugly.
 v 2.9 - * Added Object Sorting section to complement ListChildren routine

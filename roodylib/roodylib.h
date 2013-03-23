@@ -24,9 +24,9 @@ routine Roodylib_Credits
 #else
 	print "This game";
 #endif
-	" uses \IRoodylib\i. RoodyLib is a collection of improvements written and/or suggested by
-	Kent Tessman, Mike Snyder, Jason McWright, Robb Sherwin, Rob O'Hara, Paul
-	Lee, and Roody Yogurt."
+	" uses \IRoodylib\i. RoodyLib is a collection of improvements written and/or
+	suggested by Kent Tessman, Mike Snyder, Jason McWright, Robb Sherwin, Rob
+	O'Hara, Paul Lee, and Roody Yogurt."
 }
 
 #ifset USE_EXTENSION_CREDITING
@@ -83,6 +83,85 @@ routine ListExtensions
 !----------------------------------------------------------------------------
 
 #ifclear NO_FUSES
+#ifset NEW_FUSE
+!\Roody's note: The "NEW_FUSE" system. The new fuse system is some experimental
+code that allows fuse code to run after an UNDO or RESTORE, if applicable.
+The timer code now works off of the game counter so there isn't a worry that
+it'll progress two steps. Still, proper usage probably requires clever coding
+in a lot of cases, so this is going to be an unadvertised feature for a while.
+
+Also, early versions of this used up a lot of game memory. Be warned!
+\!
+property fuse_length alias e_to
+
+replace fuse
+{
+	type fuse
+	size 0
+	timer
+	{
+		if self.fuse_length
+			return (self.fuse_length - counter)
+		else
+			return 0
+	}
+	fuse_length 0
+	in_scope 0
+	tick
+	{
+		local a
+		a = self.timer
+		if a <= 0
+			self.fuse_length = 0
+#ifset DEBUG
+		if debug_flags & D_FUSES
+		{
+			print "[Running fuse "; number self; ":  timer = ";
+			print number a; "]"
+		}
+#endif
+
+		if a = 0
+			Deactivate(self)
+		return a
+	}
+}
+
+property timer_start alias fuse_length
+property fake_event alias s_to
+
+replace daemon
+{
+	type daemon
+	size 0
+	in_scope 0
+	timer
+	{
+		if self.timer_start
+		{
+			return (counter - self.timer_start)
+		}
+		else
+			return 0
+	}
+}
+
+object fuse_bucket
+{}
+
+routine fake_runevents
+{
+	local i
+	for i in fuse_bucket
+	{
+!		if i.type = fuse
+!		{
+			run i.fake_event
+!		}
+	}
+}
+#endif  ! NEW_FUSE
+
 !\
 Activate - added a warning for when it is called before the player global has been set.
 \!
@@ -96,18 +175,29 @@ replace Activate(a, set)                ! <set> is for fuses only
 		daemon (object "; number a;") can be activated.]"
 		err = true
 		}
+#ifset NEW_FUSE
+	move a to fuse_bucket
+#endif
 	a.in_scope = player
 	a is active
 	if a.type = fuse and not err
 	{
 		if set
+#ifclear NEW_FUSE
 			a.timer = set
+#else
+			a.fuse_length = (counter + set)
+#endif
 
 		run a.activate_event
 	}
 	elseif a.type = daemon and not err
 	{
+#ifclear NEW_FUSE
 		if set and not a.#timer
+#else
+		if set and not a.#timer_start
+#endif
 		{
 			Font(BOLD_ON)
 			print "[WARNING:  Attempt to set nonexistent timer
@@ -115,8 +205,11 @@ replace Activate(a, set)                ! <set> is for fuses only
 			err = true
 		}
 		else
+#ifclear NEW_FUSE
 			a.timer = set
-
+#else
+			a.timer_start = (counter - set)
+#endif
 		run a.activate_event
 	}
 	elseif not err
@@ -1713,6 +1806,9 @@ routine ProcessKey(entry,end_type)
 						VMessage(&DoRestore, 1)         ! "Restored."
                   PrintStatusline
                   DescribePlace(location,true)
+#ifset NEW_FUSE
+						fake_runevents
+#endif
                }
 					else:  VMessage(&DoRestore, 2)           ! "Unable to restore."
    #endif
@@ -1739,6 +1835,9 @@ routine ProcessKey(entry,end_type)
 								}
                      PrintStatusLine
                      DescribePlace(location)
+#ifset NEW_FUSE
+							fake_runevents
+#endif
 #ifset USE_AFTER_UNDO
 							if after_undo[0]
 								{
@@ -1795,14 +1894,14 @@ replace ExcludeFromAll(obj)
 	if obj is hidden
 		return true
 
-! Exclude things NPCs are carrying unless the NPC is explicitly
-! given as the parent
-if parent(obj) is living
-{
-	if IsPossibleXobject(parent(obj)) or parent(obj) = player
-		return false
-	return true
-}
+	! Exclude things NPCs are carrying unless the NPC is explicitly
+	! given as the parent
+	if parent(obj) is living
+	{
+		if IsPossibleXobject(parent(obj)) or parent(obj) = player
+			return false
+		return true
+	}
 
 	return false
 }
@@ -3005,7 +3104,8 @@ replace Perform(action, obj, xobj, queue, isxverb)
 #endif
 
 #ifclear NO_OBJLIB
-	SetupDirectionObjects
+	if verbroutine = &DoGo and not object
+		SetupDirectionObjects
 #endif
 
 	! Itemize each object in a list of multiple objects
@@ -3609,21 +3709,31 @@ object printstatuslib
 	find_height
 	{
 		local highest, i, a
-		for i in self
+		if children(self) ~= 1
 		{
-			a = i.find_height
-			if i.status_override
+			for i in self
 			{
-				self.chosen_window = i
-				highest = i.find_height
-				break
-			}
-			if higher(highest,a) = a
-			{
-				self.chosen_window = i
-				highest = i.find_height
+				a = i.find_height
+				if i.status_override
+				{
+					self.chosen_window = i
+					highest = i.find_height
+					break
+				}
+				if higher(highest,a) = a
+				{
+					self.chosen_window = i
+					highest = i.find_height
+				}
 			}
 		}
+		else
+		{
+			i = child(self)
+			self.chosen_window = i
+			highest = i.find_height
+		}
+
 		self.status_top = (self.chosen_window).status_top
 		return highest
 	}
@@ -3698,19 +3808,22 @@ color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 Font(DEFAULT_FONT)
 }
 
+property counter_length alias se_to
+
 ! Here is an example status window instruction object. It and its routines
 ! draw a regular status window
 object statuswindow
 {
-    in printstatuslib
-    find_height
-        {
-        return (call &FindStatusHeight)
-        }
-    draw_window
-        {
-        return (call &WriteStatus)
-        }
+	in printstatuslib
+	find_height
+	{
+		return (call &FindStatusHeight)
+	}
+	draw_window
+	{
+		return (call &WriteStatus)
+	}
+	counter_length 0
 }
 !\ Note: These properties *could* just say "return FindStatus". I just used
 the above syntax to give a clue as to how one would change a value "mid-game".
@@ -3738,7 +3851,6 @@ else
     }
 text to 0
 a = StringLength(_temp_string)
-ClearArray(_temp_string)
 text to _temp_string
 select STATUSTYPE
 	case 1 : print number score; " / "; number counter;
@@ -3750,8 +3862,19 @@ if (FORMAT & DESCFORM_F) and (printstatuslib.terp_type ~= GLK_TERP)
 	print "\_";
 text to 0
 if STATUSTYPE
+{
 	b = StringLength(_temp_string)
-
+	statuswindow.counter_length = b
+}
+else
+{
+	b = 1
+	while display.screenwidth < (b*a)
+	{
+		b++
+	}
+	return b
+}
 if (b + a + 4)<display.screenwidth ! let's force a 4 character gap between
     {                              ! the two fields
     return 1
@@ -3801,7 +3924,7 @@ routine WriteStatus
     if statuswindow.find_height = 1 and STATUSTYPE
         {
             print to (display.linelength - \
-            (StringLength(_temp_string) + \
+            ( statuswindow.counter_length + \
             ((printstatuslib.terp_type = SIMPLE_TERP)*2) ));
             StringPrint(_temp_string)
         }
@@ -4147,15 +4270,18 @@ routine RedrawScreen
 		print ""
 		display.needs_repaint = false
 		}
-	if not oldwidth
+	if system(61) ! simple port
+	{
+		if not oldwidth
+			oldwidth = display.screenwidth
+
+		if IsGlk and oldwidth ~= display.screenwidth
+			{
+			PrintStatusLine
+			}
+
 		oldwidth = display.screenwidth
-
-	if IsGlk and oldwidth ~= display.screenwidth
-		{
-		PrintStatusLine
-		}
-
-	oldwidth = display.screenwidth
+	}
 }
 
 !----------------------------------------------------------------------------
@@ -4501,8 +4627,8 @@ routine PrepWord(str)
 		}
 	}
 }
-
 #endif ! USE_SUPERCONTAINER
+
 !----------------------------------------------------------------------------
 !* REPLACED OBJLIB.H CODE
 !----------------------------------------------------------------------------
@@ -6490,6 +6616,9 @@ replace DoRestore
 		VMessage(&DoRestore, 1)         ! "Restored."
 		PrintStatusline
 		DescribePlace(location, true)
+#ifset NEW_FUSE
+		fake_runevents
+#endif
 		ClearWordArray
 		last_turn_true = true
 		return true
@@ -6531,12 +6660,6 @@ replace DoUndo
 			{
 			c = SaveWordSetting("statusheight")
 			word[(c+1)] = display.statusline_height
-		!	c = display.statusline_height
-!			while word[c] ~= ""
-!				{
-!				c++
-!				}
-!			word[c] = "statusheight"
 			}
 		if undo
 		{
@@ -6551,6 +6674,9 @@ replace DoUndo
 				display.statusline_height = word[(c+1)]
 			PrintStatusline
 			DescribePlace(location)
+#ifset NEW_FUSE
+			fake_runevents
+#endif
 #ifset USE_AFTER_UNDO
 			if after_undo[0]
 				{
@@ -7173,25 +7299,53 @@ routine StringAddTo(original_array, addition_array, add_space,newarray)
 !----------------------------------------------------------------------------
 
 !\ Roody's note: ClearArray, as you might guess, clears arrays of values.
-I made it mainly to stop having to write array-clearing loops each time. \!
+I made it mainly to stop having to write array-clearing loops each time.
+
+	Originally, it looped through the entire array, but doing so in a large
+	string array like _temp_string is a real memory-killer. Now it clears
+	until it gets two empty slots.\!
 
 routine ClearArray(array_to_be_cleared)
 {
-	local n
+	local n,t
 	for (n=0;n< array array_to_be_cleared[] ; n++ )
 		{
-		array array_to_be_cleared[n] = ""
+			if	array array_to_be_cleared[n] = 0
+				t++
+			else
+			{
+				array array_to_be_cleared[n] = 0
+				t = 0
+			}
+			if t = 2
+			{
+				break
+			}
 		}
-
 }
 ! Roody's note: The previous array won't let us use it on the word array so
 !  here is a word-array-specific one
 routine ClearWordArray
 {
-	local n
-	for (n=1;n< word[] ; n++ )
+	local n ! ,t
+!	for (n=1;n< word[] ; n++ )
+!	{
+!		if word[n] = ""
+!			t++
+!		else
+!		{
+!			t = 0
+!			word[n] = ""
+!		}
+!		if t = 2
+!			break
+!	}
+	for (n=20;n< 30 ; n++ )
 	{
-	word[n] = ""
+		if word[n] = ""
+			break
+		else
+			word[n] = ""
 	}
 }
 
