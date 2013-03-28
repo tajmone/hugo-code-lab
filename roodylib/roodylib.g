@@ -3,7 +3,7 @@
 !::
 
 #ifset VERSIONS
-#message "roodylib.g Grammar Version 1.9"
+#message "roodylib.g Grammar Version 2.0"
 #endif
 
 !\ Roody's note: Redefined "go" so that the somewhat ingrammatical phrase
@@ -48,6 +48,28 @@ verb "scope"
 
 xverb "verbtest"
 	*	object         DoVerbTest
+#endif
+
+! Roody's note: Pre-defining "empty" before verblib.g. Alterred to not
+! execute DoEmptyOrGet, which I find troublesome. Also, if used with
+! NEW_EMPTY switch, more emptying rules are allowed (see NEW_EMPTY section
+! in roodylib.h.
+verb "empty", "unload"
+	*                                                       DoVague
+#ifset NEW_EMPTY
+	* (CheckEmpty) "on"/"onto" "ground"/"floor"             DoEmptyGround
+#else
+	* object "on"/"onto" "ground"/"floor"                   DoEmptyGround
+#endif
+	* multi "from"/"off"/"on"/"in" parent                    DoGet
+	* multi "offof"/"outof" parent                         DoGet
+	* multi "from" "offof"/"outof"/"on"/"in" parent         DoGet
+! Send >UNLOAD OBJECT to DoEmptyoOrGet, which dispatches to DoEmpty or DoGet
+!	* object                                                DoEmpty
+#ifset NEW_EMPTY
+	* (CheckEmpty)						DoEmpty ! DoEmptyOrGet
+#else
+	* object                DoEmpty
 #endif
 
 ! Defining the no-object version of DoEnter before hugolib.g to make use of

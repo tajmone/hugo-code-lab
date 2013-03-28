@@ -5,11 +5,11 @@
 #ifclear _ROODYLIB_H
 #set _ROODYLIB_H
 
-constant ROODYBANNER "RoodyLib Version 3.1"
-constant ROODYVERSION "3.1"
+constant ROODYBANNER "RoodyLib Version 3.2"
+constant ROODYVERSION "3.2"
 
 #ifset VERSIONS
-#message "roodylib.h version 3.1"
+#message "roodylib.h version 3.2"
 #endif
 
 !----------------------------------------------------------------------------
@@ -2746,7 +2746,7 @@ PrintStatusLine ! redraw PrintStatusLine in case screen size changed
 			print "[parse$ = \""; parse$; "\"]"
 			parser_data[PARSER_STATUS] |= 32
 			}
-		print "[ParseError errornumber = "; number errornumber
+		print "[ParseError errornumber = "; number errornumber; "]"
 		Font(BOLD_OFF)
 	}
 #endif
@@ -3579,6 +3579,139 @@ it_object them_object "them"
 #endif	! NEW_STYLE_PRONOUNS
 
 !----------------------------------------------------------------------------
+!* "NEW_EMPTY" system
+!----------------------------------------------------------------------------
+!\ Roody's note- I found the pre-existing DoEmpty grammar and verb routines
+a bit troublesome, so I designed this replacement system. To use, #set NEW_EMPTY
+before any grammar is included.
+
+Then give your containers and platforms the following properties to inherit
+various behaviors:
+	#inherits held-to-player ! requires the object to be held and empties
+                            ! contents to player
+	#inherits unheld-to-player ! requires object to not be held and empties
+	                           ! contents to player
+	#inherits held-to-ground ! requires object to be held and empties to ground
+	#inherits no-empty    ! platform or container does not allow emptying
+
+	Objects that don't require being held and dump to the ground should work fine
+	with the default code.
+	\!
+
+#ifset NEW_EMPTY
+
+#ifclear ROUTINE_GRAMMAR_HELPER
+#set ROUTINE_GRAMMAR_HELPER
+#endif
+
+property empty_type
+constant NO_EMPTY_T 16 ! new grammar helper token for "no emptying" containers
+
+class unheld_to_player
+{
+	empty_type NOTHELD_T
+	before
+	{
+		object DoEmpty
+		{
+			local a, b, obj, xobj
+			local thisobj, nextobj
+
+			CalculateHolding(object)
+
+			if object is container, openable, not open
+			{
+				VMessage(&DoEmpty, 1)           ! "It's closed."
+				return true
+			}
+
+			if object is not container, platform
+			{
+				ParseError(12, object)
+				return false
+			}
+
+			if not children(object)
+			{
+				VMessage(&DoEmpty, 2)           ! "It's already empty."
+				return true
+			}
+
+			thisobj = child(object)
+			while thisobj
+			{
+				nextobj = sibling(thisobj)
+
+				print thisobj.name; ":  ";
+
+				if thisobj is static
+					VMessage(&DoEmpty, 3)    ! "You can't move that."
+				else
+				{
+					a = player.holding
+					b = thisobj
+					obj = object
+					xobj = xobject
+
+					if Perform(&DoGet, b)
+						player.holding = a + b.size
+					else
+						player.holding = a
+					object = obj
+					xobject = xobj
+
+					if b not in object
+						object.holding = object.holding - b.size
+				}
+
+				thisobj = nextobj
+			}
+
+			run object.after
+			return true
+		}
+	}
+}
+
+class held_to_player
+{
+	empty_type HELD_T
+	inherits unheld_to_player
+}
+
+class held_to_ground
+{
+	empty_type HELD_T
+}
+
+class no_empty
+{
+	empty_type NO_EMPTY_T
+}
+
+routine CheckEmpty(obj)
+{
+	if obj.empty_type
+	{
+		TOKEN = obj.empty_type
+		if not CheckObject(obj)
+		{
+			return false
+		}
+		elseif obj.empty_type = NO_EMPTY_T
+		{
+			ParseError(12, obj)
+			return false
+		}
+		return true
+	}
+	elseif not CheckObject(obj)
+		return false
+	return true
+}
+#endif NEW_EMPTY
+
+!----------------------------------------------------------------------------
 !* ROUTINE GRAMMAR HELPER
 !----------------------------------------------------------------------------
 !\ Roody's note- Using routines as grammar tokens is one of my favorite unsung
@@ -3615,7 +3748,9 @@ enumerate step *2
 !}
 
 !\ set goal_obj if the routine requires a special object
- att1 through att3 can be used for necessary attributes \!
+	(goal_obj is the object you would have used if you were doing
+	object-as-grammar-token)
+ att1 through att3 can be used for necessary attributes\!
 
 routine CheckObject(obj,goal_obj, att1, att2, att3)
 {
@@ -5972,6 +6107,70 @@ routine DetermineSpeaking
 	}
 
 	if count = 1:  speaking = spk
+}
+
+! Roody's note: replaced so the container/platform check comes before the
+! children check.
+replace DoEmpty
+{
+	local a, b, obj, xobj
+	local thisobj, nextobj
+
+	CalculateHolding(object)
+
+	if object is container, openable, not open
+	{
+		VMessage(&DoEmpty, 1)           ! "It's closed."
+		return true
+	}
+	if object is not container, platform
+	{
+		ParseError(12, object)
+		return false
+	}
+	if not children(object)
+	{
+		VMessage(&DoEmpty, 2)           ! "It's already empty."
+		return true
+	}
+
+	thisobj = child(object)
+	while thisobj
+	{
+		nextobj = sibling(thisobj)
+
+		print thisobj.name; ":  ";
+
+		if thisobj is static
+			VMessage(&DoEmpty, 3)    ! "You can't move that."
+		else
+		{
+			a = player.holding
+			b = thisobj
+			obj = object
+			xobj = xobject
+
+			if player not in location and
+				(parent(player) is platform or
+					parent(player) is container) and
+				not xobject:
+
+				Perform(&DoPutIn, b, parent(player))
+			else
+				Perform(&DoDrop, b)
+
+			object = obj
+			xobject = xobj
+			player.holding = a
+			if b not in object
+				object.holding = object.holding - b.size
+		}
+
+		thisobj = nextobj
+	}
+
+	run object.after
+	return true
 }
 
 ! Roody's note: Mostly not changed. Just commented out the part where word[1]

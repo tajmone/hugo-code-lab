@@ -7,6 +7,7 @@
 	http://hugo.gerynarsabode.org/index.php?title=NewMenu.h
 
 	version 3.1 - added NEW_FUSE code
+					  fixed ShowPage "returning to game" printed text
 	version 3.0 - Added USE_EXTENSION_CREDITING object stuff
 	version 2.9 - Fixed some flags so the default menu works without Roodylib
 	              Cleaned up command-printing page in default menu; added
@@ -1053,7 +1054,7 @@ routine ShowPage(page,end_o_game)
 #endif
 	if not end_o_game
 	{
-		MenuMessage(&Menu,6) ! "Returning to the game..."
+		MenuMessage(&ShowPage,3) ! "Returning to the game..."
 #ifset CHEAP
 		if not cheap
 #endif
@@ -1145,6 +1146,10 @@ routine MenuMessage(r, num, a, b)
 					"[OPENING PAGE]"
 				case 2
 					"[CLOSING PAGE]"
+				case 3
+					{
+					print "\IReturning to the story...\i"
+					}
 			}
 }
 
