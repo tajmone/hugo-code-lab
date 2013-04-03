@@ -7,7 +7,7 @@ constant GAME_TITLE	"GAME TITLE"
 !#set BETA                ! Compile with the comments-in-transcripts library
                           !   addition (requires "beta.h")
 !#set CHEAP
-!#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
+#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
                           !   available (type $? in game)
 !#set PRECOMPILED_LIBRARY ! Use a precompiled header library (see manual)
 !#set VERBSTUBS           ! Include the grammar and routines from verbstubs.g
@@ -91,7 +91,7 @@ routine SetGlobalsAndFillArrays
 	prompt = ">"
 	DEFAULT_FONT = PROP_ON
 	player = you
-	location = STARTLOCATION
+	location = westroom
 }
 
 !::	Main game loop
@@ -116,14 +116,20 @@ player_character you "you"
 {
 }
 
+room westroom "West Room"
+{
+	e_to STARTLOCATION
+}
+
 room STARTLOCATION "Start Location"
 {
+	w_to westroom
  	e_to reddoor ! eastroom ! reddoor
 }
 
 character fred "Fred"
 {
-	in STARTLOCATION
+	in westroom
 	noun "fred"
 }
 
@@ -132,7 +138,9 @@ door reddoor "red door"
 	article "the"
 	adjective "red"
 	noun "door"
+	is lockable
 	found_in STARTLOCATION eastroom
+	! is locked
 }
 
 room eastroom "east room"
@@ -149,8 +157,9 @@ room bedroom "bed room"
 routine DoSetPath
 {
 	local a
-	MakePath(startlocation,bedroom)
+	"Set."
+	MakePath(westroom,bedroom)
 	a = SetPath(fred)
-	If not a : "Fred can't get there."
+	If not a : "\nFred can't get there."
 	return true
 }

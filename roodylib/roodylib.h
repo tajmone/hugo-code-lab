@@ -387,6 +387,9 @@ replace CharMove(char, dir)
 
 	local newroom, a
 
+	if dir.type ~= direction
+		return
+
 	newroom = parent(char).(dir.dir_to)
 
 	if newroom.type = door
@@ -460,6 +463,52 @@ replace LoopScript(obj,loop)
 	if loop
 		RunScripts
 }
+
+!\ Roody's note: I also replaced CharGet and CharDrop just to add a
+make-sure-there's-an-object check. It's probably unnecessary, but my own
+experimentation with CharMove and my findpath extension made me think it might
+be good to play it safe. \!
+
+!----------------------------------------------------------------------------
+! CharGet
+! Script usage:  &CharGet, <object>
+
+replace CharGet(char, obj)
+{
+	if not obj
+		return
+	if FindObject(obj, parent(char)) = 1
+	{
+		if Acquire(char, obj)
+		{
+			if char in location
+			{
+				Message(&CharGet, 1, char, obj)
+				event_flag = true
+			}
+		}
+		return true
+	}
+}
+
+!----------------------------------------------------------------------------
+! CharDrop
+! Script usage:  &CharDrop, <object>
+
+replace CharDrop(char, obj)
+{
+	if not obj
+		return
+	move obj to parent(char)
+	char.holding = char.holding - obj.size
+	if char in location
+	{
+		Message(&CharDrop, 1, char, obj)
+		event_flag = true
+	}
+	return true
+}
+
 #endif ! ifclear NO_SCRIPTS
 
 ! Roody's note : This has extra code for components and such, a problem

@@ -7,14 +7,14 @@
 #set _FINDPATH_H
 
 #ifset VERSIONS
-#message "findpath.h Version 1.8"
+#message "findpath.h Version 1.9"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj findpath_version "FindPath Version 1.8"
+version_obj findpath_version "FindPath Version 1.9"
 {
 	in included_extensions
 	desc_detail
@@ -42,126 +42,82 @@ replace room
 constant MAXDISTANCE 20
 #endif
 
-! new property for characters
-property dirsteps alias forward
-
-replace character
-{
-	type character
-	pronouns "he", "him", "his", "himself"
-	capacity 50
-	holding 0
-	exclude_from_all true
-	dirsteps #MAXDISTANCE
-	is living, transparent, static
-}
-
-replace female_character
-{
-	inherits character
-	pronouns "she", "her", "her", "herself"
-	is female
-}
-
-replace player_character
-{
-	! 'nouns' and 'pronouns' as defined below are the defaults
-	! for second-person, i.e., when player_person is 2--'name'
-	! should be "you"
-	!
-	nouns "me", "myself"
-	pronouns "you", "you", "your", "yourself"
-	type player_character
-	long_desc
-	{
-		print "Looking good."
-	}
-	before
-		{
-#ifset _ROODYLIB_H
-		actor
-			{
-			if verbroutine = &PreParse
-				return false
-			if AnyVerb(location)
-				last_turn_true = false
-			return false
-			}
-#ifset HUGOFIX
-		actor DoVerbTest
-			{
-			DoVerbTest
-			return true
-			}
-#endif  ! HUGOFIX
-#endif ! ROODYLIB_H
-		}
-	capacity 100
-	holding 0
-	is hidden, living, transparent, static
-	is plural       ! because player_person defaults to 2
-}
+array PathArray[MAXDISTANCE]
 
 routine MakePath(start,end)
 {
 	ClearRooms
 	DistanceFrom(start,forward)
+	ClearRooms
 	DistanceFrom(end,backward)
 }
 
 routine SetPath(char)
 {
 	local a
-	local b = 1
-	local c,d
+	local b ! = 1
+	local c,d, i
 	a = parent(char)
-	! let's clear the character steps
-	! before filling it up again
-	for (c = 1 ; c <= MAXDISTANCE ; c++)
-		{
-		char.dirsteps #c = 0
-		}
+	local total
+!	this cleaing code is memory-wasteful
+!	! let's clear the character steps
+!	! before filling it up again
+!	for (c = 1 ; c <= MAXDISTANCE ; c++)
+!		{
+!		char.dirsteps #c = 0
+!		}
+
+
 	while a
 	{
-	d = FindPath(a)
-	if not d
-		return false
+		d = FindPath(a)
+		if not d
+			return false
 
-	for (c = n_obj ; c <= out_obj ; c++)
+		for (c = n_obj ; c <= out_obj ; c++)
 		{
-		if d = c.dir_to
-			break
+			if d = c.dir_to
+				break
 		}
-	char.dirsteps #(b++) = c
+!		char.dirsteps #(b++) = c
+		PathArray[b++] = c
+		total = b
+		a.forward = 0
 
-
-	a.forward = 0
-
-	if (a.d).type = room
-		a = a.d
-	else
-		{
-		if InList(a.d, between, a ) = 1
-			a = (a.d).between #2
+		if (a.d).type = room
+			a = a.d
 		else
-			a = (a.d).between
+		{
+			if InList(a.d, between, a ) = 1
+				a = (a.d).between #2
+			else
+				a = (a.d).between
 		}
-	if a.backward = MAXDISTANCE
-		a = 0
+		if a.backward = MAXDISTANCE
+			a = 0
 	}
 
-	b = 1
+!	PathArray[b++] = 0
+
+!	char.dirsteps #(b) = 0
 
 	if FindScript(char)
 		CancelScript(char)
 
-	a = Script(char, PropertyCount(char,dirsteps))
+!	a = Script(char, PropertyCount(char,dirsteps))
+	a = Script(char, total)
 
-	while b <= PropertyCount(char,dirsteps)
-		{
+!	while b <= PropertyCount(char,dirsteps)
+	for (i = 0;i < total ; i++ )
+	{
 		setscript[a++] = &CharMove
-		setscript[a++] = char.dirsteps #(b++)
-		}
+		setscript[a++] = PathArray[i]
+	}
+!	while b < total
+!	{
+! ! char.dirsteps #(b++)
+!		b++
+!	}
 	return true
 }
 
@@ -174,10 +130,11 @@ routine ClearRooms
 	local i
 	for (i = 29 ; i <= objects ; i++)
 	{
-	if i.type = room
+		if i.type = room
 		{
-		i.forward = 0
-		i.backward = 0
+			i is not already_listed
+!		i.forward = 0
+!		i.backward = 0
 		}
 	}
 }
@@ -187,113 +144,86 @@ routine DistanceFrom( room_obj , prop)
 	local max = MAXDISTANCE
 	local i,j,c,d
 	room_obj.prop = max
-while max
-{
-	for (i = 29 ; i <= objects ; i++)
+	while max
+	{
+		for (i = 29 ; i <= objects ; i++)
 		{
-		if i.type = room and i.prop = max
+			if i.type = room and i.prop = max
 			{
-			 for  (j=n_to; j<=out_to; j++)
-			  {
-			  if i.j.type = room and not i.j.prop
+				for  (j=n_to; j<=out_to; j++)
+				{
+					if i.j.type = room and i.j is not already_listed ! not i.j.prop
 					{
-					i.j.prop = max - 1
-					c=1
+						i.j.prop = max - 1
+						c=1
+						i is already_listed
 					}
-			elseif  i.j.type = door and not (i.j is not open and i.j is locked)
+					elseif  i.j.type = door and
+					not (i.j is not open and i.j is locked)
 					{
-					if InList(i.j, between, i) = 1
-						d = i.j.between #2
-					else
-						d = i.j.between
-					if not d.prop
+						if InList(i.j, between, i) = 1
+							d = i.j.between #2
+						else
+							d = i.j.between
+						if d is not already_listed ! not d.prop
 						{
-						d.prop = max - 1
-						c = 1
+							d is already_listed
+							d.prop = max - 1
+							c = 1
 						}
 					}
-			  }
+				}
 			}
 		}
-	if c=0
-		break
-	c=0
-	max--
-}
+		if c=0
+			break
+		c=0
+		max--
+	}
 }
 
 routine FindPath(rm)
 {
 
-	local j,a,d
-  for (j=n_to; j<=out_to; j++)
-	  {
-	  if rm.j.type = room
-			{
-			if (rm.j.forward + rm.j.backward) > a
-				a = (rm.j.forward + rm.j.backward)
-			}
-	  elseif rm.j.type = door and not (rm.j is not open and rm.j is locked)
+	local j,a,d , highest
+	for (j=n_to; j<=out_to; j++)
+	{
+		if rm.j.type = room
 		{
-		if InList(rm.j, between, rm)= 1
-			d = rm.j.between #2
-		else
-			d = rm.j.between
-		if (d.forward + d.backward) > a
-			a = (d.forward + d.backward)
+			if (rm.j.forward + rm.j.backward) > a
+			{
+				a = (rm.j.forward + rm.j.backward)
+				highest = j
+			}
+		}
+		elseif rm.j.type = door and not (rm.j is not open and rm.j is locked)
+		{
+			d = rm.j.between #((rm = rm.j.between # 1) + 1)
+			if (d.forward + d.backward) > a
+			{
+				a = (d.forward + d.backward)
+				highest = j
+			}
 		}
 	}
 
-  for (j=n_to; j<=out_to; j++)
-  {
-	  if rm.j.type = room
-			{
-			if (rm.j.forward + rm.j.backward) = a
-				break
-			}
-	  elseif rm.j.type = door and not (rm.j is not open and rm.j is locked)
-		{
-		if InList(rm.j, between, rm) = 1
-			d = (rm.j).between #2
-		else
-			d = (rm.j).between
-		if (d.forward + d.backward) = a
-			{
-		!\	if d.forward = 0
-				return 0
-			else
-				return j \!
-			break
-			}
-		}
-	}
-	if (rm.j.type = room and not rm.j.forward) or (rm.j.type = door and not \
-			d.forward)
+	if (rm.highest.type = room and not rm.highest.forward) or
+	(rm.highest.type = door and \
+		not (rm.highest.between #((rm = rm.highest.between # 1) + 1)).forward)
 		return 0
 	else
-		return j
+		return highest
 }
 
-! This counts how many elements in a property array have
-! values
-routine PropertyCount(obj, prop)
-{
-	local a, total
-
-	for (a=1; a<=obj.#prop; a++)
-	{
-		if obj.prop #a:  total++
-	}
-
-	return total
-}
-
-#ifclear _ROODYLIB_H
+!#ifclear _ROODYLIB_H
 replace CharMove(char, dir)
 {
 #ifclear NO_OBJLIB
 
 	local newroom, a
+
+	if dir.type ~= direction
+		return
 
 	newroom = parent(char).(dir.dir_to)
 
@@ -303,14 +233,21 @@ replace CharMove(char, dir)
 		newroom = a.between #((parent(char) = \
 				a.between #1) + 1)
 		if a is not open
+		{
+			if a is locked
 			{
+				""
+				print CThe(char) ; " can't unlock the door."
+				CancelScript(char)
+				return
+			}
 			if char in location or newroom = location
 				{
 				self = a
 				""
 				OMessage(door, 5)
 				}
-			}
+		}
 		elseif newroom = location or char in location
 			a = 0
 		}
@@ -345,6 +282,7 @@ replace CharMove(char, dir)
 
 	return true
 }
-#endif  ! ifclear _ROODYLIB_H
+
+!#endif  ! ifclear _ROODYLIB_H
 
 #endif ! ifclear _FINDPATH_H
