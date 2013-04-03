@@ -140,7 +140,7 @@ door reddoor "red door"
 	noun "door"
 	is lockable
 	found_in STARTLOCATION eastroom
-	! is locked
+	 is locked
 }
 
 room eastroom "east room"

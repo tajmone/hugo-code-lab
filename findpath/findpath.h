@@ -88,10 +88,12 @@ routine SetPath(char)
 			a = a.d
 		else
 		{
-			if InList(a.d, between, a ) = 1
-				a = (a.d).between #2
-			else
-				a = (a.d).between
+	!		if InList(a.d, between, a ) = 1
+	!			a = (a.d).between #2
+	!		else
+	!			a = (a.d).between
+
+			a = ((a.d).between #((a = a.d.between # 1) + 1))
 		}
 		if a.backward = MAXDISTANCE
 			a = 0
