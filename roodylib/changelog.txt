@@ -1,6 +1,10 @@
 Ok, I've started a changelog!
 v 3.2 - * added a missing printed bracket in parser monitoring code
 	* added NEW_EMPTY system for more container/platform-emptying options
+	* added AMERICAN_ENGLISH flag to switch between quotation punctuation styles
+	* added NEW_DESCRIBEPLACE to give more DescribePlace options
+	* added WhatsIn replacement and ListObjects RLibMessage-call for more printing options
+	* updated CenterTitle to not draw extra window in simple, non-Glk terps
 v 3.1 - * Added Supercontainer object class code. #set USE_SUPERCONTAINER to include.
 	* Added NEW_FUSE code
 	* fixed ClearArray memory-hogging bug

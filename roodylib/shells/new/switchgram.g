@@ -17,7 +17,7 @@
 #endif
 
 #ifset CHEAP
-#include "cheap.g"
+#include "cheaplib.g"
 #endif
 
 #include "verblib.g" ! will include verbstub.g and hugofix.g, if applicable

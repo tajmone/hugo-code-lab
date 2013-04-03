@@ -103,6 +103,11 @@ of the multi-line ones into single lines. \!
 
 #ifclear NO_XVERBS
 
+#ifclear NO_MODE_CHANGE
+xverb "brief", "normal","superbrief", "short","verbose","long"
+	*                                                 	DoFakeRefuse
+#endif  ! NO_MODE_CHANGE
+
 xverb "restore", "resume"
 	*                                                       DoRestore
 xverb "restore", "resume"

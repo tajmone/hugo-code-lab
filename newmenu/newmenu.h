@@ -8,6 +8,8 @@
 
 	version 3.1 - added NEW_FUSE code
 					  fixed ShowPage "returning to game" printed text
+					  removed DESCFORM_I code
+					  changed cheap code to be keypress-based, not input-based
 	version 3.0 - Added USE_EXTENSION_CREDITING object stuff
 	version 2.9 - Fixed some flags so the default menu works without Roodylib
 	              Cleaned up command-printing page in default menu; added
@@ -523,10 +525,6 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 				if not end_o_game
 				{
 					MenuMessage(&MakeMenu,6) ! "Returning to the game..."
-#if defined DESCFORM_I
-					if (FORMAT & DESCFORM_I)
-						""
-#endif
 #ifset CHEAP
 					if not cheap
 #endif
@@ -612,26 +610,41 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 				}
 				print ""
 				MenuMessage(&Menu, 2)		! "Select the number of your choice"
-				input
+	!			input
 	!			select word[0]
-
-				if word[1] = "q", "exit", "quit", "0"! ESCAPE_KEY
-					{
-					""
-					return 0
-					}
+				pause
 				local numb
-				numb = StringToNumber(word[1])
-				if not numb
+				if word[0] = 'q','Q', '0', ESCAPE_KEY
 				{
-					numb = StringToNumber(parse$)
+					printchar word[0]
+					"\n"
+					return 0
 				}
-				if numb and numb < sel
+				else
+					numb = word[0] - 48
+				if numb and (numb > 0) and (numb < sel)
 				{
-					""
+					printchar word[0]
+					"\n"
 					return numb
 				}
-
+!				if word[1] = "q", "exit", "quit", "0"! ESCAPE_KEY
+!					{
+!					""
+!					return 0
+!					}
+!				local numb
+!				numb = StringToNumber(word[1])
+!				if not numb
+!				{
+!					numb = StringToNumber(parse$)
+!				}
+!				if numb and numb < sel
+!				{
+!					""
+!					return numb
+!				}
+				""
 			}
 		}
 	else

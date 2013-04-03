@@ -123,12 +123,12 @@ routine DoCheapToggle
 
 routine DrawCheap ! this is basically InitScreen, slightly modified
 {
-	color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-	Font(DEFAULT_FONT)
 	if not system(61)
-		{
+	{
+		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
+		Font(DEFAULT_FONT)
 		window 0
-		}
+	}
 	CenterTitle(CheapTitle,0,1) ! See RoodyLib's CheapTitle routine
 }
 

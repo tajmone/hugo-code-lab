@@ -30,7 +30,7 @@
 #endif
 
 #ifset CHEAP
-#include "cheap.h"
+#include "cheaplib.h"
 #endif
 
 #ifset BETA

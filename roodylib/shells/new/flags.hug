@@ -63,10 +63,15 @@
 !* Roodylib flags
 !----------------------------------------------------------------------------
 
+!#set AMERICAN_ENGLISH         ! Use American English quotation mark rules
+!#set NEW_EMPTY                ! Use more robust DoEmpty behavior (see roodylib)
+!#set NEW_FUSE                 ! Experimental new fuse definition
 !#set NEW_STYLE_PRONOUNS       ! Use New Style Pronouns (see comments)
 !#set NO_AUTOMATIC_DOOR_UNLOCK ! Don't allow automatic door-unlocking
+!#set NO_MODE_CHANGE           ! Disallow >BRIEF, SUPERBRIEF, and VERBOSE
 !#set NO_SORTING               ! Don't use sorting routines
 !#set NO_XYZZY                 ! Don't use >XYZZY response code
+!#set OBJECT_SORTING           ! Use object-sorting system
 !#set ROUTINE_GRAMMAR_HELPER   ! Use Routine Grammar Helper (see comments)
 !#set USE_AFTER_UNDO           ! Use after_undo array to call routines
                                ! after successful UNDOs
