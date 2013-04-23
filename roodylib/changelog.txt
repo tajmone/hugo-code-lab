@@ -5,6 +5,7 @@ v 3.2 - * added a missing printed bracket in parser monitoring code
 	* added NEW_DESCRIBEPLACE to give more DescribePlace options
 	* added WhatsIn replacement and ListObjects RLibMessage-call for more printing options
 	* updated CenterTitle to not draw extra window in simple, non-Glk terps
+	* Fixed some places in the supercontainer class that didn't work right with transparent supercontainers.
 v 3.1 - * Added Supercontainer object class code. #set USE_SUPERCONTAINER to include.
 	* Added NEW_FUSE code
 	* fixed ClearArray memory-hogging bug

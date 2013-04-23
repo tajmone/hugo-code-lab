@@ -378,9 +378,39 @@ replace CenterTitle(a, lines,force)
 		locate 1, LinesFromTop
 }
 
-! Roody's note: This CharMove version tries to work better with doors.
+!
 
 #ifclear NO_SCRIPTS
+
+! american vs british spelling
+replace CancelScript(obj)
+{
+	local o
+
+	o = FindScript(obj)
+	if o = MAX_SCRIPTS
+		return
+	scriptdata[o * 3] = 0
+	if o = number_scripts - 1
+		number_scripts--
+
+#ifset DEBUG
+		if debug_flags & D_SCRIPTS
+		{
+			print "[Script for obj. ";
+			print number obj; " ("; obj.name; ") ";
+#ifset AMERICAN_ENGLISH
+			print "canceled]"
+#else
+			print "cancelled]"
+#endif
+		}
+#endif
+
+	return true
+}
+
+! Roody's note: This CharMove version tries to work better with doors.
 replace CharMove(char, dir)
 {
 #ifclear NO_OBJLIB
@@ -393,22 +423,22 @@ replace CharMove(char, dir)
 	newroom = parent(char).(dir.dir_to)
 
 	if newroom.type = door
-		{
+	{
 		a = newroom
 		newroom = a.between #((parent(char) = \
 				a.between #1) + 1)
 		if a is not open
-			{
+		{
 			if char in location or newroom = location
-				{
+			{
 				self = a
 				""
 				OMessage(door, 5)
-				}
 			}
+		}
 		elseif newroom = location or char in location
 			a = 0
-		}
+	}
 
 	if char in location and not a
 	{
@@ -4700,7 +4730,10 @@ class SuperContainer
 
 	list_contents
 	{
-		run self.reset_contents
+		if not (object = self or xobject = self)
+		{
+			run self.reset_contents
+		}
 		if self.count_in and self is container and
 			(self is open or self is transparent)
 		{
@@ -4808,7 +4841,8 @@ class SuperContainer
 			! "in"
 			if PrepWord("in") or PrepWord("into") or PrepWord("inside")
 			{
-				if self is openable and self is not open
+				if self is openable and self is not open and
+				self is not transparent
 				{
 					CThe(self)
 					" is closed."
@@ -5177,7 +5211,7 @@ replace player_character
 			if parent(object).type = SuperContainer
 			{
 				if Inlist(parent(object), contents_in, object) and
-					parent(object) is not open
+					parent(object) is not open and parent(object) is not transparent
 				{
 					print capital player.pronoun #1;
 					MatchPlural(player, "doesn't", "don't")
@@ -6977,18 +7011,18 @@ replace DoQuit
 	VMessage(&DoQuit)                        ! "Are you sure?"
 	GetInput
 	if YesorNo = true
-		{
+	{
 		""
 		RLibMessage(&DoQuit,1) ! "Thanks for playing!"
 		""
 		display.title_caption = PRESS_ANY_KEY
 		if not system(61) ! if not simple port simple port
-			{
+		{
 			print PRESS_ANY_KEY;
 			HiddenPause
-			}
-		quit
 		}
+		quit
+	}
 }
 
 replace DoRestart
@@ -7868,23 +7902,25 @@ routine CharsWithoutDescs(place,for_reals)
 ! routine for listing objects with short_desc descriptions
 routine ObjsWithDescs(place, for_reals)
 {
-	local obj, ret
+	local obj, ret, count
 	if not for_reals
 	{
 		for obj in place
 		{
 	#ifset USE_ATTACHABLES
 		! Exclude all attachables for now (and characters)
-			if obj is not living and not obj.type = attachable and
+			if obj is not living and not (obj.type = attachable) and
 				player not in obj and obj is not hidden and
 				((verbosity ~= 1 and &obj.short_desc) or
-				(&obj.initial_desc and verbosity = 1)) and
+	!			(&obj.initial_desc and verbosity = 1)) and
+				(&obj.initial_desc and obj is not moved)) and
 				obj is not already_printed
 	#else
 			if obj is not living and player not in obj and
 			obj is not hidden and
 			((verbosity ~= 1 and &obj.short_desc) or
-				(&obj.initial_desc and verbosity = 1)) and
+	!			(&obj.initial_desc and verbosity = 1)) and
+				(&obj.initial_desc and obj is not moved)) and
 				obj is not already_printed
 	#endif
 			{
@@ -7934,7 +7970,7 @@ routine ObjsWithDescs(place, for_reals)
 #ifset NEW_DESC
 routine ObjsWithNewDescs(place, for_reals)
 {
-	local obj, ret
+	local obj, ret, count
 	if not for_reals
 	{
 		for obj in place
@@ -8084,7 +8120,8 @@ routine AttachablesScenery(place, for_reals)
 			if obj.type = scenery
 			{
 				if player not in obj and
-					(obj is open or obj is not openable)
+	!				(obj is open or obj is not openable)
+					(obj is open or obj is transparent)
 				{
 					local a
 					for a in obj
@@ -8128,7 +8165,8 @@ routine AttachablesScenery(place, for_reals)
 			{
 				obj is known
 				if player not in obj and
-					(obj is open or obj is not openable)
+	!				(obj is open or obj is not openable)
+					(obj is open or obj is transparent)
 				{
 					list_nest = 1
 					if WhatsIn(obj)
@@ -8140,6 +8178,8 @@ routine AttachablesScenery(place, for_reals)
 			elseif obj is static, hidden
 				obj is known
 		}
+		print newline
+		override_indent = false
 		return ret
 #endif  ! ifclear NO_OBJLIB
 	}

@@ -280,3 +280,23 @@ replace PrintScore(end_of_game)
 		print "."
 	}
 }
+
+event in bedroom
+{
+	select counter
+		case 1
+		{
+			"\nEvent flag 1 test."
+			event_flag = 1
+		}
+		case 2
+		{
+			"\nEvent flag 1 test."
+			event_flag = 1
+		}
+		case 3
+		{
+			"\nEvent flag 2 test."
+			event_flag = 2
+		}
+}

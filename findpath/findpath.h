@@ -163,10 +163,12 @@ routine DistanceFrom( room_obj , prop)
 					elseif  i.j.type = door and
 					not (i.j is not open and i.j is locked)
 					{
-						if InList(i.j, between, i) = 1
-							d = i.j.between #2
-						else
-							d = i.j.between
+!						if InList(i.j, between, i) = 1
+!							d = i.j.between #2
+!						else
+!							d = i.j.between
+
+						d = (i.j.between #((i = i.j.between # 1) + 1))
 						if d is not already_listed ! not d.prop
 						{
 							d is already_listed

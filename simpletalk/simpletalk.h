@@ -1,5 +1,5 @@
 !\-----------------------------------------------------------------------
-Simpletalk.h version 2.1, based on code written by Robb Sherwin, updated and
+Simpletalk.h version 2.2, based on code written by Robb Sherwin, updated and
 turned into an includable library by Roody Yogurt.
 
 This is a simplified version of Sherwin's Phototalk port. This one drops support
@@ -7,6 +7,8 @@ for contextualized multiple-choice menus (which it seems the original Inform 6
 version had) and is just a bare-bones list-all-available-quips system.
 
 changelog
+	v 2.2 - added event_flag check so external things can kick the player out of
+	conversation loop
 	V 2.1 - added can_quit and loop_talk globals. can_quit defaults to true
 	but if set false, players can't quit out of conversations. loop_talk
 	defaults to false but if set true, loops conversation menus while options are
@@ -100,14 +102,14 @@ routine SetUpQuips
 #set _SIMPLETALK_H
 
 #ifset VERSIONS
-#message "Simpletalk.h version 2.1"
+#message "Simpletalk.h version 2.2"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj simpletalk_version "SimpleTalk Version 2.1"
+version_obj simpletalk_version "SimpleTalk Version 2.2"
 {
 	in included_extensions
 	desc_detail
@@ -153,8 +155,28 @@ replace DoTalk
 			{
 				b = Phototalk
 				a = higher(a,b)
-				if not loop_talk or (loop_talk and (not MoreTalk or not b))
+				if loop_talk and (not MoreTalk or not b)
+						break
+				elseif not loop_talk
 					break
+				main
+				if event_flag
+				{
+					select event_flag
+						case 1
+						{
+							PhotoMessage(&DoTalk,2) ! "Do you want to keep talking?"
+							GetInput
+							if not YesOrNo
+							{
+								break
+							}
+						}
+							case 2: break
+				}
+!				if not loop_talk or (loop_talk and ((not MoreTalk or not b) or
+!				event_flag))
+!					break
 				""
 			}
 #ifclear NO_SCRIPTS
@@ -165,7 +187,7 @@ replace DoTalk
 		return true
 	}
 
-	PhotoMessage(&DoTalk,2) ! "Just talking to <the object> will suffice."
+	PhotoMessage(&DoTalk,3) ! "Just talking to <the object> will suffice."
 	return false
 }
 
@@ -387,7 +409,14 @@ routine PhotoMessage(r, num, a, b)
 			{
 			select num
 				case 1: "You can't talk to that!"
-				case 2: 	print "Just talking to "; art(object); " will suffice."
+				case 2
+				{
+					print "\nDo you want ";
+					if player_person ~= 2:  print The(player, true); " ";
+					print "to keep talking (YES or NO)? ";
+				}
+	!			"\nDo you want to keep talking? ";
+				case 3: 	print "Just talking to "; art(object); " will suffice."
 			}
 }
 
