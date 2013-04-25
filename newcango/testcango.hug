@@ -7,7 +7,7 @@ constant GAME_TITLE	"GAME TITLE"
 !#set BETA                ! Compile with the comments-in-transcripts library
                           !   addition (requires "beta.h")
 !#set CHEAP
-!#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
+#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
                           !   available (type $? in game)
 !#set PRECOMPILED_LIBRARY ! Use a precompiled header library (see manual)
 !#set VERBSTUBS           ! Include the grammar and routines from verbstubs.g
@@ -141,6 +141,7 @@ room EastRoom "East Room"
 	}
 	w_to STARTLOCATION
 	s_to SouthRoom
+	n_to red_door
 	before
 	{
 		object MovePlayer
@@ -149,6 +150,31 @@ room EastRoom "East Room"
 			return false
 		}
 	}
+}
+
+door red_door "Red Door"
+{
+	noun "door"
+	between eastroom northroom
+}
+
+room northroom "North Room"
+{
+	long_desc
+	{
+		PrintExits
+	}
+	w_to portal
+	s_to red_door
+}
+
+object portal "portal"
+{
+	article "the"
+	noun "portal"
+	in northroom
+!	is enterable
+	door_to STARTLOCATION
 }
 
 room SouthRoom "South Room"

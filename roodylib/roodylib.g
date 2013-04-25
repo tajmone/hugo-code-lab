@@ -76,7 +76,7 @@ verb "empty", "unload"
 ! some enter-object-detecting code in DoEnter
 verb "enter"
 	*				DoEnter
-
+	* object		DoEnter
 ! Roody's note: I've found that if you support "swim", players will also try
 ! "swim in [object]"
 #ifset _VERBSTUB_G
@@ -103,7 +103,7 @@ of the multi-line ones into single lines. \!
 
 #ifclear NO_XVERBS
 
-#ifclear NO_MODE_CHANGE
+#ifset NO_MODE_CHANGE
 xverb "brief", "normal","superbrief", "short","verbose","long"
 	*                                                 	DoFakeRefuse
 #endif  ! NO_MODE_CHANGE

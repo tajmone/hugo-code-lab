@@ -6630,6 +6630,8 @@ if not JumpToEnd
 		{
 			moveto = moveto.door_to
 		}
+		elseif moveto.door_to
+			moveto = moveto.door_to
 		elseif moveto is enterable ! or
 	!	(((moveto is platform) or (moveto is container)) and
 	!	player in location)

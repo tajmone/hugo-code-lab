@@ -1,9 +1,13 @@
 !::
 ! New Can Go
 !::
+!\ Changelog
+	1.1 - Added door support, although non-door items with door_to properties may
+	still need some help (both here and in Roodylib's DoGo)
+\!
 
 #ifset VERSIONS
-#message "new_can_go.h Version 1.0"
+#message "new_can_go.h Version 1.1"
 #endif
 #ifclear _NEW_CAN_GO
 #set _NEW_CAN_GO
@@ -12,7 +16,7 @@
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj can_go_version "Can Go Version 1.0"
+version_obj can_go_version "Can Go Version 1.1"
 {
 	in included_extensions
 	desc_detail
@@ -86,6 +90,18 @@ routine GetExits
 		if object.(a.direct) ! see if the direction exists from the intended room
 		{
 			b = object.(a.direct)
+			if b.type = door and b is not locked
+			{
+				b = b.between #((object = \
+				b.between #1) + 1)
+			}
+			elseif (&b.door_to and b is not locked and
+			b.type ~= door and b.type ~= room)
+				b = b.door_to
+			elseif (b.door_to and b is not locked and
+			b.type ~= door and b.type ~= room)
+				b = b.door_to
+
 			if b.type = room and b.cango_name ~= SKIP ! make sure the direction
 			{                     ! goes to a room and shouldn't be skipped
 				for c in exit_shelf

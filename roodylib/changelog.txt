@@ -6,6 +6,7 @@ v 3.2 - * added a missing printed bracket in parser monitoring code
 	* added WhatsIn replacement and ListObjects RLibMessage-call for more printing options
 	* updated CenterTitle to not draw extra window in simple, non-Glk terps
 	* Fixed some places in the supercontainer class that didn't work right with transparent supercontainers.
+	* Fixed a problem where non-door items with door_to properties weren't being accepted by DoGo. Probably still some perfecting to do on this one.
 v 3.1 - * Added Supercontainer object class code. #set USE_SUPERCONTAINER to include.
 	* Added NEW_FUSE code
 	* fixed ClearArray memory-hogging bug
