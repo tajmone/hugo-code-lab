@@ -94,6 +94,7 @@ routine SetGlobalsAndFillArrays
 	DEFAULT_FONT = PROP_ON
 	player = you
 	location = STARTLOCATION
+	! inconsistent_exits = true
 }
 
 !::	Main game loop
@@ -124,6 +125,7 @@ room STARTLOCATION "Start Location"
 	{
 		PrintExits
 	}
+	nw_to TrapRoom
 	e_to EastRoom
 	s_to EastRoom
 	sw_to EastRoom
@@ -131,6 +133,14 @@ room STARTLOCATION "Start Location"
 	w_to WestRoom
 	no_clump true
 	cango_name "a mysterious place"
+}
+
+room TrapRoom "Dead End"
+{
+	long_desc
+	{
+		PrintExits
+	}
 }
 
 room EastRoom "East Room"

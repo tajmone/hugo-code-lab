@@ -4,19 +4,22 @@
 !\ Changelog
 	1.1 - Added door support, although non-door items with door_to properties may
 	still need some help (both here and in Roodylib's DoGo)
+	1.2 - Added no-exit support. Made exit-listing order consistent.
+	      Added "inconsistent" global. When set to true, new_can_go uses the
+			less-consistent (but not fully random) exit-ordering system.
 \!
-
-#ifset VERSIONS
-#message "new_can_go.h Version 1.1"
-#endif
 #ifclear _NEW_CAN_GO
 #set _NEW_CAN_GO
+
+#ifset VERSIONS
+#message "new_can_go.h Version 1.2"
+#endif
 
 #ifset USE_EXTENSION_CREDITING
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj can_go_version "Can Go Version 1.1"
+version_obj can_go_version "Can Go Version 1.2"
 {
 	in included_extensions
 	desc_detail
@@ -36,9 +39,22 @@ replace room
 	{
 		object MovePlayer
 		{
-			Perform(&GetExits,object)
+			! This old_location thing exists so GetExits is run only once before
+			! the game starts (since during the init routine, the starting location
+			! is both the MovePlayer object and the location global variable value.
+			if not old_location
+			{
+				old_location = location
+				return false
+			}
+			GetExits
 			return false
 		}
+	}
+	cant_go
+	{
+		print capital player.name ; " can't go that way."; AFTER_PERIOD ;
+		PrintExits
 	}
 }
 
@@ -70,23 +86,60 @@ property no_clump ! set to true if each destination gets its own sentance
 
 property direct ! you don't need to worry about this
 
+global inconsistent_exits ! set to true if exit order should not be held to a
+                          ! strict order (otherwise, it goes with the order of
+								  ! the object hierarchy code it uses)
 routine GetExits
 {
 ! reset all of our destination "jars" and direction "pebbles"
+	local i
+
+	if not inconsistent_exits
+	{
+		for (i = north_pebble;i <= out_pebble ;i++ )
+		{
+			move i to direction_pile
+		}
+		OtherExits ! (see below)
+	}
+	local a
 	while child(exit_shelf)
 	{
-		while child(child(exit_shelf))
+		a = child(exit_shelf)
+		if inconsistent_exits
 		{
-			move child(child(exit_shelf)) to direction_pile
+			local r
+			a = child(exit_shelf)
+			r = random(2)
+			if r = 2
+			{
+				a = youngest(exit_shelf)
+				while child(a)
+				{
+					move youngest(a) to direction_pile
+				}
+			}
+			else
+			{
+
+				while child(a)
+				{
+					move youngest(a) to direction_pile
+				}
+			}
 		}
-		move child(exit_shelf) to storage_shelf
+!		if not a
+!		{
+!			a = child(exit_shield)
+!		}
+		move a to storage_shelf
 	}
 
-	local a, b, c, d
-	a = child(direction_pile)  ! pick a direction pebble
+	local b, c, d
+	a = youngest(direction_pile)  ! pick a direction pebble
 	while a
 	{
-		d = younger(a)   ! choose next pebble, too
+		d = elder(a)   ! choose next pebble, too
 		if object.(a.direct) ! see if the direction exists from the intended room
 		{
 			b = object.(a.direct)
@@ -130,6 +183,16 @@ routine GetExits
 	}
 }
 
+routine OtherExits
+{
+!\ If your game adds new direction "pebbles" to the "storage jar", you can write
+some code to clear them here. Assuming your new direction pebbles are all
+declared together, you can do something like this: \!
+!		for (i = fore_pebble;i <= port_pebble ;i++ )
+!		{
+!			move i to direction_pile
+!		}
+}
 ! a bunch of objects to represent everything we're tracking
 object direction_pile
 {}
@@ -274,16 +337,19 @@ object jar11
 ! to tweak.
 routine PrintExits
 {
-	local a, b, c, d, e,f,g
+	local a, b, c, d, e,f,g,h
 
 	f = children(exit_shelf)
 	g = f > 2
-	for a in exit_shelf
+	a = child(exit_shelf)
+	while a
+!	for a in exit_shelf
 	{
+		h = younger(a)
 		if e++
-			print " ";
+			print AFTER_PERIOD;
 		if location.no_clump or e=1
-			print capital player.name ; " can go ";
+			CanGoMessage(&PrintExits, 1,1) ! "You can go ";
 		b = children(a)
 		d = b > 2
 		c = child(a)
@@ -305,7 +371,7 @@ routine PrintExits
 			c = younger(c)
 			b--
 		}
-		" to ";
+		CanGoMessage(&PrintExits, 1,2) ! " to ";
 		print a.name;
 		if location.no_clump
 			print ".";
@@ -321,12 +387,58 @@ routine PrintExits
 				print " or";
 			}
 		}
+		a = h
 	}
-	if not location.no_clump
+	if e
 	{
-		print ".";
+		if not location.no_clump
+		{
+			print ".";
+		}
+		""
 	}
-	""
+	else
+		CanGoMessage(&PrintExits,2 ) ! "You can't go anywhere."
 }
 
+routine CanGoMessage(r, num, a, b)
+{
+	! Check first to see if the new messages routine provides a
+	! replacement message:
+	if NewCanGoMessages(r, num, a, b):  return
+
+	select r
+
+	case &PrintExits
+	{
+		select num
+		case 1
+		{
+			select a
+				case 1
+				{
+					print capital player.name ; " can go ";
+				}
+				case 2
+					" to ";
+		}
+		case 2
+			print capital player.name ; " can't go anywhere."
+	}
+}
+
+routine NewCanGoMessages(r, num, a, b)
+{
+	select r
+
+!	case <first routine>
+!	{
+!		select num
+!		case 1:
+!	}
+
+	case else : return false
+
+	return true ! this line is only reached if we replaced something
+}
 #endif ! _NEW_CAN_GO
