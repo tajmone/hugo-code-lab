@@ -1,5 +1,5 @@
 !\-----------------------------------------------------------------------
-Simpletalk.h version 2.2, based on code written by Robb Sherwin, updated and
+Simpletalk.h version 2.3, based on code written by Robb Sherwin, updated and
 turned into an includable library by Roody Yogurt.
 
 This is a simplified version of Sherwin's Phototalk port. This one drops support
@@ -7,6 +7,7 @@ for contextualized multiple-choice menus (which it seems the original Inform 6
 version had) and is just a bare-bones list-all-available-quips system.
 
 changelog
+	v 2.3 - fixed a message routine bug
 	v 2.2 - added event_flag check so external things can kick the player out of
 	conversation loop
 	V 2.1 - added can_quit and loop_talk globals. can_quit defaults to true
@@ -102,14 +103,14 @@ routine SetUpQuips
 #set _SIMPLETALK_H
 
 #ifset VERSIONS
-#message "Simpletalk.h version 2.2"
+#message "Simpletalk.h version 2.3"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj simpletalk_version "SimpleTalk Version 2.2"
+version_obj simpletalk_version "SimpleTalk Version 2.3"
 {
 	in included_extensions
 	desc_detail
@@ -291,10 +292,9 @@ routine MoreTalk
 routine GetDial(max)
 {
 	word[1] = ""
-	local temp,prompttext
-	prompttext = PhotoMessage(&GetDial,1)
-	! "Select a choice or 0 to keep quiet. >> "
-	GetInput( prompttext )
+	local temp
+	PhotoMessage(&GetDial,1) ! "Select a choice or 0 to keep quiet. >> "
+	input
 
 	while true
 	{
@@ -306,7 +306,8 @@ routine GetDial(max)
 			temp = StringToNumber(parse$)
 		if temp ~= 0 and temp <= max
 			break
-		GetInput( prompttext )
+		PhotoMessage(&GetDial,1) ! "Select a choice or 0 to keep quiet. >> "
+		input
 		temp = 0
 	}
 
@@ -381,7 +382,9 @@ routine PrintConverseUsage
 
 routine PhotoMessage(r, num, a, b)
 {
-	if NewPhotoMessages(r, num, a, b):  return
+	local ret
+	ret = NewPhotoMessages(r, num, a, b)
+	if ret : return ret
 
 	select r
 		case &PhotoTalk
@@ -398,9 +401,9 @@ routine PhotoMessage(r, num, a, b)
 				case 1
 				{
 					if can_quit
-						return "Select a choice or 0 to keep quiet. >> "
+						"Select a choice or 0 to keep quiet. >> ";
 					else
-						return "Select a choice>> "
+						"Select a choice>> ";
 				}
 !\ If you want a custom prompt, make sure &GetDial case 1 is
 	{ return "prompt text" } , not just "prompt text"     \!

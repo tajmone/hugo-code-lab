@@ -7,19 +7,20 @@
 	1.2 - Added no-exit support. Made exit-listing order consistent.
 	      Added "inconsistent" global. When set to true, new_can_go uses the
 			less-consistent (but not fully random) exit-ordering system.
+	1.3 - Fixed AFTER_PERIOD mistake.
 \!
-#ifclear _NEW_CAN_GO
-#set _NEW_CAN_GO
+#ifclear _NEW_CAN_GO_H
+#set _NEW_CAN_GO_H
 
 #ifset VERSIONS
-#message "new_can_go.h Version 1.2"
+#message "new_can_go.h Version 1.4"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj can_go_version "Can Go Version 1.2"
+version_obj can_go_version "Can Go Version 1.4"
 {
 	in included_extensions
 	desc_detail
@@ -54,7 +55,7 @@ replace room
 	cant_go
 	{
 		print capital player.name ; " can't go that way."; AFTER_PERIOD ;
-		PrintExits
+		Perform(&PrintExits)
 	}
 }
 
@@ -94,7 +95,14 @@ routine GetExits
 ! reset all of our destination "jars" and direction "pebbles"
 	local i
 
-	if not inconsistent_exits
+	if not object
+	{
+		object = location
+	}
+
+	i = child(exit_shelf)
+
+	if i and not inconsistent_exits
 	{
 		for (i = north_pebble;i <= out_pebble ;i++ )
 		{
@@ -102,50 +110,46 @@ routine GetExits
 		}
 		OtherExits ! (see below)
 	}
-	local a
-	while child(exit_shelf)
+
+	while i
 	{
-		a = child(exit_shelf)
-		if inconsistent_exits
+		else  ! inconsistent_exits
 		{
 			local r
-			a = child(exit_shelf)
+			i = child(exit_shelf)
 			r = random(2)
 			if r = 2
 			{
-				a = youngest(exit_shelf)
-				while child(a)
+				i = youngest(exit_shelf)
+				while child(i)
 				{
-					move youngest(a) to direction_pile
+					move youngest(i) to direction_pile
 				}
 			}
 			else
 			{
-
-				while child(a)
+				while child(i)
 				{
-					move youngest(a) to direction_pile
+					move youngest(i) to direction_pile
 				}
 			}
 		}
-!		if not a
-!		{
-!			a = child(exit_shield)
-!		}
-		move a to storage_shelf
+		move i to storage_shelf
+		i = child(exit_shelf)
 	}
 
 	local b, c, d
-	a = youngest(direction_pile)  ! pick a direction pebble
-	while a
+	i = youngest(direction_pile)  ! pick a direction pebble
+	while i
 	{
-		d = elder(a)   ! choose next pebble, too
-		if object.(a.direct) ! see if the direction exists from the intended room
+		d = elder(i)   ! choose next pebble, too
+		if object.(i.direct) ! see if the direction exists from the intended room
 		{
-			b = object.(a.direct)
-			if b.type = door and b is not locked
+			b = object.(i.direct)
+			if b.type = door
 			{
-				b = b.between #((object = \
+				if b is not locked
+					b = b.between #((object = \
 				b.between #1) + 1)
 			}
 			elseif (&b.door_to and b is not locked and
@@ -161,11 +165,11 @@ routine GetExits
 				{
 					if c.name = b.cango_name, b.name
 					{                    ! if a jar on the "exit shelf" has the same
-						move a to c       ! name as the current destination room, move
+						move i to c       ! name as the current destination room, move
 						break             ! this pebble to that jar
 					}
 				}
-				if a in direction_pile        ! if not, start a new destination
+				if i in direction_pile        ! if not, start a new destination
 				{                             ! room jar on the exit shelf
 					c = child(storage_shelf)
 					move c to exit_shelf
@@ -175,11 +179,11 @@ routine GetExits
 					}
 					else
 						c.name = b.name
-					move a to c
+					move i to c
 				}
 			}
 		}
-		a = d
+		i = d
 	}
 }
 
@@ -346,8 +350,12 @@ routine PrintExits
 !	for a in exit_shelf
 	{
 		h = younger(a)
-		if e++
+		if e and location.no_clump
+		{
 			print AFTER_PERIOD;
+		}
+		elseif e++
+			print " ";
 		if location.no_clump or e=1
 			CanGoMessage(&PrintExits, 1,1) ! "You can go ";
 		b = children(a)
@@ -441,4 +449,4 @@ routine NewCanGoMessages(r, num, a, b)
 
 	return true ! this line is only reached if we replaced something
 }
-#endif ! _NEW_CAN_GO
+#endif ! _NEW_CAN_GO_H

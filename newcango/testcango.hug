@@ -94,7 +94,7 @@ routine SetGlobalsAndFillArrays
 	DEFAULT_FONT = PROP_ON
 	player = you
 	location = STARTLOCATION
-	! inconsistent_exits = true
+!	inconsistent_exits = true
 }
 
 !::	Main game loop

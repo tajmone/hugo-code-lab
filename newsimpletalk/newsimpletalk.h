@@ -1,10 +1,11 @@
 !\-----------------------------------------------------------------------
-NewSimpletalk.h version 2.1, based on code written by Robb Sherwin, updated and
+NewSimpletalk.h version 2.2, based on code written by Robb Sherwin, updated and
 turned into an includable library by Roody Yogurt.
 
 This extension does Photopia-style conversation menus.
 
 changelog
+	v 2.2 - fixed message routine bug
 	V 2.1 - added can_quit and loop_talk globals. can_quit defaults to true
 	but if set false, players can't quit out of conversations. loop_talk
 	defaults to false but if set true, loops conversation menus while options are
@@ -228,10 +229,9 @@ routine Phototalk
 routine GetDial(max)
 {
 	word[1] = ""
-	local temp,prompttext
-	prompttext = PhotoMessage(&GetDial,1)
-	! "Select a choice or 0 to keep quiet. >> "
-	GetInput( prompttext )
+	local temp
+	PhotoMessage(&GetDial,1) ! "Select a choice or 0 to keep quiet. >> "
+	input
 
 	while true
 	{
@@ -243,7 +243,8 @@ routine GetDial(max)
 			temp = StringToNumber(parse$)
 		if temp ~= 0 and temp <= max
 			break
-		GetInput( prompttext )
+		PhotoMessage(&GetDial,1) ! "Select a choice or 0 to keep quiet. >> "
+		input
 		temp = 0
 	}
 
@@ -294,7 +295,9 @@ routine PrintConverseUsage
 
 routine PhotoMessage(r, num, a, b)
 {
-	if NewPhotoMessages(r, num, a, b):  return
+	local ret
+	ret = NewPhotoMessages(r, num, a, b)
+	if ret:  return ret
 
 	select r
 		case &PhotoTalk
@@ -310,9 +313,9 @@ routine PhotoMessage(r, num, a, b)
 				case 1
 				{
 					if can_quit
-						return "Select a choice or 0 to keep quiet. >> "
+						"Select a choice or 0 to keep quiet. >> ";
 					else
-						return "Select a choice >> "
+						"Select a choice >> ";
 				}
 !\ If you want a custom prompt, make sure &GetDial case 1 is
 	{ return "prompt text" } , not just "prompt text"     \!

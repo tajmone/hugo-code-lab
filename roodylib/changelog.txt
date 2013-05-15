@@ -1,4 +1,9 @@
 Ok, I've started a changelog!
+v 3.3 - * Fixed a bug where the 'bottom justification' code in WriteStatus was causing [MORE] prompts in Gargoyle
+	* added display.needs_repaint-clearing code to InitScreen
+	* PrintStatusLine always does Infocom-style statuslines (a space to the left and right) to force compatibility with DOS terps
+	* Tweaked some MovePlayer stuff
+	* MovePlayer no longer calls PrintStatusLine since I figure it'll be called by main at the end of the turn. Might changes this back if it causes a lot of problems.
 v 3.2 - * added a missing printed bracket in parser monitoring code
 	* added NEW_EMPTY system for more container/platform-emptying options
 	* added AMERICAN_ENGLISH flag to switch between quotation punctuation styles
@@ -7,6 +12,9 @@ v 3.2 - * added a missing printed bracket in parser monitoring code
 	* updated CenterTitle to not draw extra window in simple, non-Glk terps
 	* Fixed some places in the supercontainer class that didn't work right with transparent supercontainers.
 	* Fixed a problem where non-door items with door_to properties weren't being accepted by DoGo. Probably still some perfecting to do on this one.
+	* Attachables DescribePlace code was missing some parentheses.
+	* Added default message for taking objects from friendly (non-unfriendly) characters
+	* Non-quiet scenery platforms now should now default to listing contents in room descriptions. 
 v 3.1 - * Added Supercontainer object class code. #set USE_SUPERCONTAINER to include.
 	* Added NEW_FUSE code
 	* fixed ClearArray memory-hogging bug

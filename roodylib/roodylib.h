@@ -5,11 +5,11 @@
 #ifclear _ROODYLIB_H
 #set _ROODYLIB_H
 
-constant ROODYBANNER "RoodyLib Version 3.2"
-constant ROODYVERSION "3.2"
+constant ROODYBANNER "RoodyLib Version 3.3"
+constant ROODYVERSION "3.3"
 
 #ifset VERSIONS
-#message "roodylib.h version 3.2"
+#message "roodylib.h version 3.3"
 #endif
 
 !----------------------------------------------------------------------------
@@ -328,7 +328,7 @@ replace CenterTitle(a, lines,force)
 #ifset CHEAP
 	if cheap and not force
 		return
-#endif
+#endif !ifset CHEAP
 	local l, g, s ! (simple port)
 	g = IsGlk
 	s = (not g and system(61))
@@ -2611,9 +2611,16 @@ replace MovePlayer(loc, silent, ignore)
          break
          }
    }
-   if (not LeavingMovePlayer)
-      {
-      move player to loc
+	if (not LeavingMovePlayer)
+	{
+		move player to loc
+!		local simpleport
+!		if system(61) and ! minimal port and..
+!		not IsGlk! not glk
+!			simpleport = true
+!		if not simpleport and old_location
+!			PrintStatusline  ! will be printed again by main, anyway
+
       old_location = location
       if parent(loc) = 0              ! if it's likely a room object
          location = loc
@@ -2655,13 +2662,6 @@ replace MovePlayer(loc, silent, ignore)
    object = obj
    xobject = xobj
    actor = act
-
-	local simpleport
-	if system(61) and ! minimal port and..
-	not IsGlk! not glk
-		simpleport = true
-	if not simpleport
-		PrintStatusline  ! will be printed again by main, anyway
 
    return ret
 }
@@ -4044,8 +4044,8 @@ are:
 - makes it easy to have non-standard statuses that opt for player state
   instead of turns/score
 \!
-
 #ifclear NO_STRING_ARRAYS
+#ifclear NO_FANCY_STUFF
 
 ! PrintStatusLine object properties
 property find_height alias u_to ! property that points to routines for
@@ -4137,8 +4137,10 @@ elseif system(61) ! minimal port
         printstatuslib.terp_type = SIMPLE_TERP
 else
     printstatuslib.terp_type = NORMAL_TERP
+#ifclear CHEAP
+	local cheap
+#endif
 
-#ifset CHEAP
 		if cheap and printstatuslib.terp_type ~= SIMPLE_TERP
 			{
 #if defined GAME_TITLE
@@ -4152,7 +4154,6 @@ else
 			}
 		elseif cheap
 			return
-#endif ! CHEAP
 
 ! figure out the size our window will be
 newstatusheight = printstatuslib.find_height
@@ -4225,7 +4226,7 @@ if not light_source
 else
     {
         print capital location.name;
-		 if FORMAT & DESCFORM_F
+!		 if FORMAT & DESCFORM_F
         print "\_";
     }
 text to 0
@@ -4237,13 +4238,13 @@ select STATUSTYPE
 	case 3 : print "Score: "; number score; "\_ "; "Moves: "; number counter;
 	! STATUSTYPE case 3 is the "Infocom"-style status
 	case 4 : StatusType4 ! routine for configurable statusline
-if (FORMAT & DESCFORM_F) and (printstatuslib.terp_type ~= GLK_TERP)
-	print "\_";
+!if (FORMAT & DESCFORM_F) and (printstatuslib.terp_type ~= GLK_TERP)
+!	print "\_";
 text to 0
 if STATUSTYPE
 {
 	b = StringLength(_temp_string)
-	statuswindow.counter_length = b
+	statuswindow.counter_length = ++b
 }
 else
 {
@@ -4262,7 +4263,8 @@ elseif (b + a - 4 ) < display.screenwidth and STATUSTYPE = 3
     {
     text to _temp_string
     print "S: "; number score; "\_ "; "M: "; number counter;
-    if (FORMAT & DESCFORM_F) and (printstatuslib.terp_type ~= GLK_TERP)
+ !   if (FORMAT & DESCFORM_F) and (printstatuslib.terp_type ~= GLK_TERP)
+	if (printstatuslib.terp_type ~= GLK_TERP)
 		print "\_";
     text to 0
     return 1
@@ -4279,48 +4281,123 @@ routine STATUSTYPE4
 ! routine for drawing the regular status
 routine WriteStatus
 {
+	local row,a
     if printstatuslib.bottom_justified and
         printstatuslib.terp_type ~= SIMPLE_TERP
         {
         if statuswindow.find_height = 2
-            {
-            locate 1, (display.windowlines - 1)
-            }
+				row = display.statusline_height - 1
         else
-            locate 1, display.windowlines
+				row = display.statusline_height
+         locate 1, row
         }
+		else
+			row = 1
     if not location
         print "\_";
     elseif not light_source
-        print "In the dark";
+        print "\_In the dark";
     else
         {
-            if FORMAT & DESCFORM_F or (printstatuslib.terp_type = GLK_TERP)
+   !         if FORMAT & DESCFORM_F or (printstatuslib.terp_type = GLK_TERP)
 					print "\_";
             print capital location.name;
         }
 
     if statuswindow.find_height = 1 and STATUSTYPE
         {
-            print to (display.linelength - \
+	!		if display.linelength = 80 and printstatuslib.terp_type ~= GLK_TERP
+	!			a = 79
+	!		else
+				a = display.linelength
+            print to (a - \
             ( statuswindow.counter_length + \
-            ((printstatuslib.terp_type = SIMPLE_TERP)*2) ));
+            (printstatuslib.terp_type = SIMPLE_TERP)* 2 - \
+				 (printstatuslib.terp_type = GLK_TERP)));
             StringPrint(_temp_string)
         }
     elseif STATUSTYPE and statuswindow.find_height = 2
         {
-            if printstatuslib.terp_type ~= SIMPLE_TERP and
-            not printstatuslib.bottom_justified
-                locate 1, 2
+            if printstatuslib.terp_type ~= SIMPLE_TERP
+                locate 1, ++row
             else
                 ""
-			if (FORMAT & DESCFORM_F) or (printstatuslib.terp_type = GLK_TERP)
+!			if (FORMAT & DESCFORM_F) or (printstatuslib.terp_type = GLK_TERP)
 	print "\_";
             StringPrint(_temp_string)
         }
 }
-#endif ! NO_STRING_ARRAYS
+#endif  !ifset NO_FANCY_STUFF
+#ifset NO_FANCY_STUFF
+replace PrintStatusline
+{
+	local simple
+	simple = (not isGlk and system(61))
+   if display.linelength < 60
+      display.statusline_height = 2
+   else
+      display.statusline_height = 1
 
+   Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
+      color SL_TEXTCOLOR, SL_BGCOLOR
+   window display.statusline_height
+   {
+		if not system(61)
+			cls
+		if not simple
+			locate 1, 1
+      if not location
+         print "\_";
+      elseif not light_source
+         print "\_ In the dark";
+      else
+      {
+       !  if FORMAT & DESCFORM_F:
+			print "\_";
+			print capital location.name;
+      }
+
+! (The part we're changing)
+! print to 65; ! is 65 characters good for every window size? No!
+
+! Instead, let's begin by writing the entire 'SCORE / MOVES' to array
+! _temp_string (_temp_string is an array declared by the library)
+
+      text to _temp_string
+		select STATUSTYPE
+			case 1 : print number score; " / "; number counter;
+			case 2 : print HoursMinutes(counter);
+			case 3 : print "Score: "; number score; "\_ "; "Moves: "; number counter;
+	! STATUSTYPE case 3 is the "Infocom"-style status
+			case 4 : StatusType4 ! routine for configurable statusline
+      text to 0
+! Ok, we've closed off the string array
+
+! Now, if the screen is wide enough, let's move to the end of the screen
+! MINUS the length of the _temp_string array
+      if display.statusline_height = 1
+         print to (display.screenwidth - (StringLength(_temp_string) + 1 + (simple*2)));
+      else
+      {
+         locate 1, 2
+         print "\_ ";
+      }
+
+ ! Now let's print it!
+      if STATUSTYPE
+			StringPrint(_temp_string)
+   }
+   color TEXTCOLOR, BGCOLOR
+   Font(DEFAULT_FONT)
+}
+
+! Roody's note: Replace this if you want to use the top right area
+! for something else ("HUNGRY", "TIRED", or whatever)
+routine STATUSTYPE4
+{}
+
+#endif ! NO_FANCY_STUFF
+#endif ! NO_STRING_ARRAYS
 !----------------------------------------------------------------------------
 !* "SETTINGS" CLASS AND ROUTINES
 !----------------------------------------------------------------------------
@@ -4388,6 +4465,7 @@ object roodylib "roodylib"
 {
 	in init_instructions
 	type settings
+#ifclear NO_FANCY_STUFF
 	save_info
 		{
 		select verbosity
@@ -4396,6 +4474,7 @@ object roodylib "roodylib"
 			case 2 : SaveWordSetting("verbose")
 		return true
 		}
+#endif
 	execute
 		{
 		if not CheckWordSetting("undo")
@@ -4407,12 +4486,14 @@ object roodylib "roodylib"
 				InitPluralObjects
 #endif
 				}
+#ifclear NO_FANCY_STUFF
 			local a
 			a = CheckWordSetting("roodylib")
 			select word[(a-1)]
 				case "brief" : verbosity = 0
 				case "superbrief" : verbosity = 1
 				case "verbose" : verbosity = 2
+#endif
 			}
 		}
 }
@@ -4530,7 +4611,11 @@ routine InitScreen
 		locate 1,LinesFromTop
 	elseif simple_port
 		""
-#endif
+#endif ! CHEAP
+	if display.needs_repaint
+	{
+		display.needs_repaint = 0
+	}
 }
 
 routine CheapTitle
@@ -4544,7 +4629,12 @@ routine CheapTitle
 
 routine LinesFromTop
 {
-return 2
+	if not display.hasgraphics
+	{
+		return display.windowlines
+	}
+	else
+	return 2
 }
 
 !\ IsGlk
@@ -4560,6 +4650,7 @@ routine IsGlk
 !* PREPARSE CODE
 !----------------------------------------------------------------------------
 
+#ifclear NO_FANCY_STUFF
 replace PreParse
 {
 	local i , p, r
@@ -4584,7 +4675,7 @@ object parse_redraw
 		return false
 		}
 }
-
+#endif
 !\ Roody's note: RedrawScreen is a generic routine for redrawing the screen
 after a screen-size change. Ideally, it should be called in PreParse.
 \!
@@ -5018,6 +5109,20 @@ routine PrepWord(str)
 
 ! Roody's note: characters now default to being excluded from >ALL
 !  (suggested by Paul Lee)
+!\
+	Also: I added a default response for when you grab objects from friendly
+	characters. Change for your characters if you want a different message.
+	If you want to not allow grabbing objects from friendly characters
+	altogether, stop the action with a "parent(object) DoGet" before routine.
+
+	This default code also allows >GET ALL FROM <character>
+
+	To disallow that, replace the ExcludeFromAll routine so it always returns
+	true when the parent is living. You'll also want to provide NewParseError
+	case 9 with a special message that checks that the parent is living
+	and returns with something like "You'll have to specify one object at a
+	time."
+\!
 replace character
 {
 	type character
@@ -5026,6 +5131,13 @@ replace character
 	holding 0
 	is living, transparent, static
 	exclude_from_all true
+	after
+	{
+		xobject DoGet
+		{
+			RLibOMessage(character, 1) ! "so-and-so allows you to take the <object>"
+		}
+	}
 }
 
 !\Roody's note: Now, doors should automatically open if you try to enter them
@@ -6862,7 +6974,7 @@ replace DoLook
 		if ((object is living, transparent) or
 			object is platform or
 			(object is container and (object is open or object is not openable))) and
-			object is not quiet and object is not already_listed
+			object is not quiet ! and object is not already_listed
 		{
 			for i in object
 			{
@@ -7035,6 +7147,7 @@ replace DoRestart
 	GetInput
 	if YesorNo = true
 	{
+#ifclear NO_FANCY_STUFF
 		ClearWordArray
 		SaveWordSetting("restart")
 		local i
@@ -7043,6 +7156,9 @@ replace DoRestart
 			if i.save_info
 				SaveWordSetting(i.name)
 			}
+#else
+		SaveWordSetting("restart")
+#endif
 		if not restart
 			VMessage(&DoRestart, 2)  ! "Unable to restart."
 		else
@@ -7054,19 +7170,23 @@ replace DoRestart
 replace DoRestore
 {
 	SaveWordSetting("restore")
+#ifclear NO_FANCY_STUFF
 	local i
 	for i in init_instructions
 		{
 		if i.save_info
 			SaveWordSetting(i.name)
 		}
+#endif
 	if restore
 	{
+#ifclear NO_FANCY_STUFF
 		for i in init_instructions
 			{
 			if CheckWordSetting(i.name)
 				run i.execute
 			}
+#endif
 		VMessage(&DoRestore, 1)         ! "Restored."
 		PrintStatusline
 		DescribePlace(location, true)
@@ -7104,6 +7224,7 @@ replace DoUndo
 	{
 		local c
 		SaveWordSetting("undo")
+#ifclear NO_FANCY_STUFF
 		local i
 		for i in init_instructions
 			{
@@ -7115,8 +7236,10 @@ replace DoUndo
 			c = SaveWordSetting("statusheight")
 			word[(c+1)] = display.statusline_height
 			}
+#endif
 		if undo
 		{
+#ifclear NO_FANCY_STUFF
 			i = 0
 			for i in init_instructions
 				{
@@ -7126,6 +7249,7 @@ replace DoUndo
 			c = CheckWordSetting("statusheight")
 			if c
 				display.statusline_height = word[(c+1)]
+#endif
 			PrintStatusline
 			DescribePlace(location)
 #ifset NEW_FUSE
@@ -7143,7 +7267,9 @@ replace DoUndo
 				}
 #endif ! USE_AFTER_UNDO
 			last_turn_true = true
+#ifclear NO_FANCY_STUFF
 			ClearWordArray
+#endif
 			verbroutine = &DoUndo
 			return true
 		}
@@ -7551,7 +7677,9 @@ replace Describeplace(place, long)
          {
             obj is known
             if player not in obj and
-               (obj is open or obj is not openable)
+           !    (obj is open or obj is not openable)
+				((obj is container and (obj is open or obj is transparent))  or
+				obj is platform) and obj is not quiet
             {
                list_nest = 1
                WhatsIn(obj)
@@ -7904,7 +8032,7 @@ routine CharsWithoutDescs(place,for_reals)
 ! routine for listing objects with short_desc descriptions
 routine ObjsWithDescs(place, for_reals)
 {
-	local obj, ret, count
+	local obj, ret
 	if not for_reals
 	{
 		for obj in place
@@ -7972,7 +8100,7 @@ routine ObjsWithDescs(place, for_reals)
 #ifset NEW_DESC
 routine ObjsWithNewDescs(place, for_reals)
 {
-	local obj, ret, count
+	local obj, ret
 	if not for_reals
 	{
 		for obj in place
@@ -8045,7 +8173,7 @@ routine ObjsWithoutDescs(place, for_reals)
 #ifset USE_ATTACHABLES
 			! Exclude all attachables for now (and characters)
 
-			if obj is not living and not obj.type = attachable and
+			if obj is not living and not (obj.type = attachable) and
 				player not in obj and obj is not hidden and
 				obj is not already_printed and
 				(not &obj.short_desc or (&obj.short_desc and verbosity = 1))
@@ -8067,7 +8195,7 @@ routine ObjsWithoutDescs(place, for_reals)
 #ifset USE_ATTACHABLES
 			! Exclude all attachables for now (and characters)
 
-			if obj is living or obj.type = attachable or
+			if obj is living or (obj.type = attachable) or
 				player in obj or (&obj.short_desc and verbosity ~= 1) or
 				obj is already_printed
 #else
@@ -8113,7 +8241,8 @@ routine AttachablesScenery(place, for_reals)
 			! Print attachables last
 			if obj.type = attachable and obj is not hidden
 			{
-				return true
+				obj is not already_listed
+				ret = true
 			}
 		}
 #endif
@@ -8123,20 +8252,23 @@ routine AttachablesScenery(place, for_reals)
 			{
 				if player not in obj and
 	!				(obj is open or obj is not openable)
-					(obj is open or obj is transparent)
+					((obj is container and (obj is open or obj is transparent))  or
+					obj is platform) and obj is not quiet
 				{
 					local a
+					obj is not already_listed
 					for a in obj
 						{
 						if a is not hidden
 							{
-							return true
+								ret = true
+								break
 							}
 						}
 				}
 			}
 		}
-		return false
+		return ret
 	}
 	else
 	{
@@ -8167,8 +8299,8 @@ routine AttachablesScenery(place, for_reals)
 			{
 				obj is known
 				if player not in obj and
-	!				(obj is open or obj is not openable)
-					(obj is open or obj is transparent)
+					((obj is container and (obj is open or obj is transparent))  or
+					obj is platform) and obj is not quiet
 				{
 					list_nest = 1
 					if WhatsIn(obj)
@@ -9008,6 +9140,15 @@ routine RlibOMessage(obj, num, a, b)
 
 	select obj
 
+	case character
+	{
+		select num
+			case 1
+			{
+				print CThe(xobject) ; " allows "; player.name ; " to take ";
+				print The(object); "."
+			}
+	}
 	case door
 	{
 		select num
