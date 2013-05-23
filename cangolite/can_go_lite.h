@@ -1,3 +1,9 @@
+!\ Changes from Original Teulbachs version-
+	prep properties no longer require a space
+	tweaked it so certain code is not run as many times
+			                  - Roody
+\!
+
 ! Following is a handy little routine for Hugo 2.5+ that provides exit
 ! descriptions for rooms. All you need to do to use it is make sure you
 ! use the dir.to properties to code your exits, and *don't put any other
@@ -36,10 +42,6 @@
 ! Can Go Lite
 !::
 
-!\ Changes from Original Teulbachs version-
-	prep properties no longer require a space
-	tweaked it so certain code is not run as many times
-\!
 
 #ifset VERSIONS
 #message "can_go_lite.h Version 1.0"

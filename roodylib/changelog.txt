@@ -4,6 +4,7 @@ v 3.3 - * Fixed a bug where the 'bottom justification' code in WriteStatus was c
 	* PrintStatusLine always does Infocom-style statuslines (a space to the left and right) to force compatibility with DOS terps
 	* Tweaked some MovePlayer stuff
 	* MovePlayer no longer calls PrintStatusLine since I figure it'll be called by main at the end of the turn. Might changes this back if it causes a lot of problems.
+	* Added a NO_FANCY_STUFF switch which forces older-style PrintStatusLine's and turns off some other fancy stuff. Really, I added this while trying to troubleshoot something where Roodylib code ended up not being the culprit, so I'm not sure if I can recommend it or if it'll stay in.
 v 3.2 - * added a missing printed bracket in parser monitoring code
 	* added NEW_EMPTY system for more container/platform-emptying options
 	* added AMERICAN_ENGLISH flag to switch between quotation punctuation styles

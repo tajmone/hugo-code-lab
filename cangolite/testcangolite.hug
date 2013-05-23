@@ -4,18 +4,7 @@
 constant GAME_TITLE	"GAME TITLE"
 
 !:: Flags
-!#set BETA                ! Compile with the comments-in-transcripts library
-                          !   addition (requires "beta.h")
-!#set CHEAP
-!#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
-                          !   available (type $? in game)
-!#set PRECOMPILED_LIBRARY ! Use a precompiled header library (see manual)
-!#set VERBSTUBS           ! Include the grammar and routines from verbstubs.g
-                          !   and verbstubs.h, respectively
-!#set USE_ATTACHABLES     ! Use attachable items
-!#set USE_PLURAL_OBJECTS  ! Use plural objects
-!#set USE_VEHICLES        ! Use vehicle objects
-!#set VERSIONS            ! Print library versions at compile time
+!#set USE_ROODYLIB
 
 !:: switches              ! example how one can add compiler switches to source
 !#switches -ls            ! print compilation stats to .LST file
@@ -33,12 +22,17 @@ constant GAME_TITLE	"GAME TITLE"
                                !   content listings
 
 !:: Grammar Library Inclusions (grammar must come first)
+#ifset USE_ROODYLIB
 #include "roodylib.g"
+#endif
+
 ! new grammar needs to be defined before the including verblib
 #include "verblib.g"        ! Verb Library
 
 #include "hugolib.h"        ! Standard  Hugo Library
+#ifset USE_ROODYLIB
 #include "roodylib.h"         ! Hugo  Library Updates
+#endif
 #include "can_go_lite.h"
 !::	Other Library Inclusions
 #ifset BETA
@@ -103,10 +97,12 @@ routine	main
 	run	location.each_turn
 	runevents
 	RunScripts
-	if GrandParent(speaking) ~= location
+	if Parent(speaking) ~= location
 		speaking = 0
 	PrintStatusLine
+#ifset USE_ROODYLIB
 	Main_Calls
+#endif
 }
 
 routine IntroText

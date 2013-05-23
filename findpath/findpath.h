@@ -7,14 +7,14 @@
 #set _FINDPATH_H
 
 #ifset VERSIONS
-#message "findpath.h Version 1.9"
+#message "findpath.h Version 2.0"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj findpath_version "FindPath Version 1.9"
+version_obj findpath_version "FindPath Version 2.0"
 {
 	in included_extensions
 	desc_detail
@@ -103,8 +103,7 @@ routine SetPath(char)
 
 !	char.dirsteps #(b) = 0
 
-	if FindScript(char)
-		CancelScript(char)
+	CancelScript(char)
 
 !	a = Script(char, PropertyCount(char,dirsteps))
 	a = Script(char, total)
@@ -130,7 +129,7 @@ routine SetPath(char)
 routine ClearRooms
 {
 	local i
-	for (i = 29 ; i <= objects ; i++)
+	for (i = 29 ; i < objects ; i++)
 	{
 		if i.type = room
 		{
@@ -146,29 +145,25 @@ routine DistanceFrom( room_obj , prop)
 	local max = MAXDISTANCE
 	local i,j,c,d
 	room_obj.prop = max
+	room_obj is already_listed
 	while max
 	{
-		for (i = 29 ; i <= objects ; i++)
+		for (i = 29 ; i < objects ; i++)
 		{
-			if i.type = room and i.prop = max
+			if i.type = room and i.prop = max and i is already_listed
 			{
 				for  (j=n_to; j<=out_to; j++)
 				{
-					if i.j.type = room and i.j is not already_listed ! not i.j.prop
+					if (i.j).type = room and i.j is not already_listed ! not i.j.prop
 					{
 						i.j.prop = max - 1
 						c=1
-						i is already_listed
+						i.j is already_listed
 					}
-					elseif  i.j.type = door and
-					not (i.j is not open and i.j is locked)
+					elseif  ((i.j.type = door) and
+					not (i.j is not open and i.j is locked))
 					{
-!						if InList(i.j, between, i) = 1
-!							d = i.j.between #2
-!						else
-!							d = i.j.between
-
-						d = (i.j.between #((i = i.j.between # 1) + 1))
+						d = (i.j.between #((i = i.j.between #1) + 1))
 						if d is not already_listed ! not d.prop
 						{
 							d is already_listed
@@ -184,6 +179,13 @@ routine DistanceFrom( room_obj , prop)
 		c=0
 		max--
 	}
+!	for (i = 29 ; i < objects ; i++)
+!	{
+!		if i.type = room and i is not already_listed
+!		{
+!			i.prop = 0
+!		}
+!	}
 }
 
 routine FindPath(rm)
@@ -200,7 +202,7 @@ routine FindPath(rm)
 				highest = j
 			}
 		}
-		elseif rm.j.type = door and not (rm.j is not open and rm.j is locked)
+		elseif ((rm.j).type = door) and not (rm.j is not open and rm.j is locked)
 		{
 			d = rm.j.between #((rm = rm.j.between # 1) + 1)
 			if (d.forward + d.backward) > a
@@ -212,7 +214,7 @@ routine FindPath(rm)
 	}
 
 	if (rm.highest.type = room and not rm.highest.forward) or
-	(rm.highest.type = door and \
+	(rm.highest.type = door  and \
 		not (rm.highest.between #((rm = rm.highest.between # 1) + 1)).forward)
 		return 0
 	else
