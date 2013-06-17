@@ -5,11 +5,11 @@
 #ifclear _ROODYLIB_H
 #set _ROODYLIB_H
 
-constant ROODYBANNER "RoodyLib Version 3.3"
-constant ROODYVERSION "3.3"
+constant ROODYBANNER "RoodyLib Version 3.4"
+constant ROODYVERSION "3.4"
 
 #ifset VERSIONS
-#message "roodylib.h version 3.3"
+#message "roodylib.h version 3.4"
 #endif
 
 !----------------------------------------------------------------------------
@@ -7471,6 +7471,9 @@ replace Describeplace(place, long)
 {
    local obj, count, notlisted, tempformat
 
+	if not place
+		place = location
+
    parser_data[PARSER_STATUS] &= ~PRONOUNS_SET
 
    ! Since, for example, a room description following entering via
@@ -7746,6 +7749,9 @@ replace Describeplace(place, long)
 {
 	local obj,  didprint
 	local need_carriage
+
+	if not place
+		place = location
 
 	parser_data[PARSER_STATUS] &= ~PRONOUNS_SET
 
@@ -8054,8 +8060,21 @@ routine ObjsWithDescs(place, for_reals)
 				obj is not already_printed
 	#endif
 			{
-				ret = true
-				obj is not already_listed
+#ifset USE_PLURAL_OBJECTS
+         ! ...And don't list identical objects yet, either
+
+				if (obj.identical_to).type = identical_class
+				{
+					obj is already_listed
+				}
+				else
+				{
+#endif
+					ret = true
+					obj is not already_listed
+#ifset USE_PLURAL_OBJECTS
+				}
+#endif
 			}
 			else
 				obj is already_listed
@@ -8066,18 +8085,7 @@ routine ObjsWithDescs(place, for_reals)
 	{
 		for obj in place
 		{
-#ifset USE_PLURAL_OBJECTS
-					! ...And don't list identical objects yet, either
-
-			if (obj.identical_to).type = identical_class
-			{
-				if obj is not hidden
-					count++
-			}
-			elseif player not in obj
-#else
 			if player not in obj
-#endif
 			{
 				if obj is not already_listed and
 					obj is not hidden and obj is not already_printed
@@ -8105,21 +8113,30 @@ routine ObjsWithNewDescs(place, for_reals)
 	{
 		for obj in place
 		{
-	#ifset USE_ATTACHABLES
+#ifset USE_ATTACHABLES
 		! Exclude all attachables for now (and characters)
 			if obj is not living and not obj.type = attachable and
 				player not in obj and obj is not hidden and
 				(verbosity ~= 1 and obj.new_desc) and
 				obj is not already_printed
-	#else
+#else
 			if obj is not living and player not in obj and
 			obj is not hidden and
 			(verbosity ~= 1 and obj.new_desc) and
 				obj is not already_printed
-	#endif
+#endif
 			{
-				ret = true
-				obj is not already_listed
+#ifset USE_PLURAL_OBJECTS
+				if (obj.identical_to).type = identical_class
+					obj is already_listed
+				else
+				{
+#endif
+					ret = true
+					obj is not already_listed
+#ifset USE_PLURAL_OBJECTS
+				}
+#endif
 			}
 			else
 				obj is already_listed
@@ -8130,18 +8147,7 @@ routine ObjsWithNewDescs(place, for_reals)
 	{
 		for obj in place
 		{
-#ifset USE_PLURAL_OBJECTS
-					! ...And don't list identical objects yet, either
-
-			if (obj.identical_to).type = identical_class
-			{
-				if obj is not hidden
-					count++
-			}
-			elseif player not in obj
-#else
 			if player not in obj
-#endif
 			{
 				if obj is not already_listed and
 					obj is not hidden and obj is not already_printed

@@ -1,10 +1,11 @@
 !\-----------------------------------------------------------------------
-NewSimpletalk.h version 2.2, based on code written by Robb Sherwin, updated and
+NewSimpletalk.h version 2.3, based on code written by Robb Sherwin, updated and
 turned into an includable library by Roody Yogurt.
 
 This extension does Photopia-style conversation menus.
 
 changelog
+	v 2.3 - removed unnecessary word[2] check to allow command shortening
 	v 2.2 - fixed message routine bug
 	V 2.1 - added can_quit and loop_talk globals. can_quit defaults to true
 	but if set false, players can't quit out of conversations. loop_talk
@@ -82,7 +83,7 @@ routine Respond (char, line)
 #set _SIMPLETALK_H
 
 #ifset VERSIONS
-#message "NewSimpletalk.h version 2.1"
+#message "NewSimpletalk.h version 2.3"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
@@ -115,7 +116,7 @@ array quips_array[MAX_QUIPS]
 replace DoTalk
 {
 	speaking = 0
-	if word[2] = "to" and not xobject
+	if not xobject and word[2] ~= "about"
 	{
 		if object = player
 		{

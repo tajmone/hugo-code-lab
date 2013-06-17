@@ -1,5 +1,5 @@
 !\-----------------------------------------------------------------------
-Simpletalk.h version 2.3, based on code written by Robb Sherwin, updated and
+Simpletalk.h version 2.4, based on code written by Robb Sherwin, updated and
 turned into an includable library by Roody Yogurt.
 
 This is a simplified version of Sherwin's Phototalk port. This one drops support
@@ -7,6 +7,7 @@ for contextualized multiple-choice menus (which it seems the original Inform 6
 version had) and is just a bare-bones list-all-available-quips system.
 
 changelog
+	v 2.4 - removed unnecessary word[2] check to allow command shortening
 	v 2.3 - fixed a message routine bug
 	v 2.2 - added event_flag check so external things can kick the player out of
 	conversation loop
@@ -103,7 +104,7 @@ routine SetUpQuips
 #set _SIMPLETALK_H
 
 #ifset VERSIONS
-#message "Simpletalk.h version 2.3"
+#message "Simpletalk.h version 2.4"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
@@ -129,7 +130,7 @@ constant SPOKEN 2
 replace DoTalk
 {
 	speaking = 0
-	if word[2] = "to" and not xobject
+	if not xobject and word[2] ~= "about"
 	{
 		if object is unfriendly
 		{
