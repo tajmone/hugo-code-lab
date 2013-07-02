@@ -6,7 +6,10 @@
 	For a nice overview of this contribution, check out:
 	http://hugo.gerynarsabode.org/index.php?title=NewMenu.h
 
-	version 3.1 - added NEW_FUSE code
+	version 3.1 - added alt_title property for option objects. if provided,
+	              the name property is still used as a menu choice, but alt_title
+					  is used to title the actual page.
+					  added NEW_FUSE code
 					  fixed ShowPage "returning to game" printed text
 					  removed DESCFORM_I code
 					  changed cheap code to be keypress-based, not input-based
@@ -224,13 +227,13 @@ object menulib "menu"
 	type settings
 	in init_instructions
 	execute
-		{
+	{
 		if not CheckWordSetting("undo")
-			{
+		{
 			if not CheckWordSetting("restore")
 				MenuInit
-			}
 		}
+	}
 }
 
 property usage_desc ! some text describing what commands turn a library's
@@ -268,13 +271,13 @@ routine MenuInit
 #ifset _ROODYLIB_H
 	local i
 	for i in init_instructions
-		{
+	{
 		if &i.usage_desc
-			{
+		{
 			move special_choice to main_menu
 			break
-			}
 		}
+	}
 #endif ! _ROODYLIB_H
 }
 #endif ! USE_DEFAULT_MENU
@@ -301,6 +304,9 @@ property hint7 alias w_to
 property hint8 alias nw_to
 property hint9 alias u_to
 property hint10 alias d_to
+property alt_title alias misc
+property alt_name alias misc ! just because I think I'm going to forget the
+                             ! name of the property from time to time
 
 property option_available alias in_to
 property hints_available alias in_to
@@ -324,9 +330,9 @@ class option
 option hint_option
 {
 	menu_text
-		{
+	{
 		Help_Hints(self)
-		}
+	}
 	hints_available 1
 	hints_revealed 0
 }
@@ -336,26 +342,26 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 	local glktest, count, category, old_category
  	local h,r, simple_port
 	if not glktest
-		{
+	{
 		if display.windowlines > (display.screenheight + 100)
-			{
-			glktest = true
-			}
-		}
-	if not recurse
 		{
+			glktest = true
+		}
+	}
+	if not recurse
+	{
 		if not CheaporSimple
-			{
+		{
 			color BGCOLOR, BGCOLOR
 			MenuMessage(&MakeMenu,1) ! "[OPENING MENU]"
-			}
+		}
 		else
-			{
+		{
 			""
 			MenuMessage(&MakeMenu,7) ! "Opening the menu..."
-			}
-!		""
 		}
+!		""
+	}
 	if not glktest and system(61)
 		simple_port = true
 	if not (CheaporSimple = 2 or simple_port)
@@ -367,7 +373,7 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 		h = menu_title
 
    while true
-		{
+	{
 		if h.page_text_color
 			MENU_TEXTCOLOR = h.page_text_color
 		else
@@ -392,82 +398,82 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 		}
 
 		if MENU_SELECTCOLOR= 0 AND MENU_SELECTBGCOLOR = 0
-			{
+		{
 			MENU_SELECTCOLOR = SL_TEXTCOLOR
 			MENU_SELECTBGCOLOR = SL_BGCOLOR
-			}
+		}
 		if not (CheaporSimple = 2 or simple_port)
 			color MENU_TEXTCOLOR, MENU_BGCOLOR
 
 		count = 0
 		local c
 		for category in h
+		{
+			if category.option_available
 			{
-				if category.option_available
-				{
-					menuitem[++count] = category !.name
-					if category.priority
-						c = true
-				}
+				menuitem[++count] = category !.name
+				if category.priority
+					c = true
 			}
+		}
 #ifset _ROODYLIB_H
 #ifset USE_SORTING
-			if c
-				{
-				SortArray(menuitem,count,&MenuPriority,1)
-				}
+		if c
+		{
+			SortArray(menuitem,count,&MenuPriority,1)
+		}
 #endif
 #endif
 
-	#ifset SHOW_NAVIGATE
-	#ifset CHEAP
-				if not cheap
-					{
-	#endif
-					color MENU_BGCOLOR, MENU_BGCOLOR
-					if not simple_port ! non-glk minimal port
-						MenuMessage(&MakeMenu,2,recurse,h.name) ! "[MENU NAME]"
-					color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-	#ifset CHEAP
-					}
-				else
-					{
-					Font(PROP_OFF)
-					MenuMessage(&MakeMenu,2,0,h.name) ! "[MENU NAME]"
-					""
-					}
-	#endif
-	#endif ! SHOW_NAVIGATE
+#ifset SHOW_NAVIGATE
+#ifset CHEAP
+		if not cheap
+		{
+#endif
+			color MENU_BGCOLOR, MENU_BGCOLOR
+			if not simple_port ! non-glk minimal port
+				MenuMessage(&MakeMenu,2,recurse,h.name) ! "[MENU NAME]"
+			color TEXTCOLOR, BGCOLOR, INPUTCOLOR
+#ifset CHEAP
+		}
+		else
+		{
+			Font(PROP_OFF)
+			MenuMessage(&MakeMenu,2,0,h.name) ! "[MENU NAME]"
+			""
+		}
+#endif
+#endif ! SHOW_NAVIGATE
 
 		if not (CheaporSimple = 2 or simple_port)
-			{
+		{
 			window 0
 			cls
-			}
+		}
 		menuitem[0] = h
 		category = Menu(count, 0, old_category,h.title_gap,h.options_gap)
 		old_category = category
 		if not (CheaporSimple = 2 or simple_port)
 			cls
 		if category
-			{
+		{
 			if menuitem[category].menu_link
-				{
+			{
 				MakeMenu(menuitem[category].menu_link,0,r)
-				}
+			}
 			else
-				{
+			{
 				do
-					{
+				{
 					if display.needs_repaint and CheaporSimple ~= 2
-						{
+					{
 						color MENU_BGCOLOR, MENU_BGCOLOR
 						MenuMessage(&MakeMenu,4) ! "[WINDOW RESIZED]"
 						color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 !						""
-						cls
-						locate 1,1
-						}
+!						cls
+!						locate 1,1
+					}
 					display.needs_repaint = false
 					if not (CheaporSimple = 2 or simple_port)
 						color MENU_BGCOLOR, MENU_BGCOLOR
@@ -475,35 +481,41 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 						MenuMessage(&MakeMenu,3,menuitem[category].name)
 					color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 					if not simple_port
-						CenterTitle(menuitem[category].name)
+					{
+						if menuitem[category].alt_title
+						{
+							CenterTitle(menuitem[category].alt_title)
+						}
+						else
+							CenterTitle(menuitem[category].name)
+					}
 #ifset CHEAP
 					if not cheap
-						{
+					{
 #endif
-					if not simple_port
-						cls
-					if not system(61) ! glk or minimum port
-						locate 1,1
+						if not system(61) ! glk or minimum port
+							locate 1,TopPageMargin
 #ifset CHEAP
-						}
+					}
 #endif
 					run menuitem[category].menu_text
 					if not (CheaporSimple = 2 or simple_port)
 						""
-					}
+				}
 				while (display.needs_repaint = true  )
+
 				window 0 ! only to draw a line in simple interpreters
 				if not (CheaporSimple = 2 or simple_port)
 					cls
-				}
 			}
+		}
 		else
-			{
+		{
 			if not recurse
 			{
 #ifset CHEAP
 				if not cheap
-					{
+				{
 #endif
 					color BGCOLOR, BGCOLOR
 					MenuMessage(&MakeMenu,5) ! "[LEAVING MENU]"
@@ -520,7 +532,7 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 						locate 1, (display.statusline_height + 1)
 #endif
 #ifset CHEAP
-					}
+				}
 #endif
 				if not end_o_game
 				{
@@ -539,6 +551,11 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 			return false
 		}
 	}
+}
+
+routine TopPageMargin
+{
+	return 2
 }
 
 #ifset _ROODYLIB_H
@@ -579,55 +596,55 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 	glktest = display.windowlines > (display.screenheight + 100)
 	if CheaporSimple = 2 or
 	( glktest and
-	( num + 5 + titlegap + optionsgap ) >= (display.screenheight/3*2))
+	( num + 6 + titlegap + optionsgap ) >= (display.screenheight/3*2))
 	{
 		while true
-			{
-				if glktest
-					cls
-				else
-					""
-				if not simple_port
-					CenterTitle(menuitem[0].name)
-				if display.needs_repaint
-					display.needs_repaint = false
-				print newline
-				Font(PROP_OFF|BOLD_OFF|ITALIC_OFF)
-		!		MenuMessage(&Menu, 2)		! print key commands
-		!		""
-				local sel = 1
-				Indent
-				print "\_  ";
-				Font(BOLD_ON)
-				print menuitem[0].name
-				Font(BOLD_OFF)
+		{
+			if glktest
+				cls
+			else
 				""
-				while menuitem[sel]
-				{
-					Indent
-					print number sel; ". ";
-					print menuitem[sel++].name
-				}
-				print ""
-				MenuMessage(&Menu, 2)		! "Select the number of your choice"
-	!			input
-	!			select word[0]
-				pause
-				local numb
-				if word[0] = 'q','Q', '0', ESCAPE_KEY
-				{
-					printchar word[0]
-					"\n"
-					return 0
-				}
-				else
-					numb = word[0] - 48
-				if numb and (numb > 0) and (numb < sel)
-				{
-					printchar word[0]
-					"\n"
-					return numb
-				}
+			if not simple_port
+				CenterTitle(menuitem[0].name)
+			if display.needs_repaint
+				display.needs_repaint = false
+			print newline
+			Font(PROP_OFF|BOLD_OFF|ITALIC_OFF)
+	!		MenuMessage(&Menu, 2)		! print key commands
+	!		""
+			local sel = 1
+			Indent
+			print "\_  ";
+			Font(BOLD_ON)
+			print menuitem[0].name
+			Font(BOLD_OFF)
+			""
+			while menuitem[sel]
+			{
+				Indent
+				print number sel; ". ";
+				print menuitem[sel++].name
+			}
+			print ""
+			MenuMessage(&Menu, 2)		! "Select the number of your choice"
+!			input
+!			select word[0]
+			pause
+			local numb
+			if word[0] = 'q','Q', '0', ESCAPE_KEY
+			{
+				printchar word[0]
+				"\n"
+				return 0
+			}
+			else
+				numb = word[0] - 48
+			if numb and (numb > 0) and (numb < sel)
+			{
+				printchar word[0]
+				"\n"
+				return numb
+			}
 !				if word[1] = "q", "exit", "quit", "0"! ESCAPE_KEY
 !					{
 !					""
@@ -644,20 +661,21 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 !					""
 !					return numb
 !				}
-				""
-			}
+			""
 		}
+	}
 	else
-		{
+	{
 		while true
-			{
+		{
 			if not system(61)
-				{
+			{
 				color MENU_BGCOLOR, MENU_BGCOLOR
 				cls
-				}
-			window ( num + 5 + titlegap + optionsgap )
-				{
+			}
+			! the 6 used to be 5 but hugozork glk was doing MORE prompts
+			window ( num + 6 + titlegap + optionsgap )
+			{
 				if not simple_port
 					cls
 				local m
@@ -667,10 +685,10 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 				if not simple_port
 					locate 1,1
 				if MENU_SELECTCOLOR = 0 and MENU_SELECTBGCOLOR = 0 ! not set yet
-					{         ! this section shouldn't affect a glk interpreter game
+				{         ! this section shouldn't affect a glk interpreter game
 					MENU_SELECTCOLOR = SL_TEXTCOLOR
 					MENU_SELECTBGCOLOR = SL_BGCOLOR
-					}
+				}
 				Font(PROP_OFF)
 				m = string(_temp_string, menuitem[0].name)
 				color MENU_SELECTCOLOR, MENU_SELECTBGCOLOR ! shouldn't affect glk
@@ -678,9 +696,9 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 				print menuitem[0].name;
 				print to display.linelength ! make sure we color the line completely
 				for (i=0; i<titlegap;i++)
-					{
+				{
 					""
-					}
+				}
 				color MENU_TEXTCOLOR, MENU_BGCOLOR
 				! end of fake CenterTitle
 				Font(BOLD_OFF|ITALIC_OFF|UNDERLINE_OFF|PROP_OFF) ! shouldn't affect
@@ -692,113 +710,113 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 				else
 				{
 				for (i=0; i<optionsgap;i++)
-					{
+				{
 					""
-					}
 				}
+			}
 
-				if selection ~= oldselection		!	glk code that *shouldn't*
-					{										!  affect normal execution
-					if oldselection ~= 0				!  (hopefully)
-						selection = oldselection
-					}
-				for (i=1; i<=num ; i++)
-					{
-					if i = selection
-						{
-						if system(61) ! glk or minimum port
-							print to (column - 2);
-						else
-							print to column;
-						if system(61) ! is minimal port
-							print "* ";
-						color MENU_SELECTCOLOR, MENU_SELECTBGCOLOR  ! shouldn't affect
-																				  ! glk?
-						print menuitem[selection].name; to (column+width);
-						color MENU_TEXTCOLOR, MENU_BGCOLOR
-						""
-						}
+			if selection ~= oldselection		!	glk code that *shouldn't*
+			{										!  affect normal execution
+				if oldselection ~= 0				!  (hopefully)
+					selection = oldselection
+			}
+			for (i=1; i<=num ; i++)
+			{
+				if i = selection
+				{
+					if system(61) ! glk or minimum port
+						print to (column - 2);
 					else
-						{
 						print to column;
-						print menuitem[i].name; to (column+width)
-						}
-					}
-				print ""
-				}
-				Font(DEFAULT_FONT)
-				word[0] = PauseForKey
-				if not system(61)
-					{
-					if display.needs_repaint
-						{
-						window 0
-						display.needs_repaint = 0
-						}
-					color MENU_BGCOLOR, MENU_BGCOLOR
-					cls
-					}
-				select word[0]
-					case 'N', 'n', DOWN_ARROW, RIGHT_ARROW
-					{
-						if menuitem[++selection].name = ""
-							++selection
-						if selection > num : selection = 1
-					}
-					case 'P', 'p', UP_ARROW, LEFT_ARROW
-					{
-						if menuitem[--selection].name = ""
-							--selection
-						if selection < 1 : selection = num
-					}
-					case 'Q', 'q', ESCAPE_KEY
-					{
-					if not system(61)
-						{
-						window 0
-						}
-					if not simple_port
-						{
-						cls
-						Font(DEFAULT_FONT)
-						}
-					return 0
-					}
-					case ENTER_KEY
-					{
-					color MENU_BGCOLOR, MENU_BGCOLOR
-					if not system(61)
-						{
-						window 1, (3+ optionsgap + titlegap), display.screenwidth, ( num + 5 + titlegap + optionsgap )
-							{
-							cls
-							}
-						window 0
-						}
-					if not simple_port
-						Font(DEFAULT_FONT)
-
-					oldselection = selection
-
+					if system(61) ! is minimal port
+						print "* ";
+					color MENU_SELECTCOLOR, MENU_SELECTBGCOLOR  ! shouldn't affect
+																			  ! glk?
+					print menuitem[selection].name; to (column+width);
 					color MENU_TEXTCOLOR, MENU_BGCOLOR
-					return selection
-					}
-
-				if word[0] >= '0' and word[0] <= '9'
+					""
+				}
+				else
+				{
+					print to column;
+					print menuitem[i].name; to (column+width)
+				}
+			}
+			print ""
+		}
+		Font(DEFAULT_FONT)
+		word[0] = PauseForKey
+		if not system(61)
+		{
+			if display.needs_repaint
+			{
+				window 0
+				display.needs_repaint = 0
+			}
+				color MENU_BGCOLOR, MENU_BGCOLOR
+				cls
+		}
+		select word[0]
+			case 'N', 'n', DOWN_ARROW, RIGHT_ARROW
+			{
+				if menuitem[++selection].name = ""
+					++selection
+				if selection > num : selection = 1
+			}
+			case 'P', 'p', UP_ARROW, LEFT_ARROW
+			{
+				if menuitem[--selection].name = ""
+					--selection
+				if selection < 1 : selection = num
+			}
+			case 'Q', 'q', ESCAPE_KEY
+			{
+				if not system(61)
+				{
+					window 0
+				}
+				if not simple_port
+				{
+					cls
+					Font(DEFAULT_FONT)
+				}
+				return 0
+			}
+			case ENTER_KEY
+			{
+				color MENU_BGCOLOR, MENU_BGCOLOR
+				if not system(61)
+				{
+					window 1, (3+ optionsgap + titlegap), display.screenwidth, ( num + 5 + titlegap + optionsgap )
 					{
-						i = word[0] - '0'
-						if i = 0:  i = 10
-
-						selection = 1
-						while --i
-						{
-							selection++
-							if menuitem[selection].name = ""
-								selection++
-						}
-						if selection > num or menuitem[selection].name = ""
-							selection = oldselection
+						cls
 					}
+					window 0
+				}
+				if not simple_port
+					Font(DEFAULT_FONT)
+
+				oldselection = selection
+
+				color MENU_TEXTCOLOR, MENU_BGCOLOR
+				return selection
+			}
+
+			if word[0] >= '0' and word[0] <= '9'
+			{
+				i = word[0] - '0'
+				if i = 0:  i = 10
+
+				selection = 1
+				while --i
+				{
+					selection++
+					if menuitem[selection].name = ""
+						selection++
+				}
+				if selection > num or menuitem[selection].name = ""
+					selection = oldselection
+			}
 		}
 	}
 }
@@ -861,7 +879,7 @@ routine CoolPause(bottom,pausetext)
 		Font(DEFAULT_FONT)
 #ifset CHEAP
 		if cheap
-			{
+		{
 			Indent
 			if a
 				print a
@@ -869,9 +887,9 @@ routine CoolPause(bottom,pausetext)
 				MenuMessage(&CoolPause,2) ! "[PRESS A KEY TO CONTINUE]";
 			pause
 			""
-			}
+		}
 		else
-			{
+		{
 #endif
 			Indent
 			Font(ITALIC_ON)
@@ -882,9 +900,9 @@ routine CoolPause(bottom,pausetext)
 			Font(ITALIC_OFF)
 			PauseForKey
 #ifset CHEAP
-			}
-#endif
 		}
+#endif
+	}
 	Font(DEFAULT_FONT)
 }
 
@@ -900,42 +918,42 @@ if system(61)
 
 routine Help_Hints(obj)
 {
-local i
+	local i
 #ifset CHEAP
-if not cheap
+	if not cheap
 #endif
-	""
-for (; i<=obj.hints_revealed; i++)
+		""
+	for (; i<=obj.hints_revealed; i++)
 	{
 		run obj.(hint1+i)
 		""
 	}
-while &obj.(hint1+i) ~= 0 ! i.e., no more topics
+	while &obj.(hint1+i) ~= 0 ! i.e., no more topics
 	{
-	Font(BOLD_ON)
-	MenuMessage(&Help_Hints,1) ! "[Press 'H' for another hint, or 'Q' to
+		Font(BOLD_ON)
+		MenuMessage(&Help_Hints,1) ! "[Press 'H' for another hint, or 'Q' to
 										!	quit]";
-	Font(BOLD_OFF)
-	word[0] = PauseForKey
+		Font(BOLD_OFF)
+		word[0] = PauseForKey
 !	""
-	if word[0] = 'Q', 'q', ESCAPE_KEY
+		if word[0] = 'Q', 'q', ESCAPE_KEY
 		{
 #ifset CHEAP
-		if cheap
-			""
+			if cheap
+				""
 #endif
-		return
+			return
 		}
-	if word[0] = 'H', 'h'
+		if word[0] = 'H', 'h'
 		{
-		obj.hints_revealed++
-		print newline
+			obj.hints_revealed++
+			print newline
 		}
-	if word[0] = 'H', 'h'
+		if word[0] = 'H', 'h'
 		{
-		""
-		run obj.(hint1+i++)
-		""
+			""
+			run obj.(hint1+i++)
+			""
 		}
 	}
 
@@ -945,8 +963,8 @@ while &obj.(hint1+i) ~= 0 ! i.e., no more topics
 	Font(BOLD_OFF)
 	PauseForKey
 #ifset CHEAP
-		if cheap
-			""
+	if cheap
+		""
 #endif
 	return
 }
@@ -990,32 +1008,32 @@ routine ShowPage(page,end_o_game)
 {
  	local simple_port,glktest
 	if display.windowlines > (display.screenheight + 100)
-		{
+	{
 		glktest = true
-		}
+	}
 
 	if not glktest and system(61)
 		simple_port = true
 	color BGCOLOR, BGCOLOR
 	if not (CheaporSimple = 2 or system(61))
-		{
+	{
 		window 0
-		}
+	}
 	if not CheaporSimple = 2 or simple_port
-		{
+	{
 		MenuMessage(&ShowPage,1) ! "[OPENING PAGE]"
 		cls
-		}
+	}
 	do
-		{
+	{
 		if display.needs_repaint and CheaporSimple ~= 2
-			{
+		{
 			color BGCOLOR, BGCOLOR
 			MenuMessage(&MakeMenu,4) ! "[WINDOW RESIZED]"
 			color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 !			""
-			cls
-			locate 1,1
+!			cls
+!			locate 1,1
 			}
 		display.needs_repaint = false
 		if not (CheaporSimple = 2 or simple_port)
@@ -1024,29 +1042,34 @@ routine ShowPage(page,end_o_game)
 			MenuMessage(&MakeMenu,3,page.name)
 		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 		if not simple_port
-			CenterTitle(page.name)
+		{
+			if page.alt_title
+			{
+				CenterTitle(page.alt_title)
+			}
+			else
+				CenterTitle(page.name)
+		}
 #ifset CHEAP
 		if not cheap
-			{
+		{
 #endif
-		if not simple_port
-			cls
-		if not system(61) ! glk or minimum port
-			locate 1,1
+			if not system(61) ! glk or minimum port
+				locate 1,TopPageMargin
 #ifset CHEAP
-			}
+		}
 #endif
 		run page.menu_text
 		if not (CheaporSimple = 2 or simple_port)
 			""
-		}
+	}
 	while (display.needs_repaint = true  )
 	window 0 ! only to draw a line in simple interpreters
 	if not (CheaporSimple = 2 or simple_port)
 		cls
 #ifset CHEAP
 	if not cheap
-		{
+	{
 #endif
 		color BGCOLOR, BGCOLOR
 		MenuMessage(&ShowPage,2) ! "[CLOSING PAGE]"
@@ -1060,10 +1083,11 @@ routine ShowPage(page,end_o_game)
 		if not simple_port
 			cls
 		if not system(61) ! glk or minimum port
-			locate 1, (display.statusline_height + 1)
+	!		locate 1, (display.statusline_height + 1)
+			locate 1, display.windowlines
 #endif
 #ifset CHEAP
-		}
+	}
 #endif
 	if not end_o_game
 	{
@@ -1086,52 +1110,52 @@ routine MenuMessage(r, num, a, b)
 
 	select r
 		case &MakeMenu
-			{
+		{
 			select num
 				case 1 : "[OPENING MENU]"
 				case 2
-					{
+				{
 					if a
 						""
 					print "[MENU NAME: \""; b ; "\"]"
-					}
+				}
 	!  some other options
 	!			case 3: print "[MENU CHOICE: \""; menuitem[a];"\"]"
 	!			case 3: print "[\""; menuitem[a];"\"]"
 				case 3
-					{
+				{
 					local l
 					l = string(_temp_string, a)
 					print to (40 - l/2);
 					print a
-					}
+				}
 				case 4 : "[WINDOW RESIZED - REDRAWING]"
 				case 5 : "[LEAVING MENU]"
 				case 6
-					{
+				{
 					print "\IReturning to the story...\i"
-					}
+				}
 				case 7 : "Opening the menu..."
-			}
+		}
 		case &Menu
-			{
+		{
 			select num
 				case 1
-					{
+				{
 					print "[N]ext item"; to (display.linelength - 11); \
 		    				"[Q]uit menu"
 					print "[P]revious item"; to (display.linelength - 17);
 					print "[Enter] to select"
-					}
+				}
 				case 2
-					{
+				{
 					! The CheapGlk version now works off numbers to make
 					! navigation as easy as possible in simple terps
 					print "Select the number of your choice or \"Q\" to exit: ";
-					}
-			}
+				}
+		}
 		case &CoolPause
-			{
+		{
 			select num
 				case 1  ! default top "press a key"
 	!				"\_ [PRESS A KEY TO CONTINUE]";
@@ -1142,28 +1166,28 @@ routine MenuMessage(r, num, a, b)
 				case 3  ! default normal "press a key"
 !					"\_\B Press a key to continue...\b"
 					"press a key to continue";
-			}
+		}
 
 		case &Help_Hints
-			{
+		{
 			select num
 				case 1
 					"[Press 'H' for another hint, or 'Q' to quit]" !;
 				case 2
 					"[No more hints.  Press any key...]"
-			}
+		}
 		case &ShowPage
-			{
+		{
 			select num
 				case 1
 					"[OPENING PAGE]"
 				case 2
 					"[CLOSING PAGE]"
 				case 3
-					{
+				{
 					print "\IReturning to the story...\i"
-					}
-			}
+				}
+		}
 }
 
 !\ The NewMenuMessages routine may be REPLACED and should return
@@ -1186,13 +1210,13 @@ routine NewMenuMessages(r, num, a, b)
 
 menu_category main_menu
 {
-name
+	name
 	{
 #if defined GAME_TITLE
-	return GAME_TITLE
+		return GAME_TITLE
 #endif
 #if undefined GAME_TITLE
-	return "Help Menu"
+		return "Help Menu"
 #endif
 	}
 }
@@ -1204,38 +1228,39 @@ option hugo_choice "About Hugo"
 #ifset _ROODYLIB_H
 	priority 10
 #endif
-	menu_text	{
-					Indent
-					"Hugo is a system created by Kent Tessman for developing and playing sophisticated computer adventure games (or \"interactive fiction\").\n"
-					Indent
-					"The complete system comprises a high-level programming language, world-simulation library, compiler, runtime engine, debugger, and other tools. Games can be designed for player input keyboard and/or mouse in addition to using Hugo's full-sentence natural-language parsing capabilities, and can make extensive use of graphics, sound, music, and video playback.\n"
-					Indent
-					"Hugo is powerful and versatile enough to have been used not only for games such as ";
-					Font(ITALIC_ON)
+	menu_text
+	{
+		Indent
+		"Hugo is a system created by Kent Tessman for developing and playing sophisticated computer adventure games (or \"interactive fiction\").\n"
+		Indent
+		"The complete system comprises a high-level programming language, world-simulation library, compiler, runtime engine, debugger, and other tools. Games can be designed for player input keyboard and/or mouse in addition to using Hugo's full-sentence natural-language parsing capabilities, and can make extensive use of graphics, sound, music, and video playback.\n"
+		Indent
+		"Hugo is powerful and versatile enough to have been used not only for games such as ";
+		Font(ITALIC_ON)
 #if defined GAME_TITLE
-					print GAME_TITLE;
+		print GAME_TITLE;
 #else
-					print "Future Boy!";
+		print "Future Boy!";
 #endif
-					Font(ITALIC_OFF)
-					", but also for presentations and tutorials, prototyping, and other applications.\n"
-					Indent
-					"Hugo's cross-platform support is broad, including official implementations for Windows, Macintosh, Linux/Unix, Windows Mobile/Pocket PC, and Palm, with additional versions available for other platforms. The source code for all components is available.\n"
-					Indent
-					"\BHugo's official website:\b"
-					Indent
-					"\Ihttp://www.generalcoffee.com/index_noflash.php?content=hugo\i"
-					""
-					Indent
-					"\BHugo By Example, a Hugo code repository:\b"
-					Indent
-					"\Ihttp://hugo.gerynarsabode.org\i\n"
-					Indent
-					"\BThe joltcountry Hugo forum:\b"
-					Indent
-					"\Ihttp://www.joltcountry.com/phpBB2/viewforum.php?f=8\i\n"
-					CoolPause(1)
-					}
+		Font(ITALIC_OFF)
+		", but also for presentations and tutorials, prototyping, and other applications.\n"
+		Indent
+		"Hugo's cross-platform support is broad, including official implementations for Windows, Macintosh, Linux/Unix, Windows Mobile/Pocket PC, and Palm, with additional versions available for other platforms. The source code for all components is available.\n"
+		Indent
+		"\BHugo's official website:\b"
+		Indent
+		"\Ihttp://www.generalcoffee.com/index_noflash.php?content=hugo\i"
+		""
+		Indent
+		"\BHugo By Example, a Hugo code repository:\b"
+		Indent
+		"\Ihttp://hugo.gerynarsabode.org\i\n"
+		Indent
+		"\BThe joltcountry Hugo forum:\b"
+		Indent
+		"\Ihttp://www.joltcountry.com/phpBB2/viewforum.php?f=8\i\n"
+		CoolPause(1)
+	}
 }
 
 option if_choice "How To Play Interactive Fiction"
@@ -1253,65 +1278,67 @@ option where_choice "Where To Get More IF"
 #ifset _ROODYLIB_H
 	priority 8
 #endif
-	menu_text	{
-					Indent
-					"\BMore Hugo games can be found at:\b"
-					Indent
-					"\Ihttp://ifarchive.org/indexes/if-archiveXgamesXhugo.html\i"
-					Indent(true)
-					"\BOther sites of interest:\b"
-					Indent
-					"The Brass Lantern (\Ihttp://brasslantern.org/\i)"
-					Indent
-					"The People's Republic of Interactive Fiction
-					(\Ihttp://pr-if.org/play/\i)"
-	!				Indent
-	!				"Brass Lantern (\Ihttp://brasslantern.org/\i)"
-					Indent
-					"The IF Database (\Ihttp://ifdb.tads.org/\i)"
-					Indent
-					"IF Reviews (\Ihttp://www.ifreviews.org/\i)"
-					Indent
-					"The IF Archive (\Ihttp://ifarchive.org/\i)\n"
+	menu_text
+	{
+		Indent
+		"\BMore Hugo games can be found at:\b"
+		Indent
+		"\Ihttp://ifarchive.org/indexes/if-archiveXgamesXhugo.html\i"
+		Indent(true)
+		"\BOther sites of interest:\b"
+		Indent
+		"The Brass Lantern (\Ihttp://brasslantern.org/\i)"
+		Indent
+		"The People's Republic of Interactive Fiction
+		(\Ihttp://pr-if.org/play/\i)"
+!				Indent
+!				"Brass Lantern (\Ihttp://brasslantern.org/\i)"
+		Indent
+		"The IF Database (\Ihttp://ifdb.tads.org/\i)"
+		Indent
+		"IF Reviews (\Ihttp://www.ifreviews.org/\i)"
+		Indent
+		"The IF Archive (\Ihttp://ifarchive.org/\i)\n"
 
-			!		"\Ihttp://www.joltcountry.com/phpBB2/viewforum.php?f=8\i\n"
-					CoolPause(1)
-					}
+!		"\Ihttp://www.joltcountry.com/phpBB2/viewforum.php?f=8\i\n"
+		CoolPause(1)
+	}
 }
 
 #ifset _ROODYLIB_H ! Only roodylib-using games can do Special Commands
 option special_choice "Special Commands"
 {
 !	in main_menu (should be added to main_menu by menulib object
-	menu_text	{
-					Indent
+	menu_text
+	{
+		Indent
 !					"Additional commands that \Imay\i work with this game,
 !					depending on your interpreter, include:\n"
-					"\BAdditional commands:\b\n"
-					SpecialCommands
-					CoolPause(1)
-					}
+		"\BAdditional commands:\b\n"
+		SpecialCommands
+		CoolPause(1)
+	}
 }
 
 routine SpecialCommands
 {
-local i, sum
-for i in init_instructions
+	local i, sum
+	for i in init_instructions
 	{
-	if &i.usage_desc
+		if &i.usage_desc
 		{
-		if i.usage_desc
+			if i.usage_desc
 			{
-			""
-			sum++
+				""
+				sum++
 			}
 		}
 	}
-if not sum
+	if not sum
 	{
-	Indent
-	"Sorry, it appears that there are no special features supported by your
-	interpreter. Try the official Hugo interpreter or Hugor TODAY!\n"
+		Indent
+		"Sorry, it appears that there are no special features supported by your
+		interpreter. Try the official Hugo interpreter or Hugor TODAY!\n"
 	}
 }
 #endif
@@ -1326,7 +1353,7 @@ option what_is "What is \"interactive fiction\"?"
 	priority 10
 #endif
 	menu_text
-		{
+	{
 !		Indent
 !		"Exactly \Iwhat is\i interactive fiction is very much a source of debate.
 !		Some say interactive fiction is a combination of storytelling and world
@@ -1341,7 +1368,7 @@ option what_is "What is \"interactive fiction\"?"
 		efforts with engaging puzzles and entertaining prose!"
 		""
 		CoolPause(1)
-		}
+	}
 }
 
 option move_around "Moving around"
@@ -1351,7 +1378,7 @@ option move_around "Moving around"
 	priority 9
 #endif
 	menu_text
-		{
+	{
 		Indent
 		"Everything described in your current location should be available to
 		interact with (unless it is explicitly out-of-reach), so rest assured, you
@@ -1373,7 +1400,7 @@ option move_around "Moving around"
 
 		""
 		CoolPause(1)
-		}
+	}
 }
 
 option look_around "Looking around"
@@ -1383,7 +1410,7 @@ option look_around "Looking around"
 	priority 8
 #endif
 	menu_text
-		{
+	{
 		Indent
 		"Getting a good look at things is important in interactive fiction. If
 		you've forgotten what the room looks like, you can always \B>LOOK\b or
@@ -1401,7 +1428,7 @@ option look_around "Looking around"
 
 		""
 		CoolPause(1)
-		}
+	}
 }
 
 option talk_chars "Talking to characters"
@@ -1411,7 +1438,7 @@ option talk_chars "Talking to characters"
 	priority 7
 #endif
 	menu_text
-		{
+	{
 		Indent
 		"In \"traditional\" IF, charactes can be interacted with using four major
 		commands:\n"
@@ -1435,7 +1462,7 @@ option talk_chars "Talking to characters"
 		<CHARACTER>\b\" will handle all of your character-interacting needs."
 		""
 		CoolPause(1)
-		}
+	}
 }
 
 option manip_objects "Manipulating objects"
@@ -1445,7 +1472,7 @@ option manip_objects "Manipulating objects"
 	priority 6
 #endif
 	menu_text
-		{
+	{
 		Indent
 		"Knowing how to work with object is very important to IF. To begin with,
 		sometimes your character will start off with objects in his or her
@@ -1485,7 +1512,7 @@ option manip_objects "Manipulating objects"
 		"Hopefully, that gives you some ideas!"
 		""
 		CoolPause(1)
-		}
+	}
 }
 
 routine PrintCommands(columns,start)
@@ -1526,7 +1553,7 @@ option do_nothing "Doing nothing at all"
 	priority 5
 #endif
 	menu_text
-		{
+	{
 		Indent
 		"Sometimes the best thing to do is to do nothing and watch how things
 		play out. Since game time doesn't pass when one isn't typing commands,
@@ -1537,7 +1564,7 @@ option do_nothing "Doing nothing at all"
 		number of turns. \BWAIT\b can be shortened to \"\BZ\b\"."
 		""
 		CoolPause(1)
-		}
+	}
 }
 
 option saving_loading "Saving, restoring, and other \"meta\" commands"
@@ -1547,7 +1574,7 @@ option saving_loading "Saving, restoring, and other \"meta\" commands"
 	priority 4
 #endif
 	menu_text
-		{
+	{
 		Indent
 		"Some commands don't affect the game world itself. They exist solely for
 		playing convenience. Some of them include-\n"
@@ -1593,7 +1620,7 @@ option saving_loading "Saving, restoring, and other \"meta\" commands"
 		Indent
 		"So, how about that?\n"
 		CoolPause(1)
-		}
+	}
 }
 #endif ! USE_DEFAULT_MENU
 

@@ -171,6 +171,7 @@ menu_category main_menu "TITLE OF YOUR MAIN MENU"
 
 option contact_choice "Contact"
 {
+	alt_title "How To Contact Me"
 	in main_menu    ! which menu it is
 	menu_text	{
 						""

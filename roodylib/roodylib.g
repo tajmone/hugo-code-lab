@@ -3,7 +3,7 @@
 !::
 
 #ifset VERSIONS
-#message "roodylib.g Grammar Version 2.0"
+#message "roodylib.g Grammar Version 2.1"
 #endif
 
 !\ Roody's note: Redefined "go" so that the somewhat ingrammatical phrase
@@ -14,6 +14,18 @@ verb "go", "walk"
 	* "out"/"off" object                                          DoGo
 	* "out"/"outside"                                       DoExit
 	* object                                                DoGo
+
+! Changed "look in"'s grammar to allow transparent, non-container objects
+verb "look", "l", "examine", "x", "watch"
+	*                                                       DoLookAround
+	* "around"						DoLookAround
+	* "in"/"inside" object                               DoLookIn
+	* "on" platform                                         DoLookIn
+	* "at"/"to" object                                      DoLook
+	* "out"/"through" object                                DoLookThrough
+	* "under"/"underneath"/"beneath"/"below" object         DoLookUnder
+	* "beside"/"behind"/"around" object                     DoLookUnder
+	* object                                                DoLook
 
 verb "push","pull","press","move","roll"
 	* object "to" xobject			DoPushDirTo
@@ -48,6 +60,26 @@ verb "scope"
 
 xverb "verbtest"
 	*	object         DoVerbTest
+#endif
+
+! updated "wear" and "remove" to use new checkheld system
+! also, the no-checkheld "remove" behavior now defaults to held
+! objects unless a parent is spec
+verb "wear"
+	*                                DoVague
+#ifset USE_CHECKHELD
+	* multi                          DoWear_Checkheld
+#else
+	* multiheld                      DoWear
+#endif
+
+verb "remove"
+	*                                DoVague
+	* multi "from"/"outof"/"offof" parent       DoGet
+#ifset USE_CHECKHELD
+	* multi                          DoTakeOff_Checkheld
+#else
+	* multi                      DoTakeOff
 #endif
 
 ! Roody's note: Pre-defining "empty" before verblib.g. Alterred to not

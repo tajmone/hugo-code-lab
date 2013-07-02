@@ -1,5 +1,10 @@
 Ok, I've started a changelog!
 v 3.4 - * Updated DescribePlace so it can be called without arguments
+	* Found another USE_PLURAL_OBJECTS DescribePlace bug in the NEW_DESC stuff
+	* Updated SpecialDesc, WhatsIn, DoTakeOff
+	* Checkheld versions of DoWear and DoTakeOff
+	* Updated FindObject, ExcludeFromAll, VerbHeldMode, SpeakTo, CheckReach
+	* DoLookIn no longer requires container grammar (now works with non-container, transparent objects)
 v 3.3 - * Fixed a bug where the 'bottom justification' code in WriteStatus was causing [MORE] prompts in Gargoyle
 	* added display.needs_repaint-clearing code to InitScreen
 	* PrintStatusLine always does Infocom-style statuslines (a space to the left and right) to force compatibility with DOS terps

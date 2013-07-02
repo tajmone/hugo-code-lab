@@ -543,6 +543,7 @@ replace CharDrop(char, obj)
 
 ! Roody's note : This has extra code for components and such, a problem
 ! first noticed by Jason McWright.
+! Also added support for transparent, non-container objects
 replace CheckReach(obj)
 {
 	local i,p
@@ -552,12 +553,24 @@ replace CheckReach(obj)
 
 #ifclear NO_VERBS
 	if (verbroutine ~= &DoLook, &DoLookIn) and parent(object) and
-		parent(object) ~= player and
-		parent(object) is transparent and parent(object) is not open and
-		parent(object) is not living
+		parent(object) ~= player
 	{
-		VMessage(&DoGet, 5)     ! "X is closed."
-		return false
+	! used to check for transparent here, but FindObject should make that not
+	! necessary
+		if parent(object) is openable, not open
+		{
+			VMessage(&DoGet, 5)     ! "X is closed."
+			return false
+		}
+		elseif parent(object) is transparent, not living, not container
+		{
+#ifset _ROODYLIB_H
+			RLibMessage(&CheckReach,1,obj) ! "The <obj> is inside the <parent>."
+#else
+			print capital The(obj); " is inside "; The(parent(obj)); "."
+#endif
+			return false
+		}
 	}
 #endif
 
@@ -944,7 +957,8 @@ replace PropertyList(obj, prop, artic, conjunction)
 }
 
 !\ Roody's note: I replaced WhatsIn so printed things like the colon-printing
-(":") are sent to RLibMessages for easier message configuring. \!
+(":") are sent to RLibMessages for easier message configuring.
+  Changed a carriage return to 'print newline' \!
 
 replace WhatsIn(obj)
 {
@@ -966,7 +980,7 @@ replace WhatsIn(obj)
 
 	list_count = totallisted
 
-	if obj is not container or (obj is container and obj is platform) or
+	if obj is not container or obj is platform or
 		(obj is container and (obj is not openable or
 			(obj is openable and
 				(obj is open or obj is transparent)))) and
@@ -983,7 +997,7 @@ replace WhatsIn(obj)
 			if FORMAT & INVENTORY_F and not (FORMAT & LIST_F) and
 				list_nest = 0
 			{
-				print ""
+				print newline    ! was ' print "" '
 			}
 			return totallisted
 		}
@@ -1017,7 +1031,11 @@ replace WhatsIn(obj)
 		if obj.contains_desc    ! custom heading
 		{
 			if FORMAT & LIST_F
+#ifset _ROODYLIB_H
 				RLibMessage(&WhatsIn, 1 )  !  ":"
+#else
+				":"
+#endif
 		}
 		else
 		{
@@ -1030,14 +1048,22 @@ replace WhatsIn(obj)
 				Message(&WhatsIn, 1, totallisted)
 
 				if FORMAT & LIST_F
+#ifset _ROODYLIB_H
 					RLibMessage(&WhatsIn, 1 )  !  ":"
+#else
+					":"
+#endif
 			}
 			elseif obj is living and not obj.prep
 			{
 				! "X has..."
 				Message(&WhatsIn, 2, obj, totallisted)
 				if FORMAT & LIST_F
+#ifset _ROODYLIB_H
 					RLibMessage(&WhatsIn, 1 )  !  ":"
+#else
+					":"
+#endif
 			}
 			else
 			{
@@ -1057,6 +1083,70 @@ replace WhatsIn(obj)
 		list_nest = initial_list_nest
 	}
 	return totallisted
+}
+
+!\ Roody's note: Added some code to SpecialDesc so that if the obj is the only
+child of a parent, it still checks (and lists) any children of that obj. \!
+replace SpecialDesc(obj)
+{
+	local a, c, flag, printed_blankline
+
+	if FORMAT & LIST_F
+		return
+
+	list_count = 0
+	for a in obj
+	{
+		if a is not hidden
+		{
+			c++
+			flag = true
+		}
+		else
+			flag = false
+
+		if FORMAT & INVENTORY_F and obj = player and flag
+		{
+			if &a.inv_desc
+				Indent
+			if a.inv_desc
+			{
+				if FORMAT & LIST_F:  print newline
+				AddSpecialDesc(a)
+			}
+		}
+
+		elseif a is not moved and flag
+		{
+			if &a.initial_desc
+			{
+				print newline
+				override_indent = false
+				if FORMAT & INVENTORY_F and FORMAT & NOINDENT_F and not printed_blankline
+					print ""
+				printed_blankline = true
+				Indent
+			}
+			if a.initial_desc
+				AddSpecialDesc(a)
+		}
+	}
+	list_count = c - list_count
+	if not list_count and c
+	{
+		for a in obj
+		{
+			if children(a) and a is not quiet and
+			(a is platform or a is transparent or
+			(a is container and
+			(a is not openable or (a is openable and a is open)))) and
+			not a.list_contents
+			{
+				WhatsIn(a)
+				list_count = 0
+			}
+		}
+	}
 }
 
 ! Roody's note: Changed it so word[1] is cleared when leaving the routine
@@ -2116,6 +2206,20 @@ replace ExcludeFromAll(obj)
 	if obj is hidden
 		return true
 
+! in most cases, disallow >WEAR ALL / REMOVE ALL
+#ifclear USE_CHECKHELD
+	if verbroutine = &DoTakeOff, &DoWear
+#else
+	if verbroutine = &DoTakeOff_Checkheld, &DoWear_Checkheld
+#endif
+	{
+#ifset AIF
+! Make >WEAR ALL and >REMOVE ALL only acknowledge clothes
+		if obj is not clothing
+#endif
+		return true
+	}
+
 	! Exclude things NPCs are carrying unless the NPC is explicitly
 	! given as the parent
 	if parent(obj) is living
@@ -2124,11 +2228,11 @@ replace ExcludeFromAll(obj)
 			return false
 		return true
 	}
-
 	return false
 }
 
 ! Roody's note: FindObject tweaked to get rid of jumps, just because
+! Added some new checkheld code
 replace FindObject(obj, objloc, recurse)
 {
 	local a, p
@@ -2213,6 +2317,18 @@ replace FindObject(obj, objloc, recurse)
 		if obj is switchable and obj is not switchedon
 			this_parse_rank--
 	}
+#ifset USE_CHECKHELD
+	case &DoWear_Checkheld
+	{
+		if obj is clothing and obj is worn
+			this_parse_rank--
+	}
+	case &DoTakeOff_CheckHeld
+	{
+		if obj is clothing and obj is not worn
+			this_parse_rank--
+	}
+#else
 	case &DoWear
 	{
 		if obj is clothing and obj is worn
@@ -2223,6 +2339,7 @@ replace FindObject(obj, objloc, recurse)
 		if obj is clothing and obj is not worn
 			this_parse_rank--
 	}
+#endif
 #endif	! #ifclear NO_VERBS
 
 #ifset USE_CHECKHELD
@@ -2230,8 +2347,7 @@ replace FindObject(obj, objloc, recurse)
 	{
 		if checkheld is plural		! >DROP ALL, etc. ...
 		{
-			if (verbroutine = &DoDrop_CheckHeld, &DoPutonGround_CheckHeld) or
-				(verbroutine = &DoPutIn_CheckHeld and xobject)
+			if CheckHeld_Verb_Check
 			{
 				if obj is not checkheld_flag
 				{
@@ -2249,8 +2365,7 @@ replace FindObject(obj, objloc, recurse)
 		}
 		elseif obj is checkheld_flag	! ...or >DROP OBJECT, etc.
 		{
-			if (verbroutine = &DoDrop_CheckHeld, &DoPutonGround_CheckHeld) or
-				(verbroutine = &DoPutIn_CheckHeld and xobject)
+			if CheckHeld_Verb_Check
 			{
 				this_parse_rank += 100
 			}
@@ -2512,6 +2627,18 @@ replace FindObject(obj, objloc, recurse)
 #endif
 	return found_result
 }
+
+#ifset USE_CHECKHELD
+! The new code in this routine makes it so items must be held for >WEAR ALL or
+! >REMOVE ALL to work
+routine CheckHeld_Verb_Check
+{
+	if (verbroutine = &DoDrop_CheckHeld, &DoPutonGround_CheckHeld) or
+				(verbroutine = &DoPutIn_CheckHeld and xobject)				or
+				(verbroutine = &DoTakeOff_CheckHeld, &DoWear_Checkheld)
+	return true
+}
+#endif
 
 !\ Roody's note: This version of HoursMinutes should work for several
 "days" (up to 22) \!
@@ -2974,7 +3101,7 @@ PrintStatusLine ! redraw PrintStatusLine in case screen size changed
 #endif
 
 	local r
-	r = PreParseError
+	r = PreParseError(errornumber,obj)
 	if r
 	{
 		parser_data[PARSER_STATUS] = PARSER_RESET
@@ -3117,6 +3244,24 @@ PrintStatusLine ! redraw PrintStatusLine in case screen size changed
 
 		case 9
 		{
+#ifclear AIF
+#ifclear USE_CHECKHELD
+			if verbroutine = &DoWear, &DoTakeOff
+#else
+			if verbroutine = &DoWear_Checkheld, &DoTakeOff_Checkheld
+#endif
+			{
+				print "Be specific about what you'd like to ";
+				if word[1] = "take"
+				{
+					print "take off";
+				}
+				else
+					print parse$;
+				"."
+				return true
+			}
+#endif
 			print "Nothing to ";
 			if verbroutine
 				print parse$; "."
@@ -3261,7 +3406,7 @@ PrintStatusLine ! redraw PrintStatusLine in case screen size changed
 !\ Roody's note - PreParseError is a routine solely for being replaced.
 Use it for any code you want to run before parser error messages are printed.
 \!
-routine PreParseError
+routine PreParseError(errornumber,obj)
 {}
 
 ! Roody's note: Removes the jump command... just because.
@@ -3557,11 +3702,16 @@ replace ShortDescribe(obj)
 	AssignPronoun(obj)
 
 	list_count = 0
-	if children(obj) > 0 and (obj is not container or
-		(obj is container and obj is not openable) or
-		(obj is container and obj is openable and
-			(obj is open or obj is transparent))) and
-		obj is not quiet
+!	if children(obj) > 0 and (obj is not container or
+!		(obj is container and obj is not openable) or
+!		(obj is container and obj is openable and
+!			(obj is open or obj is transparent))) and
+!		obj is not quiet
+
+	if children(obj) > 0 and (obj is platform or obj is transparent or
+	(obj is container and
+	(obj is not openable or (obj is openable and obj is open)))) and
+	obj is not quiet
 	{
 		list_nest = 1
 		WhatsIn(obj)
@@ -3578,12 +3728,16 @@ replace ShortDescribe(obj)
 ! player tries talking to a character.
 replace SpeakTo(char)
 {
-	local TryOrder, IgnoreResponse, retval, stay, same, different
+	local a, v, TryOrder, IgnoreResponse, retval, stay, same, different
 #ifset USE_CHECKHELD
 	if verbroutine = &DoDrop_CheckHeld
 		verbroutine = &DoDrop
 	elseif verbroutine = &DoPutIn_CheckHeld
 		verbroutine = &DoPutIn
+	elseif verbroutine = &DoTakeOff_CheckHeld
+		verbroutine = &DoTakeOff
+	elseif verbroutine = &DoWear_CheckHeld
+		verbroutine = &DoWear
 #endif
 
 #ifset VERBSTUBS
@@ -3614,6 +3768,44 @@ replace SpeakTo(char)
 		print "]\b"
 	}
 #endif
+
+	v = verbroutine
+	a = actor
+	actor = player
+	verbroutine = &SpeakTo
+	retval = player.before
+	actor = a
+
+	if retval
+	{
+#ifset DEBUG
+		if debug_flags & D_PARSE
+		{
+			print "\B["; player.name;
+			if debug_flags & D_OBJNUM
+				print " ["; number player; "]";
+			print ".before returned "; number retval; "]\b"
+		}
+#endif
+		return retval
+	}
+
+	retval = location.before
+	if retval
+	{
+#ifset DEBUG
+		if debug_flags & D_PARSE
+		{
+			print "\B["; location.name;
+			if debug_flags & D_OBJNUM
+				print " ["; number location; "]";
+			print "before returned "; number retval; "]\b"
+		}
+#endif
+		return retval
+	}
+
+	verbroutine = v
 
 	if char is not living
 	{
@@ -3736,6 +3928,23 @@ replace SpeakTo(char)
 	}
 	return retval
 }
+
+#ifset USE_CHECKHELD
+! Roody's note: new VerbHeldMode to work with checkheld wear/remove system
+replace VerbHeldMode(w)
+{
+	if w = "get", "take", "grab", "pick" ! , "remove"
+	{
+		return -1			! explicitly notheld
+	}
+	elseif w = "drop", "put", "leave", "place", "throw", "insert",
+		"give", "offer"  , "remove", "wear"
+	{
+		return 1			! explicitly held
+	}
+	return 0
+}
+#endif
 
 !----------------------------------------------------------------------------
 !* "NEW_STYLE_PRONOUNS"
@@ -6956,7 +7165,9 @@ replace DoLock
 
 !\ Roody's note: I added a flag called NO_LOOK_TURNS. #set it if you want your
 game to not count LOOK moves (LOOK, EXAMINE <object>, LOOK THROUGH <object)
-as turns. \!
+as turns.
+
+Added children-listing to all transparent objects. \!
 
 replace DoLook
 {
@@ -6971,7 +7182,8 @@ replace DoLook
 			VMessage(&DoLook, 2)
 
 !		if object is living, transparent, not quiet
-		if ((object is living, transparent) or
+		if ( object is transparent or
+		    !(object is living, transparent) or
 			object is platform or
 			(object is container and (object is open or object is not openable))) and
 			object is not quiet ! and object is not already_listed
@@ -7015,7 +7227,8 @@ still take a turn (so if you DON'T want that, you'll have to replace it).
 
 Just the same, I decided that with NO_LOOK_TURNS, LOOK IN defaults to
 not-taking-a-turn, so if you want it to take a turn, you'll have to replace it.
-\!
+
+Also, non-container, transparent items are now allowed. \!
 
 replace DoLookIn
 {
@@ -7025,6 +7238,24 @@ replace DoLookIn
 
 	if not light_source
 		VMessage(&DoLook, 1)     ! "It's too dark to see anything."
+	elseif object is not container and object is not transparent
+		ParseError(12,object) ! "You can't do that with the thing."
+	elseif object is living
+	{
+	!\ I don't know how useful this will be, but I put in an after
+	check for characters so you can have character-specific responses to
+	LOOK IN <PERSON>. \!
+		if object.after
+		{
+			return true
+		}
+		else
+#ifset _ROODYLIB_H
+			RLibVMessage(&DoLookIn,1) ! "You can't do that with so-and-so."
+#else
+			ParseError(12,object)
+#endif
+	}
 	else
 	{
 		if object is container and (object is openable and
@@ -7208,6 +7439,38 @@ replace DoScore
 		VMessage(&DoScore)               ! no scorekeeping
 	else
 		PrintScore
+}
+
+! Roody's note: Added some other situations where >GET could be called.
+replace DoTakeOff
+{
+!	if not Contains(player, object)
+!	{
+!		! So >REMOVE LOCK will >TAKE LOCK, etc.
+!		return Perform(&DoGet, object)
+!	}
+!	else
+	if parent(object) ~= player and
+	not (object is worn and object is clothing)
+	{
+		! So >REMOVE LOCK will >TAKE LOCK, etc.
+		return Perform(&DoGet, object)
+	}
+	if object is not clothing
+	{
+		VMessage(&DoTakeOff, 1)         ! "Can't do that..."
+		return false
+	}
+
+	if object is not worn
+		VMessage(&DoTakeOff, 2)          ! "You're not wearing that."
+	else
+	{
+		object is not worn
+		if not object.after
+			VMessage(&DoTakeOff, 3)  ! "You take it off."
+	}
+	return true
 }
 
 !\ Roody's note: The after_undo array is a way to execute code after a
@@ -7681,8 +7944,10 @@ replace Describeplace(place, long)
             obj is known
             if player not in obj and
            !    (obj is open or obj is not openable)
-				((obj is container and (obj is open or obj is transparent))  or
-				obj is platform) and obj is not quiet
+			!	((obj is container and (obj is open or obj is transparent))  or
+			!	obj is platform) and obj is not quiet
+				(obj is open or obj is not openable or obj is platform or
+				obj is transparent) and obj is not quiet
             {
                list_nest = 1
                WhatsIn(obj)
@@ -8256,10 +8521,12 @@ routine AttachablesScenery(place, for_reals)
 		{
 			if obj.type = scenery
 			{
-				if player not in obj and
-	!				(obj is open or obj is not openable)
-					((obj is container and (obj is open or obj is transparent))  or
-					obj is platform) and obj is not quiet
+            if player not in obj and
+           !    (obj is open or obj is not openable)
+			!	((obj is container and (obj is open or obj is transparent))  or
+			!	obj is platform) and obj is not quiet
+				(obj is open or obj is not openable or obj is platform or
+				obj is transparent) and obj is not quiet
 				{
 					local a
 					obj is not already_listed
@@ -8504,6 +8771,25 @@ routine DoPushDirTo
 		}
 }
 #endif ! USE_ROLLABLES
+
+! Roody's note: Checkheld versions of DoWear and DoTakeOff
+#ifset USE_CHECKHELD
+routine DoTakeOff_CheckHeld		! See above re: ImplicitTakeForDrop
+{
+	if parent(object) ~= player and
+	not (object is worn and object is clothing)
+	{
+		! So >REMOVE LOCK will >TAKE LOCK, etc.
+		return Perform(&DoGet, object)
+	}
+	return CallVerbCheckHeld(&DoTakeOff, location)
+}
+
+routine DoWear_CheckHeld		! See above re: ImplicitTakeForDrop
+{
+	return CallVerbCheckHeld(&DoWear, location)
+}
+#endif
 
 #ifclear NO_XYZZY
 routine DoXYZZY
@@ -9013,6 +9299,14 @@ routine RLibMessage(r, num, a, b)
 	if NewRLibMessages(r, num, a, b):  return
 
 	select r
+		case &CheckReach
+		{
+			select num
+				case 1
+				{
+					print capital The(a) ; " is inside "; The(parent(a)); "."
+				}
+		}
 		case &DescribePlace
 		{
 			select num
@@ -9171,6 +9465,39 @@ routine NewRlibOMessages(obj, num, a, b)
 	select obj
 
 !	case <object>
+!	{
+!		select num
+!		case 1:
+!	}
+
+	case else : return false
+
+	return true ! this line is only reached if we replaced something
+}
+
+routine RlibVMessage(r, num, a, b)
+{
+	! Check first to see if the new messages routine provides a
+	! replacement message:
+	if NewRlibVMessages(r, num, a, b):  return
+
+	select r
+
+	case &DoLookIn
+	{
+		select num
+		case 1
+		{
+			ParseError(12,object)
+		}
+	}
+}
+
+routine NewRlibVMessages(r, num, a, b)
+{
+	select r
+
+!	case <first routine>
 !	{
 !		select num
 !		case 1:
