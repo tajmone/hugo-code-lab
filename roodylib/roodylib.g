@@ -3,7 +3,7 @@
 !::
 
 #ifset VERSIONS
-#message "roodylib.g Grammar Version 2.1"
+#message "roodylib.g Grammar Version 2.2"
 #endif
 
 !\ Roody's note: Redefined "go" so that the somewhat ingrammatical phrase
@@ -109,6 +109,22 @@ verb "empty", "unload"
 verb "enter"
 	*				DoEnter
 	* object		DoEnter
+
+!\ Roody's note - Mike Snyder pointed out that it's not optimal that "kick", by
+default, points to DoHit.  Sending the command to its own verb routine makes
+it easier to replace or catch with before routines.
+\!
+verb "kick"
+	*			  DoVague
+	* object   DoKick
+
+! Roody's note: Defining DoHit verbs to include "smash"
+verb "hit", "strike", "break", "attack", "whack", "beat", \
+	"punch", "smash", "clobber"
+	*                                                       DoVague
+	* object "with"/"using" held                            DoHit
+	* object                                                DoHit
+
 ! Roody's note: I've found that if you support "swim", players will also try
 ! "swim in [object]"
 #ifset _VERBSTUB_G

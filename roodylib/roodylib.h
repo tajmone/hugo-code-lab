@@ -5,11 +5,11 @@
 #ifclear _ROODYLIB_H
 #set _ROODYLIB_H
 
-constant ROODYBANNER "RoodyLib Version 3.4"
-constant ROODYVERSION "3.4"
+constant ROODYBANNER "RoodyLib Version 3.5"
+constant ROODYVERSION "3.5"
 
 #ifset VERSIONS
-#message "roodylib.h version 3.4"
+#message "roodylib.h version 3.5"
 #endif
 
 !----------------------------------------------------------------------------
@@ -3251,7 +3251,9 @@ PrintStatusLine ! redraw PrintStatusLine in case screen size changed
 			if verbroutine = &DoWear_Checkheld, &DoTakeOff_Checkheld
 #endif
 			{
-				print "Be specific about what you'd like to ";
+				print "Be specific about what you'd like ";
+							if player_person ~= 2:  print The(player, true); " ";
+				print "to ";
 				if word[1] = "take"
 				{
 					print "take off";
@@ -6810,6 +6812,60 @@ replace DoEnter
 	return
 }
 
+! Roody's note: Fixed a bug Juhana Leinonen found where "X is closed."
+! messages weren't properly printing the parent's name.
+replace DoExit
+{
+	local p
+
+#ifclear NO_OBJLIB
+	! >GO OUT winds up calling DoExit with object = out_obj, thanks to
+	! the direction-parsing code in Perform().  English ambiguities being
+	! what they are, we correct that interpretation of "out" here, and
+	! treat the command as a generic instruction to exit whatever
+	! container context we may be in.
+	if object = out_obj
+		object = nothing
+
+	if object = nothing or object = location
+	{
+		if player in location and out_obj in direction
+		{
+			word[1] = out_obj.noun
+			word[2] = ""
+			return Perform(&DoGo)
+		}
+	}
+	elseif object = d_obj and player in location
+	{
+		return Perform(&DoGo, object)
+	}
+#endif
+
+	p = parent(player)
+
+#ifclear NO_OBJLIB
+	if object and player not in object
+#else
+	if object and player not in object
+#endif
+		VMessage(&DoExit, 1)             ! "You aren't in that."
+	elseif p is openable, not open
+	{
+		object = p
+		VMessage(&DoLookIn, 1)           ! "X is closed."
+	}
+	else
+	{
+		if object = nothing
+			object = p
+		move player to location
+		if not object.after
+			VMessage(&DoExit, 2)     ! "You get out.."
+	}
+	return true
+}
+
 ! Roody's note: Makes "you'll have to get up" message more container/platform
 ! specific also has some code to work with new vehicle replacement. Also got
 ! rid of jump.
@@ -8654,6 +8710,14 @@ routine DoFakeRefuse
 #endif
 }
 #endif
+
+! Roody's note - Mike Snyder pointed out that it's not optimal that "kick", by
+! default, points to DoHit.  Sending the command to its own verb routine makes
+! it easier to replace or catch with before routines.
+routine DoKick
+{
+	return Perform(&DoHit, object)
+}
 
 !\ Roody's note - DoPushDir figures out what direction the player is trying to
 push something, for accurate response messages (after finding the direction,
