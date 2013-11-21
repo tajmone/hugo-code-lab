@@ -2,6 +2,8 @@ Ok, I've started a changelog!
 v 3.5 - * Fixed a bug in DoExit where "X is closed." wasn't printing properly
 	* "kick" now points to a DoKick routine (which directs to DoHit by default)
 	* Added "smash" to DoHit
+	* Got rid of unneccessary RLibVMessage routine
+	* Updated DoGo replacement to not say "You can't enter that" when go-ing at an unenterable object. Instead, it says, "the object is here."
 v 3.4 - * Updated DescribePlace so it can be called without arguments
 	* Found another USE_PLURAL_OBJECTS DescribePlace bug in the NEW_DESC stuff
 	* Updated SpecialDesc, WhatsIn, DoTakeOff

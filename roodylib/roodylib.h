@@ -6868,7 +6868,9 @@ replace DoExit
 
 ! Roody's note: Makes "you'll have to get up" message more container/platform
 ! specific also has some code to work with new vehicle replacement. Also got
-! rid of jump.
+! rid of jump. Also changed the answer for trying to go to a nearby,
+! non-enterable object from "You can't enter that" to "<The object> is right
+! here."
 replace DoGo
 {
 	local moveto, JumpToEnd
@@ -6961,7 +6963,10 @@ if not JumpToEnd
 		moveto = object.door_to
 		if not moveto
 		{
-			VMessage(&DoEnter, 2)  ! "You can't enter..."
+			if object is container and (word[2] ~= "to","toward","towards")
+				VMessage(&DoEnter, 2)  ! "You can't enter..."
+			else
+				RLibMessage(&DoGo, 1) ! "The <object> is right here."
 			return
 		}
 		if moveto = 1
@@ -7302,15 +7307,9 @@ replace DoLookIn
 	check for characters so you can have character-specific responses to
 	LOOK IN <PERSON>. \!
 		if object.after
-		{
 			return true
-		}
 		else
-#ifset _ROODYLIB_H
-			RLibVMessage(&DoLookIn,1) ! "You can't do that with so-and-so."
-#else
-			ParseError(12,object)
-#endif
+			ParseError(12,object) ! "You can't do that with so-and-so."
 	}
 	else
 	{
@@ -9356,6 +9355,11 @@ replace last_library_object
 !* ROODYLIB MESSAGES
 !----------------------------------------------------------------------------
 
+! Roody's note:  RLibMessage handles both hugolib and verb routine messages
+! as it's not really necessary to split them up into multiple routines.
+! Still, objlib-esque messages are handled by RLibOMessage, which can be
+! found further below.
+
 routine RLibMessage(r, num, a, b)
 {
 	! Check first to see if the NewRLibMessages routine provides a
@@ -9405,6 +9409,12 @@ routine RLibMessage(r, num, a, b)
 					print newline
 					Font(BOLD_OFF)
 				}
+		}
+		case &DoGo
+		{
+			select num
+				case 1	!  going to a non-enterable object in the same room
+					print Cthe(object) ; IsorAre(object,true) ;" right here."
 		}
 		case &DoListen
 		{
@@ -9469,12 +9479,14 @@ routine RLibMessage(r, num, a, b)
 				print "Locked."
 			}
 		}
+#ifclear NO_XYZZY
 		case &DoXYZZY
 		{
 		! text suggested by Rob O'Hara. Approved by Ben Parrish.
 		print capital player.name; " mumble"; MatchSubject(player);
 		" an ancient reference to an archaic game. Nothing happens."
 		}
+#endif
 		case &ListObjects
 		{
 			select num
@@ -9539,36 +9551,4 @@ routine NewRlibOMessages(obj, num, a, b)
 	return true ! this line is only reached if we replaced something
 }
 
-routine RlibVMessage(r, num, a, b)
-{
-	! Check first to see if the new messages routine provides a
-	! replacement message:
-	if NewRlibVMessages(r, num, a, b):  return
-
-	select r
-
-	case &DoLookIn
-	{
-		select num
-		case 1
-		{
-			ParseError(12,object)
-		}
-	}
-}
-
-routine NewRlibVMessages(r, num, a, b)
-{
-	select r
-
-!	case <first routine>
-!	{
-!		select num
-!		case 1:
-!	}
-
-	case else : return false
-
-	return true ! this line is only reached if we replaced something
-}
 #endif ! _ROODYLIB_H

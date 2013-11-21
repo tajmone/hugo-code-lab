@@ -3,15 +3,16 @@
 !::
 
 #ifset VERSIONS
-#message "roodylib.g Grammar Version 2.2"
+#message "roodylib.g Grammar Version 2.3"
 #endif
 
 !\ Roody's note: Redefined "go" so that the somewhat ingrammatical phrase
-"go off of <object>" can be supported. We'll see if this causes any problems.\!
+"go off of <object>" can be supported. We'll see if this causes any problems.
+Also, "go to" now directs to DoGo, not DoEnter.   \!
 verb "go", "walk"
 	*							DoGo
-	* "to"/"in"/"into"/"inside"/"through" object            DoEnter
-	* "out"/"off" object                                          DoGo
+	* "in"/"into"/"inside"/"through" object            DoEnter
+	* "out"/"off"/"to"/"toward"/"towards" object            DoGo
 	* "out"/"outside"                                       DoExit
 	* object                                                DoGo
 

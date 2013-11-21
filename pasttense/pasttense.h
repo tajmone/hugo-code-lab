@@ -12,14 +12,14 @@ Changelog:
 #set _PASTTENSE_H
 
 #ifset VERSIONS
-#message "PastTense.h Version 1.3"
+#message "PastTense.h Version 1.4"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj pasttense_version "PastTense Version 1.3"
+version_obj pasttense_version "PastTense Version 1.4"
 {
 	in included_extensions
 	desc_detail
@@ -36,6 +36,16 @@ constant WERE_WORD        "were"
 constant THERE_WORD	"there"
 
 global pasttense
+
+replace DarkWarning
+{
+	print CThe(player); " stumble";
+	if not pasttense
+		MatchSubject(player)
+	else
+		print "d";
+	" around in the dark."
+}
 
 routine WasorWere(obj, a)
 {
