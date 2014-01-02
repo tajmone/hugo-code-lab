@@ -1,9 +1,11 @@
 !\-----------------------------------------------------------------------
-pasttense.h version 1.3 by Roody Yogurt
+pasttense.h version 1.5 by Roody Yogurt
 set the pasttense global to true to make various verb and parser messages
 past tense. you may prefer fewer or more past tense responses. go wild
 with it.
 Changelog:
+1.5 - added more Roodylib compatibility
+1.4 - fixed DarkWarning
 1.3 - added Use_EXTENSION_CREDITING stuff
 1.1- decided ListObjects needed replacing
 -----------------------------------------------------------------------\!
@@ -12,14 +14,14 @@ Changelog:
 #set _PASTTENSE_H
 
 #ifset VERSIONS
-#message "PastTense.h Version 1.4"
+#message "PastTense.h Version 1.5"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj pasttense_version "PastTense Version 1.4"
+version_obj pasttense_version "PastTense Version 1.5"
 {
 	in included_extensions
 	desc_detail
@@ -1064,6 +1066,185 @@ replace NewParseError(errornumber, obj)
 	parser_data[PARSER_STATUS] = PARSER_RESET
 	return true                             ! message already printed
 }
+#ifset _ROODYLIB_H
+replace NewRlibMessages(r, num, a, b)
+{
+   select r
+		case &CheckReach
+		{
+			select num
+				case 1
+				{
+					print capital The(a) ;
+					if pasttense
+						WasorWere(a,true)
+					else
+						IsorAre(a,true)
+					print " inside "; The(parent(a)); "."
+				}
+		}
+		case &DoGo
+		{
+			select num
+				case 1	!  going to a non-enterable object in the same room
+					print Cthe(object) ;
+					if pasttense
+						WasorWere(object,true)
+					else
+						IsorAre(object,true)
+					print " right here."
+		}
+		case &DoListen
+		{
+			select num
+				case 1   ! default location-listening
+				{
+					print capital player.pronoun #1;
+					if pasttense
+						print " heard";
+					else
+						MatchPlural(player, "hears", "hear")
+					" nothing unexpected."
+				}
+				case 2   ! default object-listening
+				{
+					if pasttense
+						"That would have served no purpose."
+					else
+						"That would serve no purpose."
+				}
+		}
+		case &DoPushDirTo
+		{
+        ! Let's set default DoPushDirTo messages
+		select num
+			case 1
+			{
+				if pasttense
+					"That would not have helped."
+				else
+					"That would not help the present situation."
+			}
+			case 2:  print "Try pushing "; Art(object); " in a direction."
+			case 3
+			{
+				print CThe(player);
+				if pasttense
+					print " pushed ";
+				else
+					MatchPlural(player, " pushes ", " push ")
+				print Art(object); " over to the..."
+			}
+			case 4
+			{
+				print CArt(object);
+				if pasttense
+				{
+					print " slowed ";
+				}
+				else
+					 print " slows ";
+				"to a stop."
+			}
+		}
+		case &DoSmell
+		{
+			select num
+				case 1
+				{
+				print capital player.pronoun #1;
+				if pasttense
+					print " didn't";
+				else
+					MatchPlural(player, "doesn't", "don't")
+				" smell anything unusual."
+				}
+				case 2 : "Why do that?"
+		}
+		case &DoUnlock
+		{
+			select num
+			case 1
+			{
+				if a
+					print "(with "; The(xobject); ")"
+				print "Unlocked."
+			}
+			case 2
+			{
+				print capital player.pronoun #1;
+				if pasttense
+					print " couldn't ";
+				else
+					print " can't ";
+				print "reach "; The(a); ", which ";
+				if pasttense
+				{
+					print "was";
+				}
+				else
+					print "is currently";
+				print "in "; The(parent(a)); "."
+			}
+		}
+		case &DoLock
+		{
+			select num
+			case 1
+			{
+				if a
+					print "(with "; The(xobject); ")"
+				print "Locked."
+			}
+		}
+#ifclear NO_XYZZY
+		case &DoXYZZY
+		{
+		! text suggested by Rob O'Hara. Approved by Ben Parrish.
+		print capital player.name; " mumble";
+		if pasttense
+			print "d";
+		else
+			MatchSubject(player)
+		" an ancient reference to an archaic game. Nothing happens."
+		}
+#endif  ! NO_XYZZY
+   case else : return false
+   return true ! this line is only reached if we replaced something
+}
+
+replace NewRlibOMessages(obj, num, a, b)
+{
+	select obj
+
+	case character
+	{
+		select num
+			case 1
+			{
+				print CThe(xobject) ;
+				if pasttense
+					print " allowed ";
+				else
+					print " allows ";
+				print player.name ; " to take ";
+				print The(object); "."
+			}
+	}
+	case door
+	{
+		select num
+		case 3
+		{
+		print "(unlocking "; Art(self); " first)"
+		}
+	}
+
+	case else : return false
+
+	return true ! this line is only reached if we replaced something
+}
+#endif !  _ROODYLIB_H
 
 replace MatchSubject(obj)
 {
@@ -1072,6 +1253,49 @@ replace MatchSubject(obj)
 	elseif obj is not plural
 		print "s";
 }
+
+#if defined DoSearch
+replace DoSearch
+{
+	if object = player
+	{
+		"Search ";
+		The(player)
+		" indeed."
+	}
+	elseif object is container and child(object)
+		Perform(&DoLookIn, object)
+	elseif object is living
+	{
+		print CThe(object);
+		if not pasttense
+			print MatchPlural(object, "doesn't", "don't");
+		else
+			" didn't";
+		" let ";
+		The(player)
+		if object.pronouns #2
+		{
+			" search ";
+			if object.pronouns #2
+				print object.pronouns #2;
+			else
+				print object.pronoun;
+		}
+		print "."
+	}
+	else
+	{
+		CThe(player)
+		if not pasttense
+			MatchPlural(player, "doesn't", "don't")
+		else
+			" didn't";
+		" find anything new."
+	}
+	return true
+}
+#endif ! if defined DoSearch
 
 #ifset _VERBSTUB_G
 
@@ -1104,6 +1328,7 @@ replace DoUse
 	print The(object, true); "."
 }
 
+#ifclear _ROODYLIB_H
 replace DoSmell
 {
 	print capital player.pronoun #1;
@@ -1114,6 +1339,7 @@ replace DoSmell
 	" smell anything unusual."
 	return true
 }
+#endif ! ifclear _ROODYLIB_H
 
 replace DoJump
 {
@@ -1415,47 +1641,6 @@ replace DoYell
 		"s."
 	else
 		"ed."
-	return true
-}
-
-replace DoSearch
-{
-	if object = player
-	{
-		"Search ";
-		The(player)
-		" indeed."
-	}
-	elseif object is container and child(object)
-		Perform(&DoLookIn, object)
-	elseif object is living
-	{
-		print CThe(object);
-		if not pasttense
-			print MatchPlural(object, "doesn't", "don't");
-		else
-			" didn't";
-		" let ";
-		The(player)
-		if object.pronouns #2
-		{
-			" search ";
-			if object.pronouns #2
-				print object.pronouns #2;
-			else
-				print object.pronoun;
-		}
-		print "."
-	}
-	else
-	{
-		CThe(player)
-		if not pasttense
-			MatchPlural(player, "doesn't", "don't")
-		else
-			" didn't";
-		" find anything new."
-	}
 	return true
 }
 

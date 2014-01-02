@@ -5,11 +5,11 @@
 #ifclear _ROODYLIB_H
 #set _ROODYLIB_H
 
-constant ROODYBANNER "RoodyLib Version 3.5"
-constant ROODYVERSION "3.5"
+constant ROODYBANNER "RoodyLib Version 3.6"
+constant ROODYVERSION "3.6"
 
 #ifset VERSIONS
-#message "roodylib.h version 3.5"
+#message "roodylib.h version 3.6"
 #endif
 
 !----------------------------------------------------------------------------
@@ -7398,6 +7398,50 @@ replace DoMove
 	return true
 }
 
+!\ Roody's note: Fixes a bug found by Juhana Leinonen where, if the player is
+the only thing in the object being opened, an extra line is printed. This has a
+fix for it although I haven't decided if it's an optimal solution.
+\!
+replace DoOpen
+{
+	local tempformat
+
+	if not CheckReach(object):  return false
+
+	if object is not openable
+	{
+		VMessage(&DoOpen, 1)             ! "You can't open that."
+		return
+	}
+	elseif object is open
+		VMessage(&DoOpen, 2)             ! "It's already open."
+	elseif object is locked
+		VMessage(&DoOpen, 3)             ! "It's locked."
+	else
+	{
+		object is open
+		object is moved
+		if not object.after
+		{
+			VMessage(&DoOpen, 4)     ! "Opened."
+
+			FindLight(location)     ! in case the light source
+						! has been revealed
+			if children(object) and object is not quiet and
+			not (children(object) = 1 and child(object) = player)
+			{
+				print ""
+				tempformat = FORMAT
+				FORMAT = FORMAT | NOINDENT_F
+				list_nest = 0
+				WhatsIn(object)
+				FORMAT = tempformat
+			}
+		}
+	}
+	return true
+}
+
 !----------------------------------------------------------------------------
 ! Roody's note: Changed DoQuit to give one final ending message
 
@@ -8586,13 +8630,13 @@ routine AttachablesScenery(place, for_reals)
 					local a
 					obj is not already_listed
 					for a in obj
-						{
+					{
 						if a is not hidden
-							{
+						{
 								ret = true
 								break
-							}
 						}
+					}
 				}
 			}
 		}
@@ -9372,7 +9416,8 @@ routine RLibMessage(r, num, a, b)
 			select num
 				case 1
 				{
-					print capital The(a) ; " is inside "; The(parent(a)); "."
+					print capital The(a) ; IsorAre(a,true); \
+					" inside "; The(parent(a)); "."
 				}
 		}
 		case &DescribePlace

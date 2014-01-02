@@ -1,4 +1,5 @@
 Ok, I've started a changelog!
+v 3.6 - * Added DoOpen replacement
 v 3.5 - * Fixed a bug in DoExit where "X is closed." wasn't printing properly
 	* "kick" now points to a DoKick routine (which directs to DoHit by default)
 	* Added "smash" to DoHit
