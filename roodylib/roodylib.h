@@ -3135,10 +3135,9 @@ PrintStatusLine ! redraw PrintStatusLine in case screen size changed
 
 		case 1
 		{
-			print CThe(player); \
-				! " can't use the word \""; \
-				MatchPlural(player, "doesn't", "don't"); \
-				" need to use the word \""; \
+			print "You";
+			MatchPlural(player, "doesn't", "don't")
+			print	" need to use the word \""; \
 				parse$;
 #ifset AMERICAN_ENGLISH
 				".\""

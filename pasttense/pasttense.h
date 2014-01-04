@@ -452,7 +452,7 @@ case &DoWaitUntil
 
 		}
 		case 8:  {
-			print "Took."
+			print CThe(player); "took "; The(object);"."
 
 			}
 		case 9:  {
@@ -844,6 +844,490 @@ replace NewMessages(r, num, a, b)
 	return true
 }
 
+replace NewOMessages(obj, num, a, b)
+{
+	select obj
+
+	case self_class
+	{
+		select num
+		! seems to be a parser response and should not be affected by tense
+		case 1
+		{
+			print "\""; capital self.name;
+			print "\" isn't quite appropriate for ";
+			print The(object); "."
+		}
+	}
+	case direction
+	{
+		select num
+		case 1
+		{
+			print CThe(player);
+			if pasttense
+			{
+				print " saw ";
+			}
+			else
+			{
+				print " see"; MatchPlural(player);
+			}
+			"nothing special ";
+			if self.article
+				"to ";
+			print The(self);
+			if not self.article
+				print " "; player.pronoun #2;
+			print "."
+		}
+		case 2
+		{
+			"You'll have to be a little more specific about
+			what you'd like";
+			if player_person ~= 2
+				print " "; The(player);
+			" to look ";
+			print self.name; "."
+		}
+	}
+	case door
+	{
+		select num
+		case 1
+		{
+			print CThe(player);
+			if pasttense
+			{
+				print " would ";
+			}
+			else
+				print " will ";
+			print "have to get ";
+			if parent(player).prep #2
+				print parent(player).prep #2; " ";
+			else
+				print "out ";
+			print "of "; The(parent(player)); " first."
+		}
+		case 2:  print "(opening "; The(self); " first)"
+		case 3:  print CThe(self); IsorAre(self, true); " locked."
+		case 4:  print CThe(self); IsorAre(self, true); " closed."
+		case 5
+		{
+			CThe(actor)
+			print " open"; MatchSubject(actor); " "; \
+			The(self); " and ";
+
+			if actor in location
+			{
+				if not pasttense
+				{
+					print "leave"; MatchSubject(actor);
+				}
+				else
+					print "left";
+			}
+			elseif location = self.between #((parent(actor) = \
+				self.between #1) + 1)
+			{
+				if not pasttense
+				{
+					print "come"; MatchSubject(actor); " in";
+				}
+				else
+					print "came in";
+			}
+			print ", closing it behind ";
+			if actor is not plural or actor = player
+				print actor.pronoun #4; "."
+			else
+				print "themselves."
+		}
+		case 6
+		{
+			print CThe(self);
+			if not pasttense
+			{
+				IsorAre(self, true)
+			}
+			else
+				WasorWere(self, true)
+			" open."
+		}
+		case 7
+		{
+			print CThe(self);
+			if not pasttense
+			{
+				IsorAre(self, true)
+			}
+			else
+				WasorWere(self, true)
+			" closed."
+		}
+	}
+
+	case component
+	{
+		print CThe(player);
+		if not pasttense
+			print " can't ";
+		else
+			print " couldn't ";
+		print "separate "; \
+				The(self); " from "; The(self.part_of); "."
+	}
+
+#ifset USE_VEHICLES
+	case vehicle
+	{
+		select num
+		case 1
+		{
+			 print "To walk, "; The(player);
+			 if not pasttense
+				" will ";
+			else
+				" would ";
+			print "have to
+				get "; self.prep #2; " of "; The(self); \
+				".  Otherwise, try \""; self.vehicle_verbs; \
+				"\" ";
+			 if self.#vehicle_verbs > 1
+				print "or \""; self.vehicle_verbs #2; "\" ";
+			 print "and a direction."
+		}
+		case 2
+		{
+			print CThe(player);
+			if not pasttense
+				IsorAre(player)
+			else
+				WasorWere(player)
+			" not in anything at the moment."
+		}
+		case 3
+		{
+			print CThe(player);
+			if not pasttense
+				IsorAre(player)
+			else
+				WasorWere(player)
+			print " "; \
+			a.prep; " "; The(a);"--try \""; a.vehicle_verbs; "\"."
+		}
+		case 4:  print "You'll have to specify a direction as well."
+		case 5
+		{
+			print CArt(obstacle); " stop";
+			if pasttense
+			{
+				print "ped";
+			}
+			else
+				MatchSubject(obstacle)
+			print " "; The(player, true); " from going anywhere."
+		}
+		case 6
+		{
+			print CThe(player);
+			if not pasttense
+				print " can't ";
+			else
+				print " couldn't ";
+			print a.vehicle_verbs; " ";
+			if object.prep
+				print object.prep;
+			else
+				print "in";
+			print " "; The(object); "."
+		}
+		case 7
+		{
+			print CThe(player);
+			if not pasttense
+				print " can't ";
+			else
+				print " couldn't ";
+			print a.vehicle_verbs; \
+			" that way."
+		}
+	}
+#endif  ! ifset USE_VEHICLES
+
+#ifset USE_PLURAL_OBJECTS
+	case plural_class
+	{
+		select num
+		case 1
+		{
+			if pluralobj_heldmode = 1
+			{
+				print CThe(player);
+				if not pasttense
+					MatchPlural(player, "doesn't", "don't")
+				else
+					print " didn't";
+				print " have any ";
+			}
+			else
+			{
+				if not pasttense
+					print "There are no ";
+				else
+					print "There were no ";
+			}
+			print self.name; " to "; VerbWord; "."
+		}
+		case 2
+		{
+			if pluralobj_heldmode = 1
+			{
+				print CThe(player); " only";
+				if not pasttense
+					MatchPlural(player, "has", "have")
+				else
+					print " had";
+				print " ";
+			}
+			else
+			{
+				print "There ";
+				if a = 1
+				{
+					if not pasttense
+						print "is";
+					else
+						print "was";
+				}
+				else
+				{
+					if not pasttense
+						print "are";
+					else
+						print "were";
+				}
+				print " only ";
+			}
+			print NumberWord(a); " ";
+			if a > 1
+				print self.noun;
+			else
+				print self.single_noun;
+			print " to "; VerbWord; "."
+		}
+		case 3
+		{
+			print CThe(player);
+			if not pasttense
+				print " will";
+			else
+				 print " would";
+			print "have to do that one "; \
+				self.single_noun; " at a time."
+		}
+	}
+#endif  ! ifset USE_PLURAL_OBJECTS
+
+#ifset USE_ATTACHABLES
+	case attachable
+	{
+		select num
+		case 1
+		{
+			print CArt(self);
+			if not pasttense
+				IsorAre(self, true)
+			else
+				WasorWere(self,true)
+			print " "; \
+				self.attached_desc; " ";
+			ListAttachments(self)
+			print "."
+		}
+		case 2
+		{
+			print CThe(player);
+			if not pasttense
+				print " see";
+			else
+				print " saw";
+			MatchSubject(player)
+			print " nothing special about "; The(self); "."
+		}
+		case 3
+		{
+			print CThe(self);
+			if not pasttense
+				IsorAre(self, true)
+			else
+				WasorWere(self,true)
+			print " "; \
+				self.attached_desc; " ";
+			ListAttachments(self)
+			print "."
+		}
+		case 4
+		{
+			print CThe(player);
+			if not pasttense
+				print " will";
+			else
+				print " would";
+			print " have to "; \
+			self.detach_verb; " before you can take it."
+		}
+		case 5:  print "(having to "; self.detach_verb; " "; \
+			The(self); " "; self.detach_prep; " "; \
+			The(self.attached_to #a); " first)"
+		case 6
+		{
+			print CThe(player);
+			if not pasttense
+				print " can't ";
+			else
+				print " couldn't ";
+			VerbWord
+			print " "; \
+			The(object); "."
+		}
+		case 7:  print "You might want to try \""; a; "\" with "; \
+			The(object); " instead of "; "\""; VerbWord; "\"."
+		case 8:
+		{
+			print "You'll have to be a little more specific
+				about what you'd like ";
+			if player_person ~= 2:  print The(player, true); " ";
+			print "to "; object.attach_verb; " "; \
+			The(object); " "; object.attach_prep; "."
+		}
+		case 9:  print "(taking "; The(object); " first)"
+		case 10
+		{
+			print CThe(player);
+			if not pasttense
+				print " can't ";
+			else
+				print " couldn't ";
+			VerbWord
+			print " "; \
+			The(object); " "; object.attach_prep; " "; \
+			The(xobject); "."
+		}
+		case 11
+		{
+			print "Except that "; The(object);
+			if not pasttense
+				IsorAre(object, true)
+			else
+				WasorWere(object, true)
+			print " already "; \
+			object.attached_desc; " "; The(xobject); "."
+		}
+		case 12
+		{
+			print "Except that "; The(object);
+			if not pasttense
+				print " is ";
+			else
+				print " was ";
+			print "already "; \
+			object.attached_desc; " ";
+			ListAttachments(object)
+			print "."
+		}
+		case 13:  print CThe(player); " "; object.attach_verb; \
+			MatchSubject(player); " "; The(object); " "; \
+			object.attach_prep; " "; The(xobject); "."
+		case 14
+		{
+			print "Except that "; The(object);
+			if not pasttense
+				IsorAre(object, true)
+			else
+				WasorWere(object, true)
+			print " not "; \
+			object.attached_desc; " "; The(xobject); "."
+		}
+		case 15
+		{
+			print "Except that "; The(object);
+			if not pasttense
+				IsorAre(object, true)
+			else
+				WasorWere(object, true)
+			print " not "; \
+			object.attached_desc; " anything."
+		}
+		case 16:
+		{
+			print "You'll have to be a little more specific
+				about what you'd like ";
+			if player_person ~= 2:  print The(player, true); " ";
+			print "to "; VerbWord; " "; The(object); " "; \
+				object.detach_prep; "."
+		}
+		case 17:  print CThe(player); " "; object.detach_verb; \
+			MatchSubject(player); " "; The(object); " "; \
+			object.detach_prep; " "; The(xobject); "."
+		case 18
+		{
+			print CThe(player);
+			if not pasttense
+				print " can't ";
+			else
+				print " couldn't ";
+			print "go anywhere while "; \
+				The(a); IsorAre(a, true); " still "; \
+				a.attached_desc; " ";
+			ListAttachments(a)
+			print "."
+		}
+		case 19
+		{
+			print CThe(player);
+			if not pasttense
+				print " can't";
+			else
+				print " couldn't";
+			print "move whatever is "; \
+			a.attached_desc; " "; The(a); ", namely ";
+			ListAttachments(a)
+			print "."
+		}
+		case 20
+		{
+			print CThe(player);
+			if not pasttense
+				print " can't";
+			else
+				print " couldn't";
+			print " pull "; The(a); \
+			" that way."
+		}
+		case 21
+		{
+			print "(with "; The(a); " "; a.attached_desc; " ";
+			ListAttachments(a)
+			print ")"
+		}
+		case 22
+		{
+			print " "; The(player);
+			if not pasttense
+				IsorAre(player)
+			else
+				WasorWere(player)
+			print " holding";
+		}
+	}
+#endif  ! ifset USE_ATTACHABLES
+	case else : return false
+
+	return true ! this line is only reached if we replaced something
+}
+
 replace NewParseError(errornumber, obj)
 {
 
@@ -877,12 +1361,12 @@ replace NewParseError(errornumber, obj)
 
 	select errornumber
 
-!\		case 1
-			print CThe(player); \
+		case 1
+			print "You"; \
 				! " can't use the word \""; \
 				MatchPlural(player, "doesn't", "don't"); \
 				" need to use the word \""; \
-				parse$; "\"."  \!
+				parse$; "\"."
 
 		case 3
 			{print CThe(actor); " couldn't "; parse$; " multiple
