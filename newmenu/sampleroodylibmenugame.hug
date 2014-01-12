@@ -63,15 +63,15 @@ verb "about"
 routine init
 {
 !: First Things First
-SetGlobalsAndFillArrays
+	SetGlobalsAndFillArrays
 !: Screen clear section
-SimpleIntro
-InitScreen
+	SimpleIntro
+	InitScreen
 !: Set up any special libries
-Init_Calls
+	Init_Calls
 !: Game opening
-IntroText
-MovePlayer(location)
+	IntroText
+	MovePlayer(location)
 }
 
 
@@ -173,11 +173,12 @@ option contact_choice "Contact"
 {
 	alt_title "How To Contact Me"
 	in main_menu    ! which menu it is
-	menu_text	{
-						""
-					"\_ Feel free to send me your thoughts and suggestions at roody.yogurt@gmail.com! What an amazing discourse we will have!\n"
-					CoolPause(1)
-					}
+	menu_text
+	{
+		""
+		"\_ Feel free to send me your thoughts and suggestions at roody.yogurt@gmail.com! What an amazing discourse we will have!\n"
+		CoolPause(1)
+	}
 	priority 3
 }
 

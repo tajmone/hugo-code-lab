@@ -1,7 +1,7 @@
 !::
 ! NEWMENU.H  Version 3.1 by Roody Yogurt
 !::
-!\
+!
 
 	For a nice overview of this contribution, check out:
 	http://hugo.gerynarsabode.org/index.php?title=NewMenu.h
@@ -215,10 +215,12 @@ version_obj newmenu_version "NewMenu Version 3.1"
 
 #ifset _ROODYLIB_H
 
-#ifclear USE_SORTING
-#message warning "#set USE_SORTING if you want to make use of the menu
-priority system!"
-#endif
+! eh, this message was kind of annoying, so it is commented out now
+!
+!#ifclear USE_SORTING
+!#message warning "#set USE_SORTING if you want to make use of the menu
+!priority system!"
+!#endif
 
 object menulib "menu"
 {
@@ -251,18 +253,18 @@ routine MenuInit
 {
 	common_commands[0] = "OPEN","CLOSE","LOCK","UNLOCK",
 	"WEAR", "REMOVE","TURN ON","TURN OFF", "DRINK",  ! "EAT",
-	"SIT" , "MOVE"
+	"SIT" , "MOVE", "INSERT"
 
 ! the 0s below show where commands switch from regular to verbstub
 #ifset _ROODYLIB_H
-	common_commands[11] = "SEARCH"
+	common_commands[12] = "SEARCH"
 #ifset _VERBSTUB_G
-	common_commands[12] = 0, "PUSH", "PULL", "YELL", "JUMP", "THROW",
+	common_commands[13] = 0, "PUSH", "PULL", "YELL", "JUMP", "THROW",
 	"SLEEP", "KISS", "WAVE", "CLIMB", "WAKE", "SWIM",
 	"DIG", "TIE", "BURN", "CUT"
 #endif ! _VERBSTUB_G
 #elseif set _VERBSTUB_G  !VERBSTUB_G *without* ROODYLIB
-	common_commands[11] = "SEARCH", 0, "PUSH", "PULL", "YELL", "JUMP",
+	common_commands[12] = "SEARCH", 0, "PUSH", "PULL", "YELL", "JUMP",
 	"THROW", "SLEEP", "KISS", "WAVE", "CLIMB", "WAKE",
 	"SWIM", "DIG", "TIE", "BURN", "CUT"
 		! Changed Throw  and Throw At listings to just Throw
@@ -315,7 +317,7 @@ property priority alias parse_rank
 
 class menu_category
 {
-	title_gap 0 ! lines between menu title and "[N]ext key"
+	title_gap  0 ! lines between menu title and "[N]ext key"
 	options_gap 1 ! lines between "[N]ext key" and menu options
 }
 
@@ -489,15 +491,11 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 						else
 							CenterTitle(menuitem[category].name)
 					}
-#ifset CHEAP
-					if not cheap
+					if not CheapOrSimple
 					{
-#endif
-						if not system(61) ! glk or minimum port
-							locate 1,TopPageMargin
-#ifset CHEAP
+						locate 1,TopPageMargin
 					}
-#endif
+
 					run menuitem[category].menu_text
 					if not (CheaporSimple = 2 or simple_port)
 						""
@@ -571,6 +569,11 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 	Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
 	local simple_port, glktest
 	simple_port = not (display.windowlines > (display.screenheight + 100)) and system(61)
+	if system(61)
+	{
+		titlegap = 0
+		optionsgap = 1
+	}
 	if width = 0:  width = 20
 	for (i=1; i<=num; i++)          ! determine appropriate width
 #ifclear NO_AUX_MATH
@@ -596,7 +599,7 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 	glktest = display.windowlines > (display.screenheight + 100)
 	if CheaporSimple = 2 or
 	( glktest and
-	( num + 6 + titlegap + optionsgap ) >= (display.screenheight/3*2))
+	( num + 5 + titlegap + optionsgap ) >= (display.screenheight/3*2))
 	{
 		while true
 		{
@@ -627,8 +630,6 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 			}
 			print ""
 			MenuMessage(&Menu, 2)		! "Select the number of your choice"
-!			input
-!			select word[0]
 			pause
 			local numb
 			if word[0] = 'q','Q', '0', ESCAPE_KEY
@@ -645,22 +646,6 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 				"\n"
 				return numb
 			}
-!				if word[1] = "q", "exit", "quit", "0"! ESCAPE_KEY
-!					{
-!					""
-!					return 0
-!					}
-!				local numb
-!				numb = StringToNumber(word[1])
-!				if not numb
-!				{
-!					numb = StringToNumber(parse$)
-!				}
-!				if numb and numb < sel
-!				{
-!					""
-!					return numb
-!				}
 			""
 		}
 	}
@@ -673,8 +658,7 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 				color MENU_BGCOLOR, MENU_BGCOLOR
 				cls
 			}
-			! the 6 used to be 5 but hugozork glk was doing MORE prompts
-			window ( num + 6 + titlegap + optionsgap )
+			window ( num + 5 + titlegap + optionsgap )
 			{
 				if not simple_port
 					cls
@@ -705,118 +689,114 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 																				 ! glk
 				MenuMessage(&Menu, 1)	! print key commands
 
-				if system(61) ! is minimal port
-					""
-				else
-				{
 				for (i=0; i<optionsgap;i++)
 				{
 					""
 				}
-			}
 
-			if selection ~= oldselection		!	glk code that *shouldn't*
-			{										!  affect normal execution
-				if oldselection ~= 0				!  (hopefully)
-					selection = oldselection
-			}
-			for (i=1; i<=num ; i++)
-			{
-				if i = selection
+				if selection ~= oldselection		!	glk code that *shouldn't*
+				{										!  affect normal execution
+					if oldselection ~= 0				!  (hopefully)
+						selection = oldselection
+				}
+				for (i=1; i<=num ; i++)
 				{
-					if system(61) ! glk or minimum port
-						print to (column - 2);
+					if i = selection
+					{
+						if system(61) ! glk or minimum port
+							print to (column - 2);
+						else
+							print to column;
+						if system(61) ! is minimal port
+							print "* ";
+						color MENU_SELECTCOLOR, MENU_SELECTBGCOLOR  ! shouldn't affect
+																				  ! glk?
+						print menuitem[selection].name; to (column+width);
+						color MENU_TEXTCOLOR, MENU_BGCOLOR
+						""
+					}
 					else
+					{
 						print to column;
-					if system(61) ! is minimal port
-						print "* ";
-					color MENU_SELECTCOLOR, MENU_SELECTBGCOLOR  ! shouldn't affect
-																			  ! glk?
-					print menuitem[selection].name; to (column+width);
-					color MENU_TEXTCOLOR, MENU_BGCOLOR
-					""
+						print menuitem[i].name; to (column+width)
+					}
 				}
-				else
-				{
-					print to column;
-					print menuitem[i].name; to (column+width)
-				}
+				print ""
 			}
-			print ""
-		}
-		Font(DEFAULT_FONT)
-		word[0] = PauseForKey
-		if not system(61)
-		{
-			if display.needs_repaint
+			Font(DEFAULT_FONT)
+			word[0] = PauseForKey
+			if not system(61)
 			{
-				window 0
-				display.needs_repaint = 0
-			}
-				color MENU_BGCOLOR, MENU_BGCOLOR
-				cls
-		}
-		select word[0]
-			case 'N', 'n', DOWN_ARROW, RIGHT_ARROW
-			{
-				if menuitem[++selection].name = ""
-					++selection
-				if selection > num : selection = 1
-			}
-			case 'P', 'p', UP_ARROW, LEFT_ARROW
-			{
-				if menuitem[--selection].name = ""
-					--selection
-				if selection < 1 : selection = num
-			}
-			case 'Q', 'q', ESCAPE_KEY
-			{
-				if not system(61)
+				if display.needs_repaint
 				{
 					window 0
+					display.needs_repaint = 0
 				}
-				if not simple_port
-				{
+					color MENU_BGCOLOR, MENU_BGCOLOR
 					cls
-					Font(DEFAULT_FONT)
-				}
-				return 0
 			}
-			case ENTER_KEY
-			{
-				color MENU_BGCOLOR, MENU_BGCOLOR
-				if not system(61)
+			select word[0]
+				case 'N', 'n', DOWN_ARROW, RIGHT_ARROW
 				{
-					window 1, (3+ optionsgap + titlegap), display.screenwidth, ( num + 5 + titlegap + optionsgap )
+					if menuitem[++selection].name = ""
+						++selection
+					if selection > num : selection = 1
+				}
+				case 'P', 'p', UP_ARROW, LEFT_ARROW
+				{
+					if menuitem[--selection].name = ""
+						--selection
+					if selection < 1 : selection = num
+				}
+				case 'Q', 'q', ESCAPE_KEY
+				{
+					if not system(61)
+					{
+						window 0
+					}
+					if not simple_port
 					{
 						cls
+						Font(DEFAULT_FONT)
 					}
-					window 0
+					return 0
 				}
-				if not simple_port
-					Font(DEFAULT_FONT)
-
-				oldselection = selection
-
-				color MENU_TEXTCOLOR, MENU_BGCOLOR
-				return selection
-			}
-
-			if word[0] >= '0' and word[0] <= '9'
-			{
-				i = word[0] - '0'
-				if i = 0:  i = 10
-
-				selection = 1
-				while --i
+				case ENTER_KEY
 				{
-					selection++
-					if menuitem[selection].name = ""
-						selection++
+					color MENU_BGCOLOR, MENU_BGCOLOR
+					if not system(61)
+					{
+						window 1, (3+ optionsgap + titlegap), display.screenwidth, ( num + 5 + titlegap + optionsgap )
+		!				window
+						{
+							cls
+						}
+						window 0
+					}
+					if not simple_port
+						Font(DEFAULT_FONT)
+
+					oldselection = selection
+
+					color MENU_TEXTCOLOR, MENU_BGCOLOR
+					return selection
 				}
-				if selection > num or menuitem[selection].name = ""
-					selection = oldselection
-			}
+
+				if word[0] >= '0' and word[0] <= '9'
+				{
+					i = word[0] - '0'
+					if i = 0:  i = 10
+
+					selection = 1
+					while --i
+					{
+						selection++
+						if menuitem[selection].name = ""
+							selection++
+					}
+					if selection > num or menuitem[selection].name = ""
+						selection = oldselection
+				}
 		}
 	}
 }
@@ -849,7 +829,7 @@ routine CoolPause(bottom,pausetext)
 			}
 		}
 		window  1 ! display.statusline_height
-			{
+		{
 			local y
 			y = display.linelength
 			color SL_TEXTCOLOR, SL_BGCOLOR
@@ -868,14 +848,14 @@ routine CoolPause(bottom,pausetext)
 			print to (display.linelength/2 - alength/2);
 			StringPrint(_temp_string)
 !			print to display.linelength;
-			}
-			color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-			Font(DEFAULT_FONT)
+		}
+		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
+		Font(DEFAULT_FONT)
 		PauseForKey
 		""
-		}
+	}
 	else
-		{
+	{
 		Font(DEFAULT_FONT)
 #ifset CHEAP
 		if cheap
@@ -1034,7 +1014,7 @@ routine ShowPage(page,end_o_game)
 !			""
 !			cls
 !			locate 1,1
-			}
+		}
 		display.needs_repaint = false
 		if not (CheaporSimple = 2 or simple_port)
 			color BGCOLOR, BGCOLOR
