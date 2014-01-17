@@ -1,7 +1,7 @@
 !::
 ! NEWMENU.H  Version 3.1 by Roody Yogurt
 !::
-!
+!\
 
 	For a nice overview of this contribution, check out:
 	http://hugo.gerynarsabode.org/index.php?title=NewMenu.h
