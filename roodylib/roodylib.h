@@ -5,11 +5,11 @@
 #ifclear _ROODYLIB_H
 #set _ROODYLIB_H
 
-constant ROODYBANNER "RoodyLib Version 3.6"
-constant ROODYVERSION "3.6"
+constant ROODYBANNER "RoodyLib Version 3.7"
+constant ROODYVERSION "3.7"
 
 #ifset VERSIONS
-#message "roodylib.h version 3.6"
+#message "roodylib.h version 3.7"
 #endif
 
 !----------------------------------------------------------------------------
@@ -26,7 +26,7 @@ routine Roodylib_Credits
 #endif
 	" uses \IRoodylib\i. RoodyLib is a collection of improvements written and/or
 	suggested by Kent Tessman, Mike Snyder, Jason McWright, Robb Sherwin, Rob
-	O'Hara, Paul Lee, and Roody Yogurt."
+	O'Hara, Paul Lee, Juhana Leinonen, and Roody Yogurt."
 }
 
 #ifset USE_EXTENSION_CREDITING
@@ -169,12 +169,12 @@ replace Activate(a, set)                ! <set> is for fuses only
 {
 	local err
 	if not player
-		{
+	{
 		Font(BOLD_ON)
 		print "[WARNING:  The player global must be set before
 		daemon (object "; number a;") can be activated.]"
 		err = true
-		}
+	}
 #ifset NEW_FUSE
 	move a to fuse_bucket
 #endif
@@ -552,8 +552,10 @@ replace CheckReach(obj)
 		return true
 
 #ifclear NO_VERBS
+! added a check to make sure the player doesn't have the same parent as the
+! object before doing "x is closed." messages
 	if (verbroutine ~= &DoLook, &DoLookIn) and parent(object) and
-		parent(object) ~= player
+		parent(object) ~= player and (parent(object) ~= parent(player))
 	{
 	! used to check for transparent here, but FindObject should make that not
 	! necessary
@@ -3351,7 +3353,12 @@ PrintStatusLine ! redraw PrintStatusLine in case screen size changed
 			else
 			{
 				print CThe(actor); \
-					" can't do that with "; TheOrThat(obj) ; "."
+					" can't do that with ";
+				if obj ~= actor
+					TheOrThat(obj)
+				else
+					print obj.pronouns #4;
+				"."
 			}
 		}
 		case 13
@@ -6684,6 +6691,38 @@ routine DetermineSpeaking
 	if count = 1:  speaking = spk
 }
 
+! Roody's note: added a special message call for the player object
+replace DoDrink
+{
+	if not CheckReach(object):  return false
+
+	if not object.after
+	{
+		if object = player
+			RlibMessage(&DoDrink)   ! "You can't drink yourself."
+		else
+			VMessage(&DoDrink)         ! "You can't drink that."
+	}
+	else
+		return true
+}
+
+! Roody's note: added a special message call for the player object
+replace DoEat
+{
+	if not CheckReach(object):  return false
+
+	if not object.after
+	{
+		if object = player
+			RlibMessage(&DoEat)   ! "You can't eat yourself."
+		else
+			VMessage(&DoEat)         ! "You can't eat that."
+	}
+	else
+		return true
+}
+
 ! Roody's note: replaced so the container/platform check comes before the
 ! children check.
 replace DoEmpty
@@ -6749,7 +6788,8 @@ replace DoEmpty
 }
 
 ! Roody's note: Mostly not changed. Just commented out the part where word[1]
-! is cleared and made the for loop break earlier.
+! is cleared and made the for loop break earlier. Also tweaked one of the
+! messages in RlibMessage so that >ENTER ME has a better response.
 replace DoEnter
 {
 #ifclear NO_OBJLIB
@@ -6782,6 +6822,11 @@ replace DoEnter
 		return Perform(&DoEnter, object)
 	}
 
+	if object = player
+	{
+		RlibMessage(&DoEnter, 1) ! "You can't enter yourself."
+		return
+	}
 	! To prevent endless loops if the player_character class
 	! automatically resets the object to in_obj if word[1] = "in"
 !	word[1] = ""    ! causing problems
@@ -6816,7 +6861,11 @@ replace DoEnter
 replace DoExit
 {
 	local p
-
+	if object = player
+	{
+		RlibMessage(&DoExit, 1) ! "Trying to get out of your head? Futile."
+		return
+	}
 #ifclear NO_OBJLIB
 	! >GO OUT winds up calling DoExit with object = out_obj, thanks to
 	! the direction-parsing code in Perform().  English ambiguities being
@@ -6861,6 +6910,94 @@ replace DoExit
 		move player to location
 		if not object.after
 			VMessage(&DoExit, 2)     ! "You get out.."
+	}
+	return true
+}
+
+! Roody's note: Juhana found a bug where "X is closed." messages were
+! triggered when trying to grab things from a closed enterable container
+! the player ALSO is in. Added a quick fix but it's possible DoGet could
+! be more efficient, as some of the instances will also be checked by
+! CheckReach.
+
+replace DoGet
+{
+	local b, p
+
+	if object in player
+		VMessage(&DoGet, 1)      ! "You already have that."
+	elseif object = player
+	{
+		VMessage(&DoGet, 2)     ! player trying to get player
+		return false
+	}
+	elseif object is living and object is static
+	{
+		VMessage(&DoGet, 3)     ! player trying to get character
+		return false
+	}
+	elseif parent(object) is living and parent(object) is unfriendly
+		VMessage(&DoGet, 4)      ! "X doesn't want to give it to you."
+	elseif (parent(object) is openable, not open) and
+		parent(object) is container and (parent(object) ~= parent(player)):
+	{
+		VMessage(&DoGet, 5)     ! "X is closed."
+		return false
+	}
+	elseif Contains(object, player)
+	{
+		if object is static
+			VMessage(&DoGet, 7)	! "You can't take that."
+		else
+			VMessage(&DoGet, 6)     ! "Not while you're in/on it..."
+		return false
+	}
+	else
+	{
+		if not CheckReach(object)
+			return false
+		elseif object is static
+		{
+			VMessage(&DoGet, 7)      ! "You can't take that."
+			return true
+		}
+
+		! Because the engine calls location.before
+		if (parent(object)~=location)
+			b = parent(object).before
+
+		if not b
+		{
+			xobject = parent(object)
+
+			if object not in location
+			{
+				CalculateHolding(xobject)
+				p = xobject
+			}
+
+			if Acquire(player, object)
+			{
+				object is not hidden
+
+				if not object.after
+				{
+					! Again, to avoid duplication or
+					! echoing:
+					!
+					b = 0
+					if xobject ~= location
+						b = xobject.after
+
+					if b = false
+						! "Taken."
+						VMessage(&DoGet, 8)
+				}
+			}
+			else
+				! "You're carrying too much to take that."
+				VMessage(&DoGet, 9)
+		}
 	}
 	return true
 }
@@ -7080,6 +7217,21 @@ if not JumpToEnd
 	}
 }
 
+! Roody's note: added a special message call for the player object
+replace DoHit
+{
+	if not CheckReach(object):  return false
+
+	if not object.after
+	{
+		if object = player
+			RlibMessage(&DoHit)   ! "Venting your frustration on yourself..."
+		else
+			VMessage(&DoHit)         ! "You can't drink that."
+	}
+	else
+		return true
+}
 
 ! Roody's note: This version of DoListen is more friendly to room-listening.
 replace DoListen
@@ -7376,6 +7528,18 @@ replace DoLookThrough
 		VMessage(&DoLookThrough, 2)  ! "You can't see through that."
 }
 
+! Roody's note: Added a special message call for the player object
+replace DoLookUnder
+{
+	if not CheckReach(object):  return false
+
+	if object = player
+		RlibMessage(&DoLookUnder)
+	else
+		VMessage(&DoLookUnder, 1)        ! "You don't find anything."
+	return true
+}
+
 !\ Roody's note: roodylib, by default, supports PUSH and PULL. It redirects them
 to DoMove if verbstub hasn't been included.  \!
 
@@ -7383,6 +7547,11 @@ replace DoMove
 {
 	if not CheckReach(object):  return false
 
+	if object = player
+	{
+		RlibMessage(&DoMove, 1) ! "You can't move yourself."
+		return
+	}
 #if defined DoPush
 	if word[1] = "push", "shove", "press"
 		return Perform(&DoPush, object)
@@ -9247,6 +9416,16 @@ routine StringAddTo(original_array, addition_array, add_space,newarray)
 !* OTHER ROUTINES
 !----------------------------------------------------------------------------
 
+
+! Roody's note: Since the end of the game is called just by changing the
+! value of the endflag global variable, that can be a little unintuitive to
+! new authors. Here is a dummy routine for calling the end of the game.
+
+routine CallFinish(end_type)
+{
+	endflag = end_type
+}
+
 !\ Roody's note: ClearArray, as you might guess, clears arrays of values.
 I made it mainly to stop having to write array-clearing loops each time.
 
@@ -9311,6 +9490,97 @@ routine ClearPronoun(obj)
 		case them_obj : them_obj = 0
 }
 
+! Roody's note: CoolPause is a routine I wrote for newmenu.h, but I find it
+! so useful that I have decided to add it to Roodylib. Anyhow, it's a routine
+! for doing "press a key" text. Put 0 for the bottom value if you'd like the
+! text in the status bar.
+
+! CoolPause(1, "Press a key to continue...")
+
+routine CoolPause(bottom,pausetext)
+{
+	local a, m
+	local simple_port
+	simple_port = not (display.windowlines > (display.screenheight + 100)) and system(61)
+	if pausetext
+	{
+		m = string(_temp_string, pausetext)
+		if display.screenwidth > m
+			a = pausetext
+
+	}
+
+#ifset CHEAP
+	if cheap
+		bottom = true
+#endif
+	if not bottom
+	{
+		Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
+		if not system(61)
+		{
+			window display.statusline_height
+			{
+				cls
+			}
+		}
+		window  1 ! display.statusline_height
+		{
+			local y
+			y = display.linelength
+			color SL_TEXTCOLOR, SL_BGCOLOR
+			cls			! make sure we've drawn the entire status bar in the
+							!  proper colors
+			locate 1,1
+			text to _temp_string
+			if a
+				print a;
+			else
+				RLibMessage(&CoolPause,1) ! "PRESS A KEY TO CONTINUE";
+			text to 0
+
+			local alength
+			alength = StringLength(_temp_string)
+			print to (display.linelength/2 - alength/2);
+			StringPrint(_temp_string)
+!			print to display.linelength;
+		}
+		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
+		Font(DEFAULT_FONT)
+		PauseForKey
+		""
+	}
+	else
+	{
+		Font(DEFAULT_FONT)
+#ifset CHEAP
+		if cheap
+		{
+			Indent
+			if a
+				print a
+			else
+				RlibMessage(&CoolPause,2) ! "[PRESS A KEY TO CONTINUE]";
+			pause
+			""
+		}
+		else
+		{
+#endif
+			Indent
+			Font(ITALIC_ON)
+			if a
+				print a;
+			else
+				RlibMessage(&CoolPause,3) ! "press a key to continue";
+			Font(ITALIC_OFF)
+			PauseForKey
+#ifset CHEAP
+		}
+#endif
+	}
+	Font(DEFAULT_FONT)
+}
 
 !\ Roody's note: GrandParent is like Contains except it returns the
 "grandparent" object. Written by Kent Tessman for Future Boy!. \!
@@ -9382,6 +9652,109 @@ routine ListChildren(obj,conjunction)
 	if list_count
 		ListObjects(obj,conjunction)
 }
+
+! Roody's note: This routine serves as a reminder that when you change
+! the player_person global variable, you also need to change the pronouns
+! for your player object to match.
+
+routine MakePlayer(player_object, playerperson)
+{
+	if not player_object
+		return  ! just to avoid setting the player as the nothing object or
+			     ! some other nonsense
+#ifset DEBUG
+	if player_object.type ~= player_character
+	{
+		print newline
+		Font(BOLD_ON)
+		print "[WARNING:  The player global is set to an object that is
+		not of type \"player_character\".]"
+		Font(BOLD_OFF)
+	}
+#endif
+	player = player_object
+	if playerperson
+	{
+		player_person = playerperson
+		select player_person
+			case 1
+			{
+				player.pronouns #1 = "I"
+				player.pronouns #2 = "me"
+				player.pronouns #3 = "my"
+				player.pronouns #4 = "myself"
+			}
+			case 2
+			{
+				player.pronouns #1 = "you"
+				player.pronouns #2 = "you"
+				player.pronouns #3 = "your"
+				player.pronouns #4 = "yourself"
+			}
+			case 3
+			{
+				if player is plural
+				{
+					player.pronouns #1 = "they"
+					player.pronouns #2 = "them"
+					player.pronouns #3 = "their"
+					player.pronouns #4 = "themselves"
+				}
+				if player is female
+				{
+					player.pronouns #1 = "she"
+					player.pronouns #2 = "her"
+					player.pronouns #3 = "her"
+					player.pronouns #4 = "herself"
+				}
+				else
+				{
+					player.pronouns #1 = "he"
+					player.pronouns #2 = "him"
+					player.pronouns #3 = "his"
+					player.pronouns #4 = "himself"
+				}
+			}
+	}
+}
+
+! Roody's note: Another pause routine used by CoolPause
+! It allows for a prompt to be printed and returns the value of the keypress
+
+routine PauseForKey(p)	! Where p is a prompt, if it ends up being used
+{
+	local key
+
+	key = system(11) ! READ_KEY
+	if system_status or system(61) ! MINIMAL_INTERFACE
+	{
+		! If READ_KEY isn't available, we have to use the
+		! regular pause-with-cursor (and maybe a prompt)
+		if p
+		{
+			if not system(61) ! MINIMAL_INTERFACE
+			! If we give a prompt, it always goes at the bottom
+				locate (display.screenwidth-20), display.screenheight
+			Font(PROP_ON | ITALIC_ON | BOLD_OFF)
+			print p;
+			Font(DEFAULT_FONT | ITALIC_OFF)
+		}
+		pause
+		key = word[0]
+	}
+	else
+	{
+		while true
+		{
+			key = system(11) ! READ_KEY
+			system(32) ! PAUSE_100TH_SECOND
+			if key:break
+		}
+	}
+
+	return key
+}
+
 !----------------------------------------------------------------------------
 !* REPLACED LAST LIBRARY OBJECT
 !----------------------------------------------------------------------------
@@ -9419,6 +9792,19 @@ routine RLibMessage(r, num, a, b)
 					" inside "; The(parent(a)); "."
 				}
 		}
+		case &CoolPause
+		{
+			select num
+				case 1  ! default top "press a key"
+	!				"\_ [PRESS A KEY TO CONTINUE]";
+					print "[PRESS A KEY TO CONTINUE]";
+				case 2  ! default cheapglk "press a key"
+!					"\_ [PRESS A KEY TO CONTINUE]";
+					"[PRESS A KEY TO CONTINUE]";
+				case 3  ! default normal "press a key"
+!					"\_\B Press a key to continue...\b"
+					"press a key to continue";
+		}
 		case &DescribePlace
 		{
 			select num
@@ -9454,11 +9840,65 @@ routine RLibMessage(r, num, a, b)
 					Font(BOLD_OFF)
 				}
 		}
+!		case &DoClose
+!		{
+!			select num
+!			case 1:  print CThe(player); " can't close "; player.pronoun #4; "."
+!		}
+		case &DoDrink
+		{
+			print CThe(player); " can't ";
+			print word[1]; " ";
+			print player.pronoun #4; "."
+		}
+		case &DoEat
+		{
+			print CThe(player); " can't ";
+			print word[1]; " ";
+			print player.pronoun #4; "."
+		}
+		case &DoEnter
+		{
+			select num
+			case 1:
+			{
+				print CThe(player); " can't ";
+				if object is platform
+					print "get on ";
+				else
+					print "enter ";
+				if object = player
+				{
+					print player.pronoun #4;
+				}
+				else
+					print The(object);
+				"."
+			}
+		}
+		case &DoExit
+		{
+			select num
+				case 1
+				{
+					print "Trying to get out of "; player.pronoun #3; " head";
+					if player is plural and player_person ~= 2
+					{
+						print "s";
+					}
+					print "? Futile."
+				}
+		}
 		case &DoGo
 		{
 			select num
 				case 1	!  going to a non-enterable object in the same room
 					print Cthe(object) ; IsorAre(object,true) ;" right here."
+		}
+		case &DoHit
+		{
+			print "Venting "; player.pronoun #3; " frustrations
+			on "; player.pronoun #4; " won't accomplish much."
 		}
 		case &DoListen
 		{
@@ -9471,6 +9911,23 @@ routine RLibMessage(r, num, a, b)
 				}
 				case 2   ! default object-listening
 					"That would serve no purpose."
+		}
+		case &DoLookUnder
+		{
+print CThe(player); \
+				MatchPlural(player, "doesn't", "don't"); \
+				" find anything "; word[2]; " "; \
+				player.pronoun #4; "."
+		}
+		case &DoMove
+		{
+			select num
+			case 1:
+			{
+				print CThe(player); " can't ";
+				print word[1]; " ";
+				print player.pronoun #4; "."
+			}
 		}
 		case &DoPushDirTo
 		{

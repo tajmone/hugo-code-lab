@@ -67,16 +67,18 @@ routine SetGlobalsAndFillArrays
 	display.title_caption = GAME_TITLE
 	prompt = ">"
 	DEFAULT_FONT = PROP_ON
+#ifset _ROODYLIB_H
+	MakePlayer(you,2) ! sets player as you object, second person
+#else
 	player = you
+#endif
 	location = STARTLOCATION
 }
 
 routine IntroText
 {
-"Intro text goes here.\n"
-
-print "\B"; GAME_TITLE ; "\b"  ! prints game title
-
+	"Intro text goes here.\n"
+	print "\B"; GAME_TITLE ; "\b"  ! prints game title
 }
 
 !::	Main game loop
@@ -93,7 +95,6 @@ routine	main
 #endif
 		speaking = 0
 	PrintStatusLine
-
 #ifset _ROODYLIB_H
 	Main_Calls
 #endif

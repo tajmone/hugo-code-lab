@@ -207,10 +207,6 @@ version_obj newmenu_version "NewMenu Version 3.1"
 }
 #endif
 
-#ifclear _SYSTEM_H
-#include "system.h"
-#endif
-
 #ifset USE_DEFAULT_MENU
 
 #ifset _ROODYLIB_H
@@ -801,6 +797,7 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 	}
 }
 
+#ifclear _ROODYLIB_H
 routine CoolPause(bottom,pausetext)
 {
 	local a, m
@@ -885,6 +882,7 @@ routine CoolPause(bottom,pausetext)
 	}
 	Font(DEFAULT_FONT)
 }
+#endif ! ifclear _ROODYLIB_H
 
 routine CheaporSimple
 {
@@ -949,19 +947,19 @@ routine Help_Hints(obj)
 	return
 }
 
-
+#ifclear _ROODYLIB_H
 routine PauseForKey(p)	! Where p is a prompt, if it ends up being used
 {
 	local key
 
-	key = system(READ_KEY)
-	if system_status or system(MINIMAL_INTERFACE)
+	key = system(11) ! READ_KEY
+	if system_status or system(61) ! MINIMAL_INTERFACE
 	{
 		! If READ_KEY isn't available, we have to use the
 		! regular pause-with-cursor (and maybe a prompt)
 		if p
 		{
-			if not system(MINIMAL_INTERFACE)
+			if not system(61) ! MINIMAL_INTERFACE
 			! If we give a prompt, it always goes at the bottom
 				locate (display.screenwidth-20), display.screenheight
 			Font(PROP_ON | ITALIC_ON | BOLD_OFF)
@@ -975,14 +973,15 @@ routine PauseForKey(p)	! Where p is a prompt, if it ends up being used
 	{
 		while true
 		{
-			key = system(READ_KEY)
-			system(PAUSE_100TH_SECOND)
+			key = system(11) ! READ_KEY
+			system(32) ! PAUSE_100TH_SECOND
 			if key:break
 		}
 	}
 
 	return key
 }
+#endif ! ifclear _ROODYLIB_H
 
 routine ShowPage(page,end_o_game)
 {
@@ -1134,6 +1133,7 @@ routine MenuMessage(r, num, a, b)
 					print "Select the number of your choice or \"Q\" to exit: ";
 				}
 		}
+#ifclear _ROODYLIB_H
 		case &CoolPause
 		{
 			select num
@@ -1147,7 +1147,7 @@ routine MenuMessage(r, num, a, b)
 !					"\_\B Press a key to continue...\b"
 					"press a key to continue";
 		}
-
+#endif ! ifclear _ROODYLIB_H
 		case &Help_Hints
 		{
 			select num

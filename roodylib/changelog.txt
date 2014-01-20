@@ -1,5 +1,11 @@
 Ok, I've started a changelog!
+v 3.7 - * Added CallFinish, MakePlayer routines
+	* Updated shell files to make it easier to turn Roodylib off (for tracking errors down to original library code)
+	* Updated credits text
 v 3.6 - * Added DoOpen replacement
+	* Fixed a ParseError bug (caused by me, not original)
+	* Added DoGet replacement, updated CheckReach for dealing with instances where the player is in a closed enterable
+	object and is trying to get something else in the same object
 v 3.5 - * Fixed a bug in DoExit where "X is closed." wasn't printing properly
 	* "kick" now points to a DoKick routine (which directs to DoHit by default)
 	* Added "smash" to DoHit

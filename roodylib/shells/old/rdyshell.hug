@@ -12,7 +12,8 @@ constant GAME_TITLE	"GAME TITLE"
                           !   and verbstubs.h, respectively
 !#set USE_ATTACHABLES     ! Use attachable items
 !#set USE_PLURAL_OBJECTS  ! Use plural objects
-!#set USE_ROLLABLES       ! Allow the pushing of mobile objects
+!#set USE_ROLLABLES       ! Allow the pushing of mobile objects (needs Roodylib)
+#set USE_ROODYLIB
 !#set USE_VEHICLES        ! Use vehicle objects
 !#set VERSIONS            ! Print library versions at compile time
 
@@ -32,12 +33,17 @@ constant GAME_TITLE	"GAME TITLE"
                                !   content listings
 
 !:: Grammar Library Inclusions (grammar must come first)
+#ifset USE_ROODYLIB
 #include "roodylib.g"
+#endif
+
 ! new grammar needs to be defined before the including verblib
 #include "verblib.g"        ! Verb Library
 
 #include "hugolib.h"        ! Standard  Hugo Library
+#ifset USE_ROODYLIB
 #include "roodylib.h"         ! Hugo  Library Updates
+#endif
 
 !::	Other Library Inclusions
 #ifset BETA
@@ -51,15 +57,24 @@ constant GAME_TITLE	"GAME TITLE"
 routine init
 {
 !: First Things First
-SetGlobalsAndFillArrays
+	SetGlobalsAndFillArrays
 !: Screen clear section
-SimpleIntro
-InitScreen
-!: Set up any special libries
-Init_Calls
+#ifclear _ROODYLIB_H
+	window 0
+	cls
+	CenterTitle("Hugo Interactive Fiction")
+#ifset USE_PLURAL_OBJECTS
+        InitPluralObjects
+#endif
+#else
+	SimpleIntro
+	InitScreen
+!: Set up any special libraries
+	Init_Calls
+#endif
 !: Game opening
-IntroText
-MovePlayer(location)
+	IntroText
+	MovePlayer(location)
 }
 
 
@@ -83,15 +98,20 @@ routine SetGlobalsAndFillArrays
 	INPUTCOLOR = MATCH_FOREGROUND
 	prompt = ">"
 	DEFAULT_FONT = PROP_ON
+	display.title_caption = GAME_TITLE
+#ifset _ROODYLIB_H
+	MakePlayer(you,2) ! sets player as you object, second person
+#else
 	player = you
+#endif
 	location = STARTLOCATION
 }
 
 routine IntroText
 {
-"Intro text goes here.\n"
+	"Intro text goes here.\n"
 
-print "\B"; GAME_TITLE ; "\b"  ! prints game title
+	print "\B"; GAME_TITLE ; "\b"  ! prints game title
 
 }
 
@@ -102,10 +122,16 @@ routine	main
 	run	location.each_turn
 	runevents
 	RunScripts
+#ifset _ROODYLIB_H
 	if GrandParent(speaking) ~= location
+#else
+	if parent(speaking) ~= location
+#endif
 		speaking = 0
 	PrintStatusLine
+#ifset _ROODYLIB_H
 	Main_Calls
+#endif
 }
 
 
