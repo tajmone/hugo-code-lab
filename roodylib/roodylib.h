@@ -359,11 +359,11 @@ replace CenterTitle(a, lines,force)
 	window lines
 	{
 		if not s ! not non-glk simple port
-			{
+		{
 			color MENU_SELECTCOLOR, MENU_SELECTBGCOLOR
 			cls
 			locate 1,1
-			}
+		}
 		print "\_";
 		if (l+1) < display.linelength
 			print to (display.linelength/2 - l/2);
@@ -577,7 +577,7 @@ replace CheckReach(obj)
 #endif
 
 	if not parent(player).reach or
-	   Contains(parent(player), obj)
+		Contains(parent(player), obj)
 		return true
 
 	p = obj.part_of
@@ -605,7 +605,7 @@ replace CheckReach(obj)
 
 	for (i=1; i<=parent(player).#reach; i++)
 	{
-     if Contains(parent(player).reach #i, obj) or   ! is the object inside a reach object
+		if Contains(parent(player).reach #i, obj) or   ! is the object inside a reach object
           obj = parent(player).reach #i ! is the object a reach object
 		{
 			return true
@@ -615,15 +615,15 @@ replace CheckReach(obj)
 	p = obj.part_of
 	while p
 	{
-	for (i=1; i<=parent(player).#reach; i++)
-	{
-     if Contains(parent(player).reach #i, p) or ! is the object part of an object inside the reach object
-          p = parent(player).reach #i ! is the object part of a reach object
+		for (i=1; i<=parent(player).#reach; i++)
 		{
-			return true
+			if Contains(parent(player).reach #i, p) or ! is the object part of an object inside the reach object
+				p = parent(player).reach #i ! is the object part of a reach object
+			{
+				return true
+			}
 		}
-	}
-	p = p.part_of
+		p = p.part_of
 	}
 
 #ifset USE_ATTACHABLES
@@ -1005,7 +1005,7 @@ replace WhatsIn(obj)
 		}
 
 			if obj.list_contents
-			return totallisted
+				return totallisted
 
 		initial_list_nest = list_nest
 
@@ -1632,11 +1632,11 @@ replace Art(obj, a)
 	if obj = player and player_person = 1 and a
 		print player.pronoun #2;
 	else
-		{
+	{
 		if obj.article
 			print obj.article; " ";
 		print obj.name;
-		}
+	}
 
 	if (debug_flags & D_OBJNUM)
 		print " ["; number obj; "]";
@@ -1657,16 +1657,16 @@ routine DoScope
 	"Objects in scope:"
 	local a
 	for (a=player ; a< objects ; a=a+1)
-		{
+	{
 		if a.type ~= room
-			{
+		{
 			if FindObject(a,location)
                               {
                               print "\_  ";
 			      print a.name
                               }
-			}
 		}
+	}
 }
 
 routine DoScopeRooms
@@ -1678,30 +1678,30 @@ routine DoScopeRooms
 	do
 	{
 		if a.type = room
-			{
+		{
 			c = 0
 			print ""
 			print "Room: "; a.name
 			print "In scope:"
 			for (b=player ; b< objects ; b=b+1)
-				{
+			{
 				if b.type ~= room and b~= player
-					{
+				{
 					if FindObject(b,a)
-						{
+					{
 						print "\_  "; b.name
 						c++
-						}
-					}
-				elseif b = player and a = location
-					{
-					print "\_  "; b.name
-					c++
 					}
 				}
+				elseif b = player and a = location
+				{
+					print "\_  "; b.name
+					c++
+				}
+			}
 			if not c
 				print "\_  "; "nothing"
-			}
+		}
 		a++
 	}
 	while a< objects
@@ -1721,187 +1721,187 @@ routine DoVerbTest
 	a = parent(object)
 
 	while b < 26
-		{
+	{
 		b++
 		t = 0
 		Font(ITALIC_ON)
 		select b
 			case 1
-				{
+			{
 				if player ~= parent(object)
-					{
+				{
 					t = "Getting object"
 					c = &DoGet
-					}
 				}
+			}
 			case 2
-				{
+			{
 				t = "Wearing object"
 				c = &DoWear
-				}
+			}
 			case 3
-				{
+			{
 				if parent(object) = player
-					{
+				{
 					t = "Removing object"
 					c = &DoTakeOff
-					}
 				}
+			}
 			case 4
-				{
+			{
 				if parent(object) = player
-					{
+				{
 					t = "Dropping object"
 					c = &DoDrop
-					}
 				}
+			}
 			case 5
-				{
+			{
 				if object is openable
-					{
+				{
 					t = "Opening object"
 					c = &DoOpen
-					}
 				}
+			}
 			case 6
-				{
+			{
 				if object is openable
-					{
+				{
 					t = "Closing object"
 					c = &DoClose
-					}
 				}
+			}
 			case 7
-				{
+			{
 				if object is lockable
-					{
+				{
 					t = "Locking object"
 					c = &DoLock
-					}
 				}
+			}
 			case 8
-				{
+			{
 				if object is lockable
-					{
+				{
 					t = "Unlocking object"
 					c = &DoUnlock
-					}
 				}
+			}
 			case 9
-				{
+			{
 				if object is switchable
-					{
+				{
 					t = "Switching on object"
 					c = &DoSwitchOn
-					}
 				}
+			}
 			case 10
-				{
+			{
 				if object is switchable
-					{
+				{
 					t = "Switching off object"
 					c = &DoSwitchOff
-					}
 				}
+			}
 			case 11
-				{
+			{
 				t = "Listening to object"
 				c = &DoListen
-				}
+			}
 			case 12
-				{
+			{
 				t = "Eating object"
 				c = &DoEat
-				}
+			}
 			case 13
-				{
+			{
 				t = "Drinking object"
 				c = &DoDrink
-				}
+			}
 			case 14
-				{
+			{
 				t = "Hitting object"
 				c = &DoHit
-				}
+			}
 			case 15
-				{
+			{
 				t = "Hello-ing object"
 				c = &DoHello
-				}
+			}
 			case 16
-				{
+			{
 				t = "Examining object"
 				c = &DoLook
-				}
+			}
 			case 17
-				{
+			{
 				if object is platform or object is container
-					{
+				{
 					t = "Looking in/on object"
 					c = &DoLookIn
-					}
 				}
+			}
 			case 18
-				{
+			{
 				t = "Looking through object"
 				c = &DoLookThrough
-				}
+			}
 			case 19
-				{
+			{
 				t = "Looking under object"
 				c = &DoLookUnder
 				word[2] = "under"
-				}
+			}
 			case 20
-				{
+			{
 				t = "Go-ing object"
 				c = &DoGo
-				}
+			}
 			case 21
-				{
+			{
 				t = "Entering object"
 				c = &DoEnter
-				}
+			}
 			case 22
-				{
+			{
 				t = "Sitting on object"
 				c = &DoSit
-				}
+			}
 			case 23
-				{
+			{
 				t = "Exiting object"
 				c = &DoExit
-				}
+			}
 			case 24
-				{
+			{
 				t = "Moving object"
 				c = &DoMove
-				}
+			}
 			case 25
-				{
+			{
 				t = "Searching object"
 				c = &DoSearch
-				}
+			}
 			case 26
-				{
+			{
 				t = "Smelling object"
 				c = &DoSmell
-				}
+			}
 		Font(ITALIC_OFF)
 		if c
-			{
+		{
 			if d
-				{
+			{
 				""
-				}
+			}
 			print t
 			Perform(c, object)
 			d = c
-			}
+		}
 		c = 0
 		if parent(object) ~= a, player
 			move object to location
-		}
+	}
 !	c = 0
 #ifset _VERBSTUB_H
 	""
@@ -1912,102 +1912,102 @@ routine DoVerbTest
 	Font(BOLD_OFF)
 	""
 	while b < 14
-		{
+	{
 		b++
 		t = 0
 		Font(ITALIC_ON)
 		select b
 			case 1
-				{
+			{
 				t = "Getting object again:"
 				c = &DoGet
-				}
+			}
 			case 2
-				{
+			{
 				t = "Waving to object"
 				c = &DoWaveHands
-				}
+			}
 			case 3
-				{
+			{
 				if parent(object) = player
-					{
+				{
 					t = "Waving object"
 					c = &DoWave
-					}
 				}
+			}
 			case 4
-				{
+			{
 				if parent(object) = player
-					{
+				{
 					t = "Throwing object"
 					c = &DoThrowAt
-					}
 				}
+			}
 			case 5
-				{
+			{
 				t = "Climbing object"
 				c = &DoClimb
-				}
+			}
 			case 6
-				{
+			{
 				t = "Pushing object"
 				c = &DoPush
-				}
+			}
 			case 7
-				{
+			{
 				t = "Pulling object"
 				c = &DoPull
-				}
+			}
 			case 8
-				{
+			{
 				t = "Kissing object"
 				c = &DoKiss
-				}
+			}
 			case 9
-				{
+			{
 				t = "Touching object"
 				c = &DoTouch
-				}
+			}
 			case 10
-				{
+			{
 				t = "Tying object"
 				c = &DoTie
-				}
+			}
 			case 11
-				{
+			{
 				t = "Untying object"
 				c = &DoUntie
-				}
+			}
 			case 12
-				{
+			{
 				t = "Burning object"
 				c = &DoBurn
-				}
+			}
 			case 13
-				{
+			{
 				t = "Cutting object"
 				c = &DoCut
-				}
+			}
 			case 14
-				{
+			{
 				t = "Digging object"
 				c = &DoDig
-				}
+			}
 		Font(ITALIC_OFF)
 		if c
-			{
+		{
 			if d
-				{
+			{
 				""
-				}
+			}
 			print t
 			Perform(c, object)
 			d = c
-			}
+		}
 		c = 0
 		if parent(object) ~= a, player
 			move object to location
-		}
+	}
 #endif  !ifset USE_VERBSTUB
 }
 
@@ -2070,127 +2070,127 @@ routine ProcessKey(entry,end_type)
    select entry
 	! we do SpecialKey first since options like RESTART can clear word[1]
 	! and trigger SpecialKey (which sometimes equals false)
-		    case SpecialKey(end_type)
-	    {
-	    SpecialRoutine
-	    }
-            case "restart", "r"
-            {
-					ClearWordArray
-					word[1] = "r"
-					SaveWordSetting("restart")
-					for i in init_instructions
-						{
-						if i.save_info
-							SaveWordSetting(i.name)
-						}
-               if restart
-               {
-                  r = 1
-                  PrintStatusline
-               }
-   #ifclear NO_XVERBS
-               else
-                  Message(&DoRestart, 2)   ! failed
-   #endif
+		case SpecialKey(end_type)
+		{
+			SpecialRoutine
+		}
+		case "restart", "r"
+		{
+			ClearWordArray
+			word[1] = "r"
+			SaveWordSetting("restart")
+			for i in init_instructions
+			{
+				if i.save_info
+					SaveWordSetting(i.name)
+			}
+			if restart
+			{
+				r = 1
+				PrintStatusline
+			}
+#ifclear NO_XVERBS
+			else
+				Message(&DoRestart, 2)   ! failed
+#endif
 
-            }
-            case "restore", "e"
-            {
-				ClearWordArray
-				word[1] = "e"
-				SaveWordSetting("restore")
+		}
+		case "restore", "e"
+		{
+		ClearWordArray
+		word[1] = "e"
+		SaveWordSetting("restore")
+		for i in init_instructions
+		{
+			if i.save_info
+				SaveWordSetting(i.name)
+		}
+#ifclear NO_XVERBS
+			if Perform(&DoRestore)
+				r = 1
+#else
+			if restore
+			{
+				r = 1
 				for i in init_instructions
-					{
+				{
+					if CheckWordSetting(i.name)
+						run i.execute
+				}
+				VMessage(&DoRestore, 1)         ! "Restored."
+				PrintStatusline
+				DescribePlace(location,true)
+#ifset NEW_FUSE
+				fake_runevents
+#endif
+			}
+			else:  VMessage(&DoRestore, 2)           ! "Unable to restore."
+#endif
+		}
+#ifclear NO_UNDO
+		case "undo", "u"
+		{
+			if not UNDO_OFF
+			{
+				SaveWordSetting("undo")
+				for i in init_instructions
+				{
 					if i.save_info
 						SaveWordSetting(i.name)
-					}
-   #ifclear NO_XVERBS
-               if Perform(&DoRestore)
-                  r = 1
-   #else
-               if restore
-               {
-                  r = 1
-						for i in init_instructions
-							{
-							if CheckWordSetting(i.name)
-								run i.execute
-							}
-						VMessage(&DoRestore, 1)         ! "Restored."
-                  PrintStatusline
-                  DescribePlace(location,true)
-#ifset NEW_FUSE
-						fake_runevents
-#endif
-               }
-					else:  VMessage(&DoRestore, 2)           ! "Unable to restore."
-   #endif
-            }
-   #ifclear NO_UNDO
-            case "undo", "u"
-            {
-               if not UNDO_OFF
-               {
-						SaveWordSetting("undo")
-						for i in init_instructions
-							{
-							if i.save_info
-								SaveWordSetting(i.name)
-							}
+				}
 
-                  if undo
-                  {
-                     r = true
-							for i in init_instructions
-								{
-								if CheckWordSetting(i.name)
-									run i.execute
-								}
-                     PrintStatusLine
-                     DescribePlace(location)
+				if undo
+				{
+					r = true
+					for i in init_instructions
+					{
+						if CheckWordSetting(i.name)
+							run i.execute
+					}
+					PrintStatusLine
+					DescribePlace(location)
 #ifset NEW_FUSE
-							fake_runevents
+					fake_runevents
 #endif
 #ifset USE_AFTER_UNDO
-							if after_undo[0]
-								{
-								local a
-								while after_undo[a] ~= 0
-									{
-									call after_undo[a]
-									after_undo[a++] = 0
-									}
-								}
-#endif
-							last_turn_true = true
-                  }
-   #ifclear NO_XVERBS
-                  else
-                     Message(&DoUndo, 1)  ! failed
-               }
-               else
-                  Message(&DoUndo, 1)
-   #else
-               }
-		else
-			VMessage(&DoUndo)
-   #endif
-            }
-   #endif
-            case "quit", "q"
-            {
-				""
-				RLibMessage(&DoQuit,1) ! "Thanks for playing!"
-				""
-				display.title_caption = PRESS_ANY_KEY
-					if not system(61) ! if not simple port simple port
+					if after_undo[0]
+					{
+						local a
+						while after_undo[a] ~= 0
 						{
-						print PRESS_ANY_KEY;
-						HiddenPause
+							call after_undo[a]
+							after_undo[a++] = 0
 						}
-               r = 0
-            }
+					}
+#endif
+					last_turn_true = true
+				}
+#ifclear NO_XVERBS
+				else
+					Message(&DoUndo, 1)  ! failed
+			}
+			else
+				Message(&DoUndo, 1)
+#else
+			}
+else
+	VMessage(&DoUndo)
+#endif
+		}
+#endif
+		case "quit", "q"
+		{
+			""
+			RLibMessage(&DoQuit,1) ! "Thanks for playing!"
+			""
+			display.title_caption = PRESS_ANY_KEY
+			if not system(61) ! if not simple port simple port
+			{
+				print PRESS_ANY_KEY;
+				HiddenPause
+			}
+			r = 0
+		}
    return r
 }
 
@@ -2219,7 +2219,7 @@ replace ExcludeFromAll(obj)
 ! Make >WEAR ALL and >REMOVE ALL only acknowledge clothes
 		if obj is not clothing
 #endif
-		return true
+			return true
 	}
 
 	! Exclude things NPCs are carrying unless the NPC is explicitly
@@ -2330,7 +2330,7 @@ replace FindObject(obj, objloc, recurse)
 		if obj is clothing and obj is not worn
 			this_parse_rank--
 	}
-#else
+#else  ! if clear USE_CHECKHELD
 	case &DoWear
 	{
 		if obj is clothing and obj is worn
@@ -2341,7 +2341,7 @@ replace FindObject(obj, objloc, recurse)
 		if obj is clothing and obj is not worn
 			this_parse_rank--
 	}
-#endif
+#endif  ! USE_CHECKHELD
 #endif	! #ifclear NO_VERBS
 
 #ifset USE_CHECKHELD
@@ -2658,13 +2658,13 @@ replace HoursMinutes(val, military)
 		elseif hours = 0:  hours = 12
 	}
 	else
-		{
+	{
 		while hours >= 24
-			{
+		{
 			hours -= 24
-			}
-		if hours < 10:  print "0";
 		}
+		if hours < 10:  print "0";
+	}
 
 	print number hours; ":";
 	if minutes < 10
@@ -2684,115 +2684,115 @@ replace HoursMinutes(val, military)
 ! also gets rid of jump, also moves PrintStatusLine to end of routine
 replace MovePlayer(loc, silent, ignore)
 {
-   local v, obj, xobj, act, ret, LeavingMovePlayer
+	local v, obj, xobj, act, ret, LeavingMovePlayer
 
 #ifclear NO_OBJLIB
-   if loc.type = direction
-   {
-      local l
-      l = location.(loc.dir_to)
-      if l > 1                ! since a message always returns 1
-         loc = l
-      else
-         return
-   }
+	if loc.type = direction
+	{
+		local l
+		l = location.(loc.dir_to)
+		if l > 1                ! since a message always returns 1
+			loc = l
+		else
+			return
+	}
 #endif
 
 #ifset USE_ATTACHABLES
-   if ObjectisAttached(player, location, loc)
-      return
+	if ObjectisAttached(player, location, loc)
+		return
 #endif
 
-   ! Check if there's a before routine for MovePlayer in the new
-   ! location.  Note that the (potential) new location and the old
-   ! location are stored in object and xobject, respectively.
-   !
-   v = verbroutine
-   obj = object
-   xobj = xobject
-   act = actor
-   verbroutine = &MovePlayer
-   object = loc
-   xobject = location
-   actor = player
-   if not ignore
-   {
-      while (true)
-         {
-         ret = player.before
-         if ret
-            {
-            LeavingMovePlayer = true
-            break
-            }
-         ret = location.before
-         if ret
-            {
-            LeavingMovePlayer = true
-            break
-            }
-         ret = loc.before
-         if ret
-            {
-            LeavingMovePlayer = true
-            break
-            }
-         break
-         }
-   }
+! Check if there's a before routine for MovePlayer in the new
+! location.  Note that the (potential) new location and the old
+! location are stored in object and xobject, respectively.
+!
+	v = verbroutine
+	obj = object
+	xobj = xobject
+	act = actor
+	verbroutine = &MovePlayer
+	object = loc
+	xobject = location
+	actor = player
+	if not ignore
+	{
+		while (true)
+		{
+			ret = player.before
+			if ret
+			{
+				LeavingMovePlayer = true
+				break
+			}
+			ret = location.before
+			if ret
+			{
+				LeavingMovePlayer = true
+				break
+			}
+			ret = loc.before
+			if ret
+			{
+				LeavingMovePlayer = true
+				break
+			}
+			break
+		}
+	}
 	if (not LeavingMovePlayer)
 	{
 		move player to loc
-!		local simpleport
-!		if system(61) and ! minimal port and..
-!		not IsGlk! not glk
-!			simpleport = true
-!		if not simpleport and old_location
-!			PrintStatusline  ! will be printed again by main, anyway
+	!		local simpleport
+	!		if system(61) and ! minimal port and..
+	!		not IsGlk! not glk
+	!			simpleport = true
+	!		if not simpleport and old_location
+	!			PrintStatusline  ! will be printed again by main, anyway
 
-      old_location = location
-      if parent(loc) = 0              ! if it's likely a room object
-         location = loc
-      else                            ! if it's an enterable object
-         location = parent(loc)  ! (noting that the object must be
-                  ! in a room, not inside another
-                  ! non-room object)
+		old_location = location
+		if parent(loc) = 0              ! if it's likely a room object
+			location = loc
+		else                            ! if it's an enterable object
+			location = parent(loc)  ! (noting that the object must be
+	! in a room, not inside another
+	! non-room object)
 
 #ifset USE_ATTACHABLES
-      MoveAllAttachables(player, old_location, location)
+		MoveAllAttachables(player, old_location, location)
 #endif
-      }
+	}
 
 ! LeavingMovePlayer area
 
-   if not ret
-   {
-      if not FindLight(location)
-         DarkWarning
-      elseif not silent
-      {
-         DescribePlace(location)
-         if not event_flag
-            event_flag = true
-         location is visited
-      }
+	if not ret
+	{
+		if not FindLight(location)
+			DarkWarning
+		elseif not silent
+		{
+			DescribePlace(location)
+			if not event_flag
+				event_flag = true
+			location is visited
+		}
 
-   ! Check if there's an after routine for MovePlayer in the new
-   ! location:
-   !
-      if not ignore
-      {
-         ret = player.after
-         if not ret
-            ret = location.after
-      }
-   }
-   verbroutine = v
-   object = obj
-   xobject = xobj
-   actor = act
+	! Check if there's an after routine for MovePlayer in the new
+	! location:
+	!
+		if not ignore
+		{
+			ret = player.after
+			if not ret
+				ret = location.after
+		}
+	}
+	verbroutine = v
+	object = obj
+	xobject = xobj
+	actor = act
 
-   return ret
+	return ret
 }
 
 ! Roody's note: This only exists here to have a NewParseError replacement
@@ -2800,9 +2800,9 @@ replace MovePlayer(loc, silent, ignore)
 ! game
 replace NewParseError(errornumber,obj)
 {
-     select errornumber
-          case else : return false
-     return true
+	select errornumber
+		case else : return false
+	return true
 }
 
 ! Roody's note: Took out Parse's HugoFix code, as it tries to print parse$
@@ -2920,8 +2920,7 @@ replace Parse
 		JumpToEnd = true
 	}
 	if  not JumpToEnd
-		{
-
+	{
 		local count
 #ifclear NEW_STYLE_PRONOUNS
 		local n, number_pronouns
@@ -3033,7 +3032,7 @@ replace Parse
 		oldword[a] = ""
 		oldword[0] = ow
 
-		}
+	}
 	! old "LeaveParse area
 
 #ifset DEBUG
@@ -3042,14 +3041,14 @@ replace Parse
 		local w
 		Font(BOLD_ON)
 		for (w=1; w<=words and word[w]~=""; w++)
-			{
+		{
 			print "[";
 			if (word[w] ~= -1)
 				print word[w];
 			else
 				print "\Iparse$\i";
 			"] ";
-			}
+		}
 		print newline
 		Font(BOLD_OFF)
 	}
@@ -3061,42 +3060,42 @@ replace Parse
 ! and various other little fixes suggested by Mike Snyder
 replace ParseError(errornumber, obj)
 {
-PrintStatusLine ! redraw PrintStatusLine in case screen size changed
+	PrintStatusLine ! redraw PrintStatusLine in case screen size changed
 #ifset DEBUG
 	if debug_flags & D_PARSE
 	{
 		local w, p
 		Font(BOLD_ON)
 		if (errornumber = 0,1,16,17) ! cases where Parse hasn't been called
-			{
+		{
 			for (w=1; w<=words and word[w]~=""; w++)
-				{
+			{
 				print "[";
 				if (word[w] ~= -1)
 					print word[w];
 				else
-					{
+				{
 					print "\Iparse$";
 					if p
 						print number (p+1);"*";
 					p++
 					FONT(ITALIC_OFF)
-					}
-				"] ";
 				}
+				"] ";
+			}
 			print newline
 			if (p>1)
-				{
+			{
 				"(* Not an \Iactual\i referable token.)"
-				}
 			}
+		}
 		! this section so we print parse$ only once
 		if string(_temp_string,parse$) and
 			not (parser_data[PARSER_STATUS] & 32)
-			{
+		{
 			print "[parse$ = \""; parse$; "\"]"
 			parser_data[PARSER_STATUS] |= 32
-			}
+		}
 		print "[ParseError errornumber = "; number errornumber; "]"
 		Font(BOLD_OFF)
 	}
@@ -3134,7 +3133,6 @@ PrintStatusLine ! redraw PrintStatusLine in case screen size changed
 	}
 
 	select errornumber
-
 		case 1
 		{
 			print "You";
@@ -3148,53 +3146,53 @@ PrintStatusLine ! redraw PrintStatusLine in case screen size changed
 #endif
 		}
 		case 3
-			{
+		{
 			local a, b
 			 select word[1]
-				case "x" : {
-					   		a = "examine"
-								if word[2] ~= "~all"
-							      b = word[2]
-							  }
+				case "x"
+				{
+					a = "examine"
+					if word[2] ~= "~all"
+						b = word[2]
+				}
 				case "l","look"
-								{
-								if word[2] = "~all"
-									a = "look at"
-								else
-					   			a = "look"
-								if word[2] ~= "~all"
-							      b = word[2]
-								}
+				{
+					if word[2] = "~all"
+						a = "look at"
+					else
+						a = "look"
+					if word[2] ~= "~all"
+						b = word[2]
+				}
 				case "sit","lie","go","walk","watch"
-								{
-					   		a = word[1]
-								if word[2] ~= "~all"
-							      b = word[2]
-								}
+				{
+					a = word[1]
+					if word[2] ~= "~all"
+						b = word[2]
+				}
 				case "get", "step"
-								{
-								a = word[1]
-								if word[2] ~= "~all"
-									{
-									if (word[2] = "outof")
-										{
-										b = "out of"
-										}
-									elseif word[2] = "offof"
-										{
-										b = "off of"
-										}
-									else
-										b = word[2]
-									}
-								}
+				{
+					a = word[1]
+					if word[2] ~= "~all"
+					{
+						if (word[2] = "outof")
+						{
+							b = "out of"
+						}
+						elseif word[2] = "offof"
+						{
+							b = "off of"
+						}
+						else
+							b = word[2]
+					}
+				}
 				case else : a = parse$
 			print CThe(actor); " can't "; a;
 			if b
 				print " "; b ;
-				" multiple
-				objects like that."
-			}
+			" multiple objects like that."
+		}
 
 		case 5
 		{
@@ -3253,7 +3251,7 @@ PrintStatusLine ! redraw PrintStatusLine in case screen size changed
 #endif
 			{
 				print "Be specific about what you'd like ";
-							if player_person ~= 2:  print The(player, true); " ";
+				if player_person ~= 2:  print The(player, true); " ";
 				print "to ";
 				if word[1] = "take"
 				{
@@ -3509,7 +3507,7 @@ replace Perform(action, obj, xobj, queue, isxverb)
 
 	r = BeforeRoutines(queue)
 	if not r ! if action not stopped by before routines
-		{
+	{
 		r = call action                 ! object.after and xobject.after
 						! run by verbroutine
 #ifclear NO_XVERBS
@@ -3517,10 +3515,10 @@ replace Perform(action, obj, xobj, queue, isxverb)
 			verbroutine = &DoRestore
 #endif
 		if r  ! if action was successful, run after routines
-			{
+		{
 			AfterRoutines
-			}
 		}
+	}
 
 !:DonePerform area
 #ifset USE_CHECKHELD
@@ -3684,25 +3682,25 @@ replace ShortDescribe(obj)
 
 	if (not ListContents)
 		{
-                if verbosity = 1
-	                return
+			if verbosity = 1
+				return
 
-		if &obj.short_desc
-			Indent
+			if &obj.short_desc
+				Indent
 
-		local a
-		a = obj.short_desc
-		if a > 1
-		{
-			print a ;
-		}
-		elseif not a
-!		if &obj.short_desc > 1
-!		{
-!			print obj.short_desc ;
-!		}
-!		elseif not obj.short_desc
-			return
+			local a
+			a = obj.short_desc
+			if a > 1
+			{
+				print a ;
+			}
+			elseif not a
+	!		if &obj.short_desc > 1
+	!		{
+	!			print obj.short_desc ;
+	!		}
+	!		elseif not obj.short_desc
+				return
 		}
 
 !  "ListContents" section
@@ -3832,10 +3830,10 @@ replace SpeakTo(char)
 	    stay = true
 
 	if not stay
-	   {
+	{
 	   speaking = 0
 	   return
-	   }
+	}
 
 	if char is unfriendly
 		IgnoreResponse = true
@@ -4345,64 +4343,64 @@ object printstatuslib
 
 replace PrintStatusline
 {
-local newstatusheight, window_top
+	local newstatusheight, window_top
 
-! set the "terp_type" value
-if IsGlk
-    printstatuslib.terp_type = GLK_TERP
-elseif system(61) ! minimal port
-        printstatuslib.terp_type = SIMPLE_TERP
-else
-    printstatuslib.terp_type = NORMAL_TERP
+	! set the "terp_type" value
+	if IsGlk
+		printstatuslib.terp_type = GLK_TERP
+	elseif system(61) ! minimal port
+		printstatuslib.terp_type = SIMPLE_TERP
+	else
+		printstatuslib.terp_type = NORMAL_TERP
 #ifclear CHEAP
 	local cheap
 #endif
 
-		if cheap and printstatuslib.terp_type ~= SIMPLE_TERP
-			{
+	if cheap and printstatuslib.terp_type ~= SIMPLE_TERP
+	{
 #if defined GAME_TITLE
-			CenterTitle(GAME_TITLE,0,1)
+		CenterTitle(GAME_TITLE,0,1)
 #endif
 #if undefined GAME_TITLE
-			CenterTitle(CheapTitle,0,1)
+		CenterTitle(CheapTitle,0,1)
 #endif
-			display.needs_repaint = false
-			return
-			}
-		elseif cheap
-			return
+		display.needs_repaint = false
+		return
+	}
+	elseif cheap
+		return
 
-! figure out the size our window will be
-newstatusheight = printstatuslib.find_height
-window_top = printstatuslib.status_top
+	! figure out the size our window will be
+	newstatusheight = printstatuslib.find_height
+	window_top = printstatuslib.status_top
 
-if not window_top
-	window_top = 1
+	if not window_top
+		window_top = 1
 
-! clear/remove the window if the status window height has changed
-if (newstatusheight < display.statusline_height) and not system(61)
+	! clear/remove the window if the status window height has changed
+	if (newstatusheight < display.statusline_height) and not system(61)
 	{
-	window display.statusline_height
-	{cls} ! clear whatever's there
-	window 0
+		window display.statusline_height
+		{cls} ! clear whatever's there
+		window 0
 	}
 
-display.statusline_height = newstatusheight
+	display.statusline_height = newstatusheight
 
-Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
-window 1, window_top, display.screenwidth,
+	Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
+	window 1, window_top, display.screenwidth,
 	(display.statusline_height + window_top - 1)
-    {
-    if printstatuslib.terp_type ~= SIMPLE_TERP
-        {
-		  color SL_TEXTCOLOR, SL_BGCOLOR
-        cls
-        locate 1,1
-        }
-    run printstatuslib.draw_window
-    }
-color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-Font(DEFAULT_FONT)
+	{
+		if printstatuslib.terp_type ~= SIMPLE_TERP
+		{
+			color SL_TEXTCOLOR, SL_BGCOLOR
+			cls
+			locate 1,1
+		}
+		run printstatuslib.draw_window
+	}
+	color TEXTCOLOR, BGCOLOR, INPUTCOLOR
+	Font(DEFAULT_FONT)
 }
 
 property counter_length alias se_to
@@ -4432,62 +4430,62 @@ have a line like this:
 ! routine for finding the height of the regular status info
 routine FindStatusHeight
 {
-local a, b
-text to _temp_string
-! can't start off a string with a space, it seems
-!if not location     ! so we'll save this space-writing code for the
-!    print "\_";     ! "status-writing" routine
-!else
-if not light_source
-    print "In the dark";
-else
-    {
-        print capital location.name;
-!		 if FORMAT & DESCFORM_F
-        print "\_";
-    }
-text to 0
-a = StringLength(_temp_string)
-text to _temp_string
-select STATUSTYPE
-	case 1 : print number score; " / "; number counter;
-	case 2 : print HoursMinutes(counter);
-	case 3 : print "Score: "; number score; "\_ "; "Moves: "; number counter;
-	! STATUSTYPE case 3 is the "Infocom"-style status
-	case 4 : StatusType4 ! routine for configurable statusline
-!if (FORMAT & DESCFORM_F) and (printstatuslib.terp_type ~= GLK_TERP)
-!	print "\_";
-text to 0
-if STATUSTYPE
-{
-	b = StringLength(_temp_string)
-	statuswindow.counter_length = ++b
-}
-else
-{
-	b = 1
-	while display.screenwidth < (b*a)
+	local a, b
+	text to _temp_string
+	! can't start off a string with a space, it seems
+	!if not location     ! so we'll save this space-writing code for the
+	!    print "\_";     ! "status-writing" routine
+	!else
+	if not light_source
+		print "In the dark";
+	else
 	{
-		b++
-	}
-	return b
-}
-if (b + a + 4)<display.screenwidth ! let's force a 4 character gap between
-    {                              ! the two fields
-    return 1
-    }
-elseif (b + a - 4 ) < display.screenwidth and STATUSTYPE = 3
-    {
-    text to _temp_string
-    print "S: "; number score; "\_ "; "M: "; number counter;
- !   if (FORMAT & DESCFORM_F) and (printstatuslib.terp_type ~= GLK_TERP)
-	if (printstatuslib.terp_type ~= GLK_TERP)
+		print capital location.name;
+	!		 if FORMAT & DESCFORM_F
 		print "\_";
-    text to 0
-    return 1
-    }
-else
-    return 2
+	}
+	text to 0
+	a = StringLength(_temp_string)
+	text to _temp_string
+	select STATUSTYPE
+		case 1 : print number score; " / "; number counter;
+		case 2 : print HoursMinutes(counter);
+		case 3 : print "Score: "; number score; "\_ "; "Moves: "; number counter;
+	! STATUSTYPE case 3 is the "Infocom"-style status
+		case 4 : StatusType4 ! routine for configurable statusline
+	!if (FORMAT & DESCFORM_F) and (printstatuslib.terp_type ~= GLK_TERP)
+	!	print "\_";
+	text to 0
+	if STATUSTYPE
+	{
+		b = StringLength(_temp_string)
+		statuswindow.counter_length = ++b
+	}
+	else
+	{
+		b = 1
+		while display.screenwidth < (b*a)
+		{
+			b++
+		}
+		return b
+	}
+	if (b + a + 4)<display.screenwidth ! let's force a 4 character gap between
+	{                              ! the two fields
+		return 1
+	}
+	elseif (b + a - 4 ) < display.screenwidth and STATUSTYPE = 3
+	{
+		text to _temp_string
+		print "S: "; number score; "\_ "; "M: "; number counter;
+	!   if (FORMAT & DESCFORM_F) and (printstatuslib.terp_type ~= GLK_TERP)
+		if (printstatuslib.terp_type ~= GLK_TERP)
+			print "\_";
+		text to 0
+		return 1
+	}
+	else
+		return 2
 }
 
 ! Roody's note: Replace this if you want to use the top right area
@@ -4499,113 +4497,116 @@ routine STATUSTYPE4
 routine WriteStatus
 {
 	local row,a
-    if printstatuslib.bottom_justified and
-        printstatuslib.terp_type ~= SIMPLE_TERP
-        {
-        if statuswindow.find_height = 2
-				row = display.statusline_height - 1
-        else
-				row = display.statusline_height
-         locate 1, row
-        }
+	if printstatuslib.bottom_justified and
+		printstatuslib.terp_type ~= SIMPLE_TERP
+	{
+		if statuswindow.find_height = 2
+			row = display.statusline_height - 1
 		else
-			row = 1
-    if not location
-        print "\_";
-    elseif not light_source
-        print "\_In the dark";
-    else
-        {
-   !         if FORMAT & DESCFORM_F or (printstatuslib.terp_type = GLK_TERP)
-					print "\_";
-            print capital location.name;
-        }
+			row = display.statusline_height
+		locate 1, row
+	}
+	else
+		row = 1
 
-    if statuswindow.find_height = 1 and STATUSTYPE
-        {
+	if not location
+		print "\_";
+	elseif not light_source
+		print "\_In the dark";
+	else
+	{
+	!         if FORMAT & DESCFORM_F or (printstatuslib.terp_type = GLK_TERP)
+		print "\_";
+		print capital location.name;
+	}
+
+	if statuswindow.find_height = 1 and STATUSTYPE
+	{
 	!		if display.linelength = 80 and printstatuslib.terp_type ~= GLK_TERP
 	!			a = 79
 	!		else
-				a = display.linelength
-            print to (a - \
-            ( statuswindow.counter_length + \
-            (printstatuslib.terp_type = SIMPLE_TERP)* 2 - \
-				 (printstatuslib.terp_type = GLK_TERP)));
-            StringPrint(_temp_string)
-        }
-    elseif STATUSTYPE and statuswindow.find_height = 2
-        {
-            if printstatuslib.terp_type ~= SIMPLE_TERP
-                locate 1, ++row
-            else
-                ""
-!			if (FORMAT & DESCFORM_F) or (printstatuslib.terp_type = GLK_TERP)
-	print "\_";
-            StringPrint(_temp_string)
-        }
+		a = display.linelength
+		print to (a - \
+			( statuswindow.counter_length + \
+			(printstatuslib.terp_type = SIMPLE_TERP)* 2 - \
+			(printstatuslib.terp_type = GLK_TERP)));
+		StringPrint(_temp_string)
+	}
+	elseif STATUSTYPE and statuswindow.find_height = 2
+	{
+		if printstatuslib.terp_type ~= SIMPLE_TERP
+			locate 1, ++row
+		else
+			""
+	!			if (FORMAT & DESCFORM_F) or (printstatuslib.terp_type = GLK_TERP)
+		print "\_";
+		StringPrint(_temp_string)
+	}
 }
-#endif  !ifset NO_FANCY_STUFF
+#endif  !ifclear NO_FANCY_STUFF
+
 #ifset NO_FANCY_STUFF
 replace PrintStatusline
 {
 	local simple
 	simple = (not isGlk and system(61))
-   if display.linelength < 60
-      display.statusline_height = 2
-   else
-      display.statusline_height = 1
+	if display.linelength < 60
+		display.statusline_height = 2
+	else
+		display.statusline_height = 1
 
-   Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
-      color SL_TEXTCOLOR, SL_BGCOLOR
-   window display.statusline_height
-   {
+	Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
+	color SL_TEXTCOLOR, SL_BGCOLOR
+	window display.statusline_height
+	{
 		if not system(61)
-			cls
+		cls
 		if not simple
 			locate 1, 1
-      if not location
-         print "\_";
-      elseif not light_source
-         print "\_ In the dark";
-      else
-      {
-       !  if FORMAT & DESCFORM_F:
+		if not location
+			print "\_";
+		elseif not light_source
+			print "\_ In the dark";
+		else
+		{
+	!  if FORMAT & DESCFORM_F:
 			print "\_";
 			print capital location.name;
-      }
+		}
 
-! (The part we're changing)
-! print to 65; ! is 65 characters good for every window size? No!
+	! (The part we're changing)
+	! print to 65; ! is 65 characters good for every window size? No!
 
-! Instead, let's begin by writing the entire 'SCORE / MOVES' to array
-! _temp_string (_temp_string is an array declared by the library)
+	! Instead, let's begin by writing the entire 'SCORE / MOVES' to array
+	! _temp_string (_temp_string is an array declared by the library)
 
-      text to _temp_string
+		text to _temp_string
 		select STATUSTYPE
 			case 1 : print number score; " / "; number counter;
 			case 2 : print HoursMinutes(counter);
-			case 3 : print "Score: "; number score; "\_ "; "Moves: "; number counter;
+			case 3 : print "Score: "; number score; "\_ "; "Moves: "; \
+				number counter;
 	! STATUSTYPE case 3 is the "Infocom"-style status
 			case 4 : StatusType4 ! routine for configurable statusline
-      text to 0
-! Ok, we've closed off the string array
+		text to 0
+	! Ok, we've closed off the string array
 
-! Now, if the screen is wide enough, let's move to the end of the screen
-! MINUS the length of the _temp_string array
-      if display.statusline_height = 1
-         print to (display.screenwidth - (StringLength(_temp_string) + 1 + (simple*2)));
-      else
-      {
-         locate 1, 2
-         print "\_ ";
-      }
+	! Now, if the screen is wide enough, let's move to the end of the screen
+	! MINUS the length of the _temp_string array
+		if display.statusline_height = 1
+			print to (display.screenwidth - (StringLength(_temp_string) + 1 + (simple*2)));
+		else
+		{
+			locate 1, 2
+			print "\_ ";
+		}
 
- ! Now let's print it!
-      if STATUSTYPE
+	! Now let's print it!
+		if STATUSTYPE
 			StringPrint(_temp_string)
-   }
-   color TEXTCOLOR, BGCOLOR
-   Font(DEFAULT_FONT)
+	}
+	color TEXTCOLOR, BGCOLOR
+	Font(DEFAULT_FONT)
 }
 
 ! Roody's note: Replace this if you want to use the top right area
@@ -4635,12 +4636,12 @@ routine SaveWordSetting(w)
 {
 	local i
 	for (i=20 ; i<30 ; i++ )
-		{
+	{
 		if word[i] = "" ! found an open slot
 			word[i] = w  ! add word to word array
 		if word[i] = w ! word is already in word array
 			return i
-		}
+	}
 	return false ! didn't find anything
 }
 
@@ -4648,12 +4649,12 @@ routine CheckWordSetting(w)
 {
 	local i
 	for (i=20 ; i<30 ; i++ )
-		{
+	{
 		if word[i] = ""
 			return false
 		elseif word[i] = w
 			return i
-		}
+	}
 	return false ! didn't find anything
 }
 
@@ -4668,11 +4669,11 @@ routine Init_Calls
 {
 	local i
 	for i in init_instructions
-		{
+	{
 		run i.execute
 		if i.did_print
 			InitScreen
-		}
+	}
 }
 
 object init_instructions
@@ -4684,25 +4685,25 @@ object roodylib "roodylib"
 	type settings
 #ifclear NO_FANCY_STUFF
 	save_info
-		{
+	{
 		select verbosity
 			case 0 : SaveWordsetting("brief")
 			case 1 : SaveWordSetting("superbrief")
 			case 2 : SaveWordSetting("verbose")
 		return true
-		}
+	}
 #endif
 	execute
-		{
+	{
 		if not CheckWordSetting("undo")
-			{
+		{
 			if not CheckWordSetting("restore")
-				{
+			{
 				CalculateHolding(player)
 #ifset USE_PLURAL_OBJECTS
 				InitPluralObjects
 #endif
-				}
+			}
 #ifclear NO_FANCY_STUFF
 			local a
 			a = CheckWordSetting("roodylib")
@@ -4711,8 +4712,8 @@ object roodylib "roodylib"
 				case "superbrief" : verbosity = 1
 				case "verbose" : verbosity = 2
 #endif
-			}
 		}
+	}
 }
 
 !\ Roody's note: the last_turn_true global uses the player's before property
@@ -4725,9 +4726,9 @@ routine Main_Calls
 {
 	local i
 	for i in main_instructions
-		{
+	{
 		run i.execute
-		}
+	}
 }
 
 object main_instructions
@@ -4743,9 +4744,9 @@ object success_detector
 {
 	in main_instructions
 	execute
-		{
+	{
 		last_turn_true = true
-		}
+	}
 }
 
 !----------------------------------------------------------------------------
@@ -4758,7 +4759,7 @@ routine SimpleIntro
 	g = IsGlk
 	if (not g and system(61)) and
 		not CheckWordSetting("restart") ! non-glk, simple port
-		{
+	{
 "\_          ___\_      ___\_  ___\_      ___\_  _________\_    _________"
 "\_         (__ |\_    | __) (__ |\_    | __)\_| _______ |\_  | _______ |"
 "\_           | |\_    | |\_    | |\_    | |\_  | |\_    | |\_  | |\_    | |"
@@ -4770,10 +4771,10 @@ routine SimpleIntro
 "\_          _| |\_    | |_\_   | |_____| |\_  | |_____| |\_  | |_____| |"
 "\_         (___|\_    |___)\_  |_________|\_  |_________|\_  |_________|"
 ""
-PRINT to (display.screenwidth / 2 - 11) ; "I N T E R A C T I V E"
-PRINT to (display.screenwidth / 2 - 7) ; "F I C T I O N"
-pause
-		}
+		PRINT to (display.screenwidth / 2 - 11) ; "I N T E R A C T I V E"
+		PRINT to (display.screenwidth / 2 - 7) ; "F I C T I O N"
+		pause
+	}
 }
 !\ old version of the SimpleIntro code- just cleared the screen
 			local i  ! hack-y code to clear the screen
@@ -4799,15 +4800,15 @@ routine InitScreen
 	Font(DEFAULT_FONT)
 	simple_port = (not IsGlk and system(61)) ! non-glk simple port
 	if not system(61)
-		{
+	{
 		window 0
-		}
+	}
 #ifset CHEAP
 	if not cheap
-		{
+	{
 		if CheckWordSetting("cheap")
 			cheap = true
-		}
+	}
 	if not simple_port and not cheap
 		cls
 #else
@@ -4838,9 +4839,9 @@ routine InitScreen
 routine CheapTitle
 {
 	if &display.title_caption
-		{
+	{
 		return display.title_caption
-		}
+	}
 	return "Hugo Interactive Fiction"
 }
 
@@ -4872,10 +4873,10 @@ replace PreParse
 {
 	local i , p, r
 	for i in preparse_instructions
-		{
+	{
 		p = i.execute
 		r = r | p
-		}
+	}
 	return r
 }
 
@@ -4887,10 +4888,10 @@ object parse_redraw
 	in preparse_instructions
 	type settings
 	execute
-		{
+	{
 		RedrawScreen
 		return false
-		}
+	}
 }
 #endif
 !\ Roody's note: RedrawScreen is a generic routine for redrawing the screen
@@ -4906,10 +4907,10 @@ routine RedrawScreen
 	! proceeding to interpret the command
 
 	if display.needs_repaint
-		{
+	{
 #ifset CHEAP
 		if cheap
-			{
+		{
 #if defined GAME_TITLE
 			CenterTitle(GAME_TITLE,0,1)
 #endif
@@ -4918,54 +4919,54 @@ routine RedrawScreen
 #endif
 			display.needs_repaint = false
 			return
-			}
+		}
 #endif ! CHEAP
 		"[Detected screen size change; redrawing screen...]"
 		local get_key
 		get_key = system(11) ! READ_KEY
 		if not (system_status or system(61)) ! 61 = MINIMAL_PORT
-			{
+		{
 			local a
 			while a <200
-				{
+			{
 				if system(11)
 					break
 				system(32) ! wait 1/100th second
 				a++
-				}
 			}
+		}
 		cls
 		PrintStatusLine
 		locate 1, LinesFromTop
 		print prompt;
 		local i = 1, showfullstops
 		while word[i] ~= ""
-			{
+		{
 			print word[i];
 			if word[++i] ~= ""
 				print " ";
 			elseif word[++i] ~= ""
-				{
+			{
 				showfullstops = true
 				print ". ";
-				}
-			if word[i] = "" and showfullstops
-				{
-				print ".";
-				}
 			}
+			if word[i] = "" and showfullstops
+			{
+				print ".";
+			}
+		}
 		print ""
 		display.needs_repaint = false
-		}
+	}
 	if system(61) ! simple port
 	{
 		if not oldwidth
 			oldwidth = display.screenwidth
 
 		if IsGlk and oldwidth ~= display.screenwidth
-			{
+		{
 			PrintStatusLine
-			}
+		}
 
 		oldwidth = display.screenwidth
 	}
@@ -5461,23 +5462,23 @@ is the interior, where pushing closes. If you want your door to emulate
 other behavior (swinging doors, whatever), you might want to change this.
 \!
 	before
-   {
+	{
 ! DoOpen and DoClose always return true
-      object DoPush
-      {
-         if location = self.between
-            return Perform(&DoOpen, self)
-         else
-            return Perform(&DoClose, self)
-      }
-      object DoPull
-      {
-         if location = self.between
-            return Perform(&DoClose, self)
-         else
-            return Perform(&DoOpen, self)
-      }
-   }
+		object DoPush
+		{
+			if location = self.between
+				return Perform(&DoOpen, self)
+			else
+				return Perform(&DoClose, self)
+		}
+		object DoPull
+		{
+			if location = self.between
+				return Perform(&DoClose, self)
+			else
+				return Perform(&DoOpen, self)
+		}
+	}
 #endif
 ! Not sure if this next section is necessary. Added it to deal with a
 ! weirdly-coded game that messed with scope a lot.
@@ -5597,7 +5598,7 @@ replace self_class
 				{
                                 !       (the old code)
 				!	Perform(verbroutine, object, self.self_object)
-				Perform(verbroutine, object, object)
+					Perform(verbroutine, object, object)
 				}
 			}
 			else
@@ -5673,21 +5674,21 @@ replace vehicle
 #ifclear NO_VERBS
 	before
 	{
-	parent(player) DoGo
+		parent(player) DoGo
 		{
-		if word[2] = "out" and object = self
+			if word[2] = "out" and object = self
 			{
-			object = out_obj
-			return false
+				object = out_obj
+				return false
 			}
-		if (object ~= u_obj, out_obj) and object.type = direction
+			if (object ~= u_obj, out_obj) and object.type = direction
 			{
 			! "To walk, you'll have to get out..."
-			OMessage(vehicle, 1, self)
-			return true
+				OMessage(vehicle, 1, self)
+				return true
 			}
-		else
-			return object
+			else
+				return object
 		}
 	}
 #endif
@@ -6250,14 +6251,14 @@ replace WordisNumber(w)
 	case "nine", "9":       return 9
 	case "ten", "10":       return 10
 	case else
-		{
+	{
 		local a
 		a = StringToNumber(parse$)
 		if not a
 			return -1
 		else
 			return a
-		}
+	}
 }
 #endif ! #ifset USE_PLURAL_OBJECTS
 
@@ -6657,10 +6658,10 @@ replace DoAskQuestion
 	{
 		DetermineSpeaking
 		if speaking = 0
-			{
+		{
 			VMessage(&DoAskQuestion)        ! "Not talking to anybody..."
 			return false
-			}
+		}
 	}
 	if xobject
 	{
@@ -7029,7 +7030,7 @@ replace DoGo
 		local b
 		b = parent(player).before	! i.e., a vehicle, etc.
 		if b > 1  or ! is b a direction?
-		((word[2] = "out","off") and object = parent(player)) ! "go out of <object>"
+			((word[2] = "out","off") and object = parent(player)) ! "go out of <object>"
 			return Perform(&DoExit,parent(player))
 		elseif b
 			return false ! so the error message doesn't take up a turn
@@ -7237,15 +7238,15 @@ replace DoHit
 replace DoListen
 {
 	if not object
+	{
+		if not location.after
 		{
-			if not location.after
-				{
-				RLibMessage(&DoListen, 1)  ! "You hear nothing unexpected."
-				return true
-				}
-			verbroutine = ""
+			RLibMessage(&DoListen, 1)  ! "You hear nothing unexpected."
 			return true
 		}
+		verbroutine = ""
+		return true
+	}
 	elseif not object.after
 !		VMessage(&DoListen, 2)   ! "Not making any sound..."
 		RLibMessage(&DoListen, 2)  ! "That would serve no purpose."
@@ -7260,27 +7261,27 @@ thing is Jason McWright's multikey.h extension.
 \!
 replace DoUnlock
 {
-   local a, list_key, cant_reach
-   if not CheckReach(object):  return false
+	local a, list_key, cant_reach
+	if not CheckReach(object):  return false
 
 	!\ because setupdirectionobjects can sometimes dictate an xobject where we
 	don't want it, we'll get rid of directional xobjects here \!
 	if xobject and xobject.type = direction
 		xobject = 0
 
-   if xobject ~= 0
-   {
-      a = InList(object,key_object,xobject)
-      if not a
-      {
-         VMessage(&DoUnlock, 1)  ! "Doesn't seem to work..."
-         return true
-      }
-   }
-   elseif object.key_object
-   {
-      for (a=1; a <= object.#key_object ; a++)
-      {
+	if xobject ~= 0
+	{
+		a = InList(object,key_object,xobject)
+		if not a
+		{
+			VMessage(&DoUnlock, 1)  ! "Doesn't seem to work..."
+			return true
+		}
+	}
+	elseif object.key_object
+	{
+		for (a=1; a <= object.#key_object ; a++)
+		{
 			if Contains(player, object.key_object #a)
 			{
 				if FindObject(object.key_object #a,location) = 1
@@ -7293,48 +7294,48 @@ replace DoUnlock
 					cant_reach = object.key_object #a
 			}
 		}
-      if not xobject
-      {
+		if not xobject
+		{
 			if cant_reach
 				RLibMessage(&DoUnLock, 2, cant_reach)     ! "You can't reach the..."
 			else
 				VMessage(&DoUnlock, 2)           ! no key that fits
-         return true
-      }
-   }
+			return true
+		}
+	}
 
-   if object is not locked
-      VMessage(&DoUnlock, 3)           ! already unlocked
-   else
-   {
-      object is not locked
-      if not object.after
-      {
-         if not xobject.after
-            RLibMessage(&DoUnlock, 1, list_key)   ! "Unlocked."
-      }
-   }
-   return true
+	if object is not locked
+		VMessage(&DoUnlock, 3)           ! already unlocked
+	else
+	{
+		object is not locked
+		if not object.after
+		{
+			if not xobject.after
+				RLibMessage(&DoUnlock, 1, list_key)   ! "Unlocked."
+		}
+	}
+	return true
 }
 
 replace DoLock
 {
-   local a,cant_reach,list_key
-   if not CheckReach(object):  return false
+	local a,cant_reach,list_key
+	if not CheckReach(object):  return false
 
-   if xobject ~= 0
-   {
-      a = InList(object,key_object,xobject)
-      if not a
-      {
-         VMessage(&DoUnlock, 1)  ! "Doesn't seem to work..."
-         return true
-      }
-   }
-   elseif object.key_object
-   {
-      for (a=1; a <= object.#key_object ; a++)
-      {
+	if xobject ~= 0
+	{
+		a = InList(object,key_object,xobject)
+		if not a
+		{
+			VMessage(&DoUnlock, 1)  ! "Doesn't seem to work..."
+			return true
+		}
+	}
+	elseif object.key_object
+	{
+		for (a=1; a <= object.#key_object ; a++)
+		{
 			if Contains(player, object.key_object #a)
 			{
 				if FindObject(object.key_object #a,location) = 1
@@ -7347,30 +7348,30 @@ replace DoLock
 					cant_reach = object.key_object #a
 			}
 		}
-      if not xobject
-      {
+		if not xobject
+		{
 			if cant_reach
 				RLibMessage(&DoUnLock, 2, cant_reach)     ! "You can't reach the..."
 			else
 				VMessage(&DoUnlock, 2)           ! no key that fits
-         return true
-      }
-   }
+			return true
+		}
+	}
 
-   if object is locked
-      VMessage(&DoLock, 1)             ! already locked
-   elseif object is open
-      VMessage(&DoLock, 2)             ! "Have to close it first..."
-   else
-   {
-      object is locked
-      if not object.after
-      {
-         if not xobject.after
-            RLibMessage(&DoLock, 1, list_key)     ! "Locked."
-      }
-   }
-   return true
+	if object is locked
+		VMessage(&DoLock, 1)             ! already locked
+	elseif object is open
+		VMessage(&DoLock, 2)             ! "Have to close it first..."
+	else
+	{
+		object is locked
+		if not object.after
+		{
+			if not xobject.after
+				RLibMessage(&DoLock, 1, list_key)     ! "Locked."
+		}
+	}
+	return true
 }
 
 ! Replaced LOOK routines\
@@ -7493,8 +7494,10 @@ replace DoLookIn
 replace DoLookThrough
 {
 	if object is not static
+	{
 		if not CheckReach(object)
 			return false
+	}
 
 	if object is transparent and object is not living
 	{
@@ -7650,10 +7653,10 @@ replace DoRestart
 		SaveWordSetting("restart")
 		local i
 		for i in init_instructions
-			{
+		{
 			if i.save_info
 				SaveWordSetting(i.name)
-			}
+		}
 #else
 		SaveWordSetting("restart")
 #endif
@@ -7680,10 +7683,10 @@ replace DoRestore
 	{
 #ifclear NO_FANCY_STUFF
 		for i in init_instructions
-			{
+		{
 			if CheckWordSetting(i.name)
 				run i.execute
-			}
+		}
 #endif
 		VMessage(&DoRestore, 1)         ! "Restored."
 		PrintStatusline
@@ -7718,7 +7721,7 @@ replace DoTakeOff
 !	}
 !	else
 	if parent(object) ~= player and
-	not (object is worn and object is clothing)
+		not (object is worn and object is clothing)
 	{
 		! So >REMOVE LOCK will >TAKE LOCK, etc.
 		return Perform(&DoGet, object)
@@ -7757,25 +7760,25 @@ replace DoUndo
 #ifclear NO_FANCY_STUFF
 		local i
 		for i in init_instructions
-			{
+		{
 			if i.save_info
 				SaveWordSetting(i.name)
-			}
+		}
 		if display.statusline_height > 2
-			{
+		{
 			c = SaveWordSetting("statusheight")
 			word[(c+1)] = display.statusline_height
-			}
+		}
 #endif
 		if undo
 		{
 #ifclear NO_FANCY_STUFF
 			i = 0
 			for i in init_instructions
-				{
+			{
 				if CheckWordSetting(i.name)
 					run i.execute
-				}
+			}
 			c = CheckWordSetting("statusheight")
 			if c
 				display.statusline_height = word[(c+1)]
@@ -7787,14 +7790,14 @@ replace DoUndo
 #endif
 #ifset USE_AFTER_UNDO
 			if after_undo[0]
-				{
+			{
 				local a
 				while after_undo[a] ~= 0
-					{
+				{
 					call after_undo[a]
 					after_undo[a++] = 0
-					}
 				}
+			}
 #endif ! USE_AFTER_UNDO
 			last_turn_true = true
 #ifclear NO_FANCY_STUFF
@@ -7891,15 +7894,15 @@ routine DoSearch
 replace DoSmell
 {
 	if not object
+	{
+		if not location.after
 		{
-			if not location.after
-				{
-				RLibMessage(&DoSmell,1) ! "You smell nothing unusual."
-				return true
-				}
-			verbroutine = ""
+			RLibMessage(&DoSmell,1) ! "You smell nothing unusual."
 			return true
 		}
+		verbroutine = ""
+		return true
+	}
 	elseif not object.after
 		RLibMessage(&DoSmell,2) ! "Why do that?"
 	! we have to clear verbroutine or else location.after.DoListen will run again
@@ -7910,18 +7913,18 @@ replace DoSmell
 routine DoSmell
 {
 	if not object
+	{
+		if not location.after
 		{
-			if not location.after
-				{
-				RLibMessage(&DoSmell) ! "You smell nothing unusual."
-				return true
-				}
-			verbroutine = ""
+			RLibMessage(&DoSmell) ! "You smell nothing unusual."
 			return true
 		}
+		verbroutine = ""
+		return true
+	}
 	elseif not object.after
 		RLibMessage(&DoSmell) ! "You smell nothing unusual."
-	! we have to clear verbroutine or else location.after.DoListen will run again
+! we have to clear verbroutine or else location.after.DoListen will run again
 	verbroutine = ""
 	return true
 }
@@ -7959,7 +7962,7 @@ respectively.
 #endif
 
 property new_desc
-#endif
+#endif ! NEW_DESC
 !\ To use, define a new_desc as a regular property element, not a
 property routine:
 
@@ -7999,39 +8002,39 @@ constant DESCFORM_I 4096
 #ifclear NEW_DESCRIBEPLACE
 replace Describeplace(place, long)
 {
-   local obj, count, notlisted, tempformat
+	local obj, count, notlisted, tempformat
 
 	if not place
 		place = location
 
-   parser_data[PARSER_STATUS] &= ~PRONOUNS_SET
+	parser_data[PARSER_STATUS] &= ~PRONOUNS_SET
 
    ! Since, for example, a room description following entering via
    ! DoGo does not trigger before/after properties tied to looking
    ! around:
    !
 #ifclear NO_VERBS
-   if verbroutine = &MovePlayer
-   {
-      if place is not visited and verbosity ~= 1
-         return Perform(&DoLookAround)
-      elseif long = true or verbosity = 2
-         return Perform(&DoLookAround)
-   }
+	if verbroutine = &MovePlayer
+	{
+		if place is not visited and verbosity ~= 1
+			return Perform(&DoLookAround)
+		elseif long = true or verbosity = 2
+			return Perform(&DoLookAround)
+	}
 #endif
 
-   if not light_source
-   {
-      Message(&DescribePlace, 1)     ! "It's too dark to see..."
-      return
-   }
+	if not light_source
+	{
+		Message(&DescribePlace, 1)     ! "It's too dark to see..."
+		return
+	}
 
-   place is known
+	place is known
 
    ! Print the name of the location as a heading
 	RLibMessage(&DescribePlace,1,place)
 
-   override_indent = false
+	override_indent = false
 
 	if place is not visited and verbosity ~= 1
 	{
@@ -8053,184 +8056,184 @@ replace Describeplace(place, long)
 		run place.initial_desc
 	}
 
-   if &place.list_contents and FORMAT & DESCFORM_F
-      print ""        ! for double-space-after-heading formatting
+	if &place.list_contents and FORMAT & DESCFORM_F
+		print ""        ! for double-space-after-heading formatting
 
    ! A location may contain an overriding listing routine, as may any
    ! parent, in the list_contents property
    !
-   if not place.list_contents
-   {
-      list_nest = 0
+	if not place.list_contents
+	{
+		list_nest = 0
 
       ! For double-space-after-heading formatting:
-      if FORMAT & DESCFORM_F
-      {
-         for obj in place
-         {
-            if obj is not hidden and
-               (player not in obj or children(obj) > 1)
-            {
-               print ""
-               break
-            }
-         }
-      }
+		if FORMAT & DESCFORM_F
+		{
+			for obj in place
+			{
+				if obj is not hidden and
+					(player not in obj or children(obj) > 1)
+				{
+					print ""
+					break
+				}
+			}
+		}
 
       ! List contents of chair, vehicle, etc. player is in
-      if player not in location
-      {
-         list_nest = 1
-         WhatsIn(Parent(player))
-      }
+		if player not in location
+		{
+			list_nest = 1
+			WhatsIn(Parent(player))
+		}
 
       ! List all characters, if any
-      count = 0
-      for obj in place
-      {
-         if obj is hidden or obj is not living or
-            player in obj
-         {
-            obj is already_listed
-         }
-         else
-         {
-            obj is not already_listed
-         }
-      }
-      for obj in place
-      {
-         if obj is not already_listed
-         {
-            print newline
-            ShortDescribe(obj)
-            if obj is not already_listed
-               count++
-         }
-      }
+		count = 0
+		for obj in place
+		{
+			if obj is hidden or obj is not living or
+				player in obj
+			{
+				obj is already_listed
+			}
+			else
+			{
+				obj is not already_listed
+			}
+		}
+		for obj in place
+		{
+			if obj is not already_listed
+			{
+				print newline
+				ShortDescribe(obj)
+				if obj is not already_listed
+					count++
+			}
+		}
 
-      list_count = count
-      count = 0
+		list_count = count
+		count = 0
 
-      if list_count           ! if characters are to be listed
-      {
-         tempformat = FORMAT
-         FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
-         FORMAT = FORMAT | USECHARNAMES_F
-         if FORMAT & LIST_F
-         {
-            FORMAT = FORMAT & ~LIST_F       ! clear it
-            FORMAT = FORMAT | TEMPLIST_F
-         }
-         Indent
-         list_nest = 0
-         ListObjects(place)
-         FORMAT = tempformat
-      }
+		if list_count           ! if characters are to be listed
+		{
+			tempformat = FORMAT
+			FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
+			FORMAT = FORMAT | USECHARNAMES_F
+			if FORMAT & LIST_F
+			{
+				FORMAT = FORMAT & ~LIST_F       ! clear it
+				FORMAT = FORMAT | TEMPLIST_F
+			}
+			Indent
+			list_nest = 0
+			ListObjects(place)
+			FORMAT = tempformat
+		}
 
-      for obj in place
-      {
+		for obj in place
+		{
 #ifset USE_ATTACHABLES
          ! Exclude all attachables for now (and characters)
 
-         if obj is living or obj.type = attachable or
-            player in obj
+			if obj is living or obj.type = attachable or
+				player in obj
 #else
-         if obj is living or player in obj
+			if obj is living or player in obj
 #endif
-            obj is already_listed
-         else
-            obj is not already_listed
-      }
+				obj is already_listed
+			else
+				obj is not already_listed
+		}
 
-      for obj in place
-      {
+		for obj in place
+		{
 #ifset USE_PLURAL_OBJECTS
          ! ...And don't list identical objects yet, either
 
-         if (obj.identical_to).type = identical_class
-         {
-            if obj is not hidden
-               count++
-         }
-         elseif player not in obj
+			if (obj.identical_to).type = identical_class
+			{
+				if obj is not hidden
+				count++
+			}
+			elseif player not in obj
 #else
-         if player not in obj
+			if player not in obj
 #endif
-         {
-            if obj is not already_listed and
-               obj is not hidden
-            {
-               ShortDescribe(obj)
-               if obj is not already_listed
-                  notlisted++
-            }
-         }
-      }
+			{
+				if obj is not already_listed and
+					obj is not hidden
+				{
+					ShortDescribe(obj)
+					if obj is not already_listed
+						notlisted++
+				}
+			}
+		}
 
-      if notlisted or count
-      {
-         list_count = notlisted + count
-         tempformat = FORMAT
-         FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
-         if FORMAT & LIST_F
-         {
-            FORMAT = FORMAT & ~LIST_F       ! clear it
-            FORMAT = FORMAT | TEMPLIST_F
-         }
-         Indent
-         list_nest = 0
-         ListObjects(place)
-         FORMAT = tempformat
-      }
+		if notlisted or count
+		{
+			list_count = notlisted + count
+			tempformat = FORMAT
+			FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
+			if FORMAT & LIST_F
+			{
+				FORMAT = FORMAT & ~LIST_F       ! clear it
+				FORMAT = FORMAT | TEMPLIST_F
+			}
+			Indent
+			list_nest = 0
+			ListObjects(place)
+			FORMAT = tempformat
+		}
 
 #ifclear NO_OBJLIB
 #ifset USE_ATTACHABLES
-      for obj in place
-      {
+		for obj in place
+		{
          ! Print attachables last
-         if obj.type = attachable and obj is not hidden
-         {
-            ShortDescribe(obj)
-            if obj is not already_listed
-               Message(&DescribePlace, 2, obj)
-         }
-      }
+			if obj.type = attachable and obj is not hidden
+			{
+				ShortDescribe(obj)
+				if obj is not already_listed
+					Message(&DescribePlace, 2, obj)
+			}
+		}
 #endif
 
-      print newline
-      override_indent = false
+		print newline
+		override_indent = false
 
       ! Finally, list contents of scenery objects (unless we've
       ! already done so as the parent of the player)
       !
-      for obj in place
-      {
-         if obj.type = scenery
-         {
-            obj is known
-            if player not in obj and
+		for obj in place
+		{
+			if obj.type = scenery
+			{
+				obj is known
+				if player not in obj and
            !    (obj is open or obj is not openable)
 			!	((obj is container and (obj is open or obj is transparent))  or
 			!	obj is platform) and obj is not quiet
 				(obj is open or obj is not openable or obj is platform or
 				obj is transparent) and obj is not quiet
-            {
-               list_nest = 1
-               WhatsIn(obj)
-            }
-         }
+				{
+					list_nest = 1
+					WhatsIn(obj)
+				}
+			}
 
          ! For scenery-derived objects that may change the type
-         elseif obj is static, hidden
-            obj is known
-      }
+			elseif obj is static, hidden
+				obj is known
+		}
 #endif  ! ifclear NO_OBJLIB
 
-      print newline
-      need_newline = false
+		print newline
+		need_newline = false
 
-   }
+	}
 }
 #else
 ! A DescribePlaceArray-setting object just so most authors don't have to worry
@@ -8317,29 +8320,29 @@ replace Describeplace(place, long)
 	if place is not visited and verbosity ~= 1
 	{
 		if &place.initial_desc or &place.long_desc
-			{
+		{
 			didprint = true
 			Indent
-			}
+		}
 		if not place.initial_desc
 			run place.long_desc
 	}
 	elseif long = true or verbosity = 2
 	{
 		if &place.long_desc
-			{
+		{
 			Indent
 			didprint = true
-			}
+		}
 		run place.long_desc
 	}
 	elseif place is not visited and verbosity = 1
 	{
 		if &place.initial_desc
-			{
+		{
 			Indent
 			didprint = true
-			}
+		}
 		run place.initial_desc
 	}
 
@@ -8653,8 +8656,8 @@ routine ObjsWithNewDescs(place, for_reals)
 				obj is not already_printed
 #else
 			if obj is not living and player not in obj and
-			obj is not hidden and
-			(verbosity ~= 1 and obj.new_desc) and
+				obj is not hidden and
+				(verbosity ~= 1 and obj.new_desc) and
 				obj is not already_printed
 #endif
 			{
@@ -8720,9 +8723,9 @@ routine ObjsWithoutDescs(place, for_reals)
 			obj is not hidden and obj is not already_printed and
 			(not &obj.short_desc or (&obj.short_desc and verbosity = 1))
 #endif
-				{
+			{
 				return true
-				}
+			}
 		}
 		return false
 	}
@@ -8872,9 +8875,9 @@ routine NewDescribe(obj)
 	AssignPronoun(obj)
 
 	if (not ListContents)
-		{
-                if verbosity = 1
-	                return
+	{
+		if verbosity = 1
+			return
 
 		local a
 		a = obj.new_desc
@@ -8909,15 +8912,15 @@ the following routine which fakes a "I don't understand that" message.
 #ifset NO_MODE_CHANGE
 routine DoFakeRefuse
 {
-			print CThe(player); \
+	print CThe(player); \
 				! " can't use the word \""; \
-				MatchPlural(player, "doesn't", "don't"); \
-				" need to use the word \""; \
-				word[1] ;
+		MatchPlural(player, "doesn't", "don't"); \
+		" need to use the word \""; \
+		word[1] ;
 #ifset AMERICAN_ENGLISH
-				".\""
+		".\""
 #else
-				"\"."
+		"\"."
 #endif
 }
 #endif
@@ -8941,10 +8944,10 @@ routine DoPushDir
 	! the for loop finds the last word before the direction
 	! which should be the object's noun
 	for (a=2; ; a=a+1)
-		{
+	{
 		if ObjWord(word[a],object) = noun
 			break
-		}
+	}
 	! Let's add one to find the direction words
 	a = a + 1
 
@@ -9011,21 +9014,21 @@ routine DoPushDirTo
 		return Perform(&DoMove, object)
 #endif
 	elseif xobject.type ~= direction
-		{
+	{
 		! possibly, you might want to add code that checks to see
 		! if the xobject is a container and in such cases, interpreters
 		! >PUSH OBJECT INTO XOBJECT as DoPutIn. To avoid the checkheld headache
 		! that introduces, we will ignore that possiblity for now
 		RLibMessage(&DoPushDirTo,2) ! "Try pushing the object in a direction."
 		return false
-		}
+	}
 
 	! Let's check to see if we're pushing to a location
 	! we don't want the player pushing to
 	local k
 	k = location.(moveto.dir_to)
 	if k > 1  ! means the direction we are moving in is a viable direction
-		{
+	{
 		! is the direction a room we can walk to but can't push objects to?
 		if k.outofbounds
 			return false
@@ -9033,17 +9036,17 @@ routine DoPushDirTo
 		! Let's print a success message before the move "You start pushing..."
 		if not object.pushstart
 			RLibMessage(&DoPushDirTo,3) ! "You push the object over to the..."
-		}
+	}
 
 	! If DoGo works, then move the object to the location and print
 	! a followup success message.
 	if Perform(&DoGo, xobject)
-		{
+	{
 		print ""
 		move object to location
 		RLibMessage(&DoPushDirto,4)
 		return true
-		}
+	}
 }
 #endif ! USE_ROLLABLES
 
@@ -9327,20 +9330,20 @@ routine CapitalizeEveryFirstLetter(stringarray,newarray)
 
 	len = StringLength(array stringarray)
 	for (i=0; i<len; i=i+1) ! the actual case-conversion loop
-		{
+	{
 		if new or i=0
-			{
+		{
 			if array stringarray[i] >= 'a' and array stringarray[i] <= 'z'
 				array finalarray[i] = array stringarray[i] - ('a'-'A')
 			new = 0
-			}
+		}
 		elseif array stringarray[i] >= 'A' and array stringarray[i] <= 'Z'
 			array finalarray[i] = array stringarray[i] + ('a'-'A')
 		else
 			array finalarray[i] = array stringarray[i]
 		if array stringarray[i] = ' '          ! a space
 			new = 1
-		}
+	}
 	array finalarray[i] = 0
 }
 
@@ -9356,12 +9359,12 @@ routine ConvertToAllCaps(stringarray,newarray)
 
 	len = StringLength(array stringarray)
 	for (i=0; i<len; i=i+1) ! the actual case-conversion loop
-		{
+	{
 		if array stringarray[i] >= 'a' and array stringarray[i] <= 'z'
 			array finalarray[i] = array stringarray[i] - ('a'-'A')
 		else
 			array finalarray[i] = array stringarray[i]
-		}
+	}
 	array finalarray[i] = 0
 }
 
@@ -9378,12 +9381,12 @@ routine Lowercase(stringarray,newarray)
 
 	len = StringLength(array stringarray)
 	for (i=0; i<len; i=i+1) ! the actual case-conversion loop
-		{
+	{
 		if array stringarray[i] >= 'A' and array stringarray[i] <= 'Z'
 			array finalarray[i] = array stringarray[i] + ('a'-'A')
 		else
 			array finalarray[i] = array stringarray[i]
-		}
+	}
 	array finalarray[i] = 0
 }
 
@@ -9437,19 +9440,19 @@ routine ClearArray(array_to_be_cleared)
 {
 	local n,t
 	for (n=0;n< array array_to_be_cleared[] ; n++ )
+	{
+		if	array array_to_be_cleared[n] = 0
+			t++
+		else
 		{
-			if	array array_to_be_cleared[n] = 0
-				t++
-			else
-			{
-				array array_to_be_cleared[n] = 0
-				t = 0
-			}
-			if t = 2
-			{
-				break
-			}
+			array array_to_be_cleared[n] = 0
+			t = 0
 		}
+		if t = 2
+		{
+			break
+		}
+	}
 }
 ! Roody's note: The previous array won't let us use it on the word array so
 !  here is a word-array-specific one
@@ -9914,78 +9917,82 @@ routine RLibMessage(r, num, a, b)
 		}
 		case &DoLookUnder
 		{
-print CThe(player); \
-				MatchPlural(player, "doesn't", "don't"); \
-				" find anything "; word[2]; " "; \
-				player.pronoun #4; "."
+			print CThe(player); \
+			MatchPlural(player, "doesn't", "don't"); \
+			" find anything "; word[2]; " "; \
+			player.pronoun #4; "."
 		}
 		case &DoMove
 		{
 			select num
-			case 1:
-			{
-				print CThe(player); " can't ";
-				print word[1]; " ";
-				print player.pronoun #4; "."
-			}
+				case 1
+				{
+					print CThe(player); " can't ";
+					print word[1]; " ";
+					print player.pronoun #4; "."
+				}
 		}
 		case &DoPushDirTo
 		{
         ! Let's set default DoPushDirTo messages
-		select num
-		case 1: "That would not help the present situation."
-		case 2:  print "Try pushing "; Art(object); " in a direction."
-		case 3:  print CThe(player); MatchPlural(player, " pushes ", " push "); Art(object); " over to the..."
-		case 4:  print CArt(object); " slows to a stop."
+			select num
+				case 1: "That would not help the present situation."
+				case 2:  print "Try pushing "; Art(object); " in a direction."
+				case 3
+				{
+					print CThe(player); MatchPlural(player, " pushes ", " push "); \
+						Art(object); " over to the..."
+				}
+				case 4:  print CArt(object); " slows to a stop."
 		}
 		case &DoQuit
 		{
-		select num
-			case 1 : "Thanks for playing!"
+			select num
+				case 1 : "Thanks for playing!"
 		}
 		case &DoSmell
 		{
 			select num
 				case 1
 				{
-				print capital player.pronoun #1;
-				MatchPlural(player, "doesn't", "don't")
-				" smell anything unusual."
+					print capital player.pronoun #1;
+					MatchPlural(player, "doesn't", "don't")
+					" smell anything unusual."
 				}
 				case 2 : "Why do that?"
 		}
 		case &DoUnlock
 		{
 			select num
-			case 1
-			{
-				if a
-					print "(with "; The(xobject); ")"
-				print "Unlocked."
-			}
-			case 2
-			{
-				print capital player.pronoun #1;
-				print " can't reach "; The(a); ", which is currently in ";
-				print The(parent(a)); "."
-			}
+				case 1
+				{
+					if a
+						print "(with "; The(xobject); ")"
+					print "Unlocked."
+				}
+				case 2
+				{
+					print capital player.pronoun #1;
+					print " can't reach "; The(a); ", which is currently in ";
+					print The(parent(a)); "."
+				}
 		}
 		case &DoLock
 		{
 			select num
-			case 1
-			{
-				if a
-					print "(with "; The(xobject); ")"
-				print "Locked."
-			}
+				case 1
+				{
+					if a
+						print "(with "; The(xobject); ")"
+					print "Locked."
+				}
 		}
 #ifclear NO_XYZZY
 		case &DoXYZZY
 		{
 		! text suggested by Rob O'Hara. Approved by Ben Parrish.
-		print capital player.name; " mumble"; MatchSubject(player);
-		" an ancient reference to an archaic game. Nothing happens."
+			print capital player.name; " mumble"; MatchSubject(player);
+			" an ancient reference to an archaic game. Nothing happens."
 		}
 #endif
 		case &ListObjects
@@ -10003,7 +10010,7 @@ print CThe(player); \
 routine NewRlibMessages(r, num, a, b)
 {
    select r
-   case else : return false
+		case else : return false
    return true ! this line is only reached if we replaced something
 }
 
@@ -10029,10 +10036,10 @@ routine RlibOMessage(obj, num, a, b)
 	case door
 	{
 		select num
-		case 3
-		{
-		print "(unlocking "; Art(self); " first)"
-		}
+			case 3
+			{
+				print "(unlocking "; Art(self); " first)"
+			}
 	}
 
 }
@@ -10047,7 +10054,7 @@ routine NewRlibOMessages(obj, num, a, b)
 !		case 1:
 !	}
 
-	case else : return false
+		case else : return false
 
 	return true ! this line is only reached if we replaced something
 }

@@ -1,5 +1,5 @@
 Ok, I've started a changelog!
-v 3.7 - * Added CallFinish, MakePlayer routines
+v 3.7 - * Added CallFinish, MakePlayer, CoolPause, PauseForKey routines
 	* Updated shell files to make it easier to turn Roodylib off (for tracking errors down to original library code)
 	* Updated credits text
 v 3.6 - * Added DoOpen replacement
