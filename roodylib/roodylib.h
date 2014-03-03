@@ -5,11 +5,11 @@
 #ifclear _ROODYLIB_H
 #set _ROODYLIB_H
 
-constant ROODYBANNER "RoodyLib Version 3.7"
-constant ROODYVERSION "3.7"
+constant ROODYBANNER "RoodyLib Version 3.7.1"
+constant ROODYVERSION "3.7.1"
 
 #ifset VERSIONS
-#message "roodylib.h version 3.7"
+#message "roodylib.h version 3.7.1"
 #endif
 
 !----------------------------------------------------------------------------
@@ -163,11 +163,19 @@ routine fake_runevents
 #endif  ! NEW_FUSE
 
 !\
-Activate - added a warning for when it is called before the player global has been set.
+Activate - added a warning for when it is called before the player global has been set. Also added an option to not run daemons/fuses if the Hugofix
+fuse/daemon monitor is on.
 \!
 replace Activate(a, set)                ! <set> is for fuses only
 {
-	local err
+	local err, b
+
+	if a.type = fuse
+	{
+		b = "fuse"
+	}
+	else
+		b = "daemon"
 	if not player
 	{
 		Font(BOLD_ON)
@@ -175,6 +183,31 @@ replace Activate(a, set)                ! <set> is for fuses only
 		daemon (object "; number a;") can be activated.]"
 		err = true
 	}
+#ifset DEBUG
+	if debug_flags & D_FUSES
+	{
+		print "[";
+		print b; " "; number a;
+		if a.type = fuse
+			print " (timer = "; number set; ")";
+		" called. Allow activation? (Y/N) > ";
+		while true
+		{
+			pause
+			if word[0] = 'y','Y'
+			{
+				print "Y]"
+				break
+			}
+			elseif word[0] = 'n','N'
+			{
+				print "N]"
+				print "["; b; " "; number a; " canceled.]"
+				return false
+			}
+		}
+	}
+#endif
 #ifset NEW_FUSE
 	move a to fuse_bucket
 #endif
@@ -223,18 +256,18 @@ replace Activate(a, set)                ! <set> is for fuses only
 #ifset DEBUG
 	if debug_flags & D_FUSES and not err
 	{
-		print "[Activating "; a.name; " "; number a;
+		print "[Activating "; b; " "; number a;
 		if a.type = fuse
 			print " (timer = "; number a.timer; ")";
 		print "]"
 	}
 #endif
 	if err
-		{
+	{
 		Font(BOLD_OFF)
 		"\npress a key to continue..."
 		HiddenPause
-		}
+	}
 	return (not err)
 }
 
@@ -4679,6 +4712,90 @@ routine Init_Calls
 object init_instructions
 {}
 
+#ifset HUGOFIX
+! Roody's note: Made a HugoFix object so that all monitor commands remain
+! active after a restart
+object hugofixlib "hugofixlib"
+{
+	in init_instructions
+	type settings
+#ifclear NO_FANCY_STUFF
+	save_info
+	{
+		if debug_flags ~= 0
+		{
+			SaveWordsetting("hugofix")
+		}
+		else
+			return
+		local a
+		while a < 6
+		{
+			select a
+				case 0
+				{
+					if debug_flags & D_FUSES
+						SaveWordSetting("fuses")
+				}
+				case 1
+				{
+					if debug_flags & D_OBJNUM
+						SaveWordSetting("objnum")
+				}
+				case 2
+				{
+					if debug_flags & D_PARSE
+						SaveWordSetting("parse")
+				}
+				case 3
+				{
+					if debug_flags & D_SCRIPTS
+						SaveWordSetting("scripts")
+				}
+				case 4
+				{
+					if debug_flags & D_FINDOBJECT
+						SaveWordSetting("findobject")
+				}
+				case 5
+				{
+					if debug_flags & D_PARSE_RANK
+						SaveWordSetting("parserank")
+				}
+			a++
+		}
+		return true
+	}
+#endif
+	execute
+	{
+		if not CheckWordSetting("undo")
+		{
+			if not CheckWordSetting("restore")
+			{
+#ifclear NO_FANCY_STUFF
+				local a,b
+				a = CheckWordSetting("hugofix")
+				while true
+				{
+					select word[(a+1)]
+						case "fuses" : b = D_FUSES
+						case "objnum" : b = D_OBJNUM
+						case "parse" : b = D_PARSE
+						case "scripts" : b = D_SCRIPTS
+						case "findobject" : b = D_FINDOBJECT
+						case "parserank" : b = D_PARSE_RANK
+						case else : break
+					debug_flags = debug_flags | b
+					a++
+				}
+#endif
+			}
+	}
+}
+}
+#endif
+
 object roodylib "roodylib"
 {
 	in init_instructions
@@ -5685,10 +5802,12 @@ replace vehicle
 			{
 			! "To walk, you'll have to get out..."
 				OMessage(vehicle, 1, self)
-				return true
+				return true  ! returning true (1) will cause DoGo to not take up
+				             ! a turn
 			}
 			else
-				return object
+				return object ! returning a greater-than-one value will execute
+				              ! Perform(&DoExit, self)
 		}
 	}
 #endif
@@ -7021,7 +7140,8 @@ replace DoGo
 		if (object ~= parent(player) and ! make sure player isn't already in object
 		not (object in direction and parent(player) = location.(object.dir_to))) \
 		and ((object ~= u_obj and parent(player) is platform) or
-			(object ~= out_obj and parent(player) is container))
+			(object ~= out_obj and parent(player) is container)) and
+		(parent(player).type ~= vehicle) ! (since vehicles have their own code)
 		{
 			VMessage(&DoGo, 3)      ! "You'll have to get up..."
 			return false

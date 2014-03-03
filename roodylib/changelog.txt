@@ -1,4 +1,8 @@
 Ok, I've started a changelog!
+v 3.8 - * Added a vehicle-associated line to DoGo and a couple comments to the vehicle class object
+	* Added a HugoFix settings object so monitor settings are kept after a restart
+	* If daemon/fuse monitoring is on (in HugoFix), a prompt asks whether to run the relevant daemon/fuse (to
+	make it easy to skip during testing, if wanted)
 v 3.7 - * Added CallFinish, MakePlayer, CoolPause, PauseForKey routines
 	* Updated shell files to make it easier to turn Roodylib off (for tracking errors down to original library code)
 	* Updated credits text
