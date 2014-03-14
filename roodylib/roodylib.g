@@ -3,16 +3,20 @@
 !::
 
 #ifset VERSIONS
-#message "roodylib.g Grammar Version 2.3"
+#message "roodylib.g Grammar Version 2.4"
 #endif
 
+#ifclear NO_VERBS
 !\ Roody's note: Redefined "go" so that the somewhat ingrammatical phrase
 "go off of <object>" can be supported. We'll see if this causes any problems.
 Also, "go to" now directs to DoGo, not DoEnter.   \!
 verb "go", "walk"
 	*							DoGo
 	* "in"/"into"/"inside"/"through" object            DoEnter
-	* "out"/"off"/"to"/"toward"/"towards" object            DoGo
+!	* "out" container										DoExit
+	* "off" platform										DoExit
+	* "out"/"to"/"toward"/"towards" object            DoGo
+	* "to"/"toward"/"towards" object            DoGo
 	* "out"/"outside"                                       DoExit
 	* object                                                DoGo
 
@@ -28,16 +32,20 @@ verb "look", "l", "examine", "x", "watch"
 	* "beside"/"behind"/"around" object                     DoLookUnder
 	* object                                                DoLook
 
+#ifclear NO_OBJLIB
 verb "push","pull","press","move","roll"
 	* object "to" xobject			DoPushDirTo
+#endif
 
 verb "push","pull","press","move","roll", "shove", "yank", "tug"
 	*			DoVague
+#ifclear NO_OBJLIB
 	* object "to" xobject			DoPushDir
 	* object "north"/ "n"/ "south"/ "s"/ "east"/ "e"/ "west"/ "w"/ \
 	"southeast"/ "se"/ "southwest"/ "sw"/ "northwest"/ "nw"/ \
 	"northeast"/ "ne"/ "up"/ "u"/ "down"/ "d"/ "in"/ "out"/ \
 	"inside"/ "outside"		        DoPushDir
+#endif
 	* "on" object		DoMove
 	* object		 DoMove
 
@@ -139,14 +147,19 @@ verb "wave"
 	* "to"/"at" object                           DoWaveHands
 	* held                                  DoWave
 #endif
+
+#endif  ! NO_VERBS
+
 !----------------------------------------------------------------------------
 ! NON-ACTION VERBS:
 !----------------------------------------------------------------------------
+#ifclear NO_XVERBS
+
 #ifclear NO_XYZZY
 xverb "xyzzy", "plugh"
 	*	               DoXYZZY
 #endif
-!\ Roody's note: To get around a bug in Hugo where only the firxst line of
+!\ Roody's note: To get around a bug in Hugo where only the first line of
 a multi-line xverb definition is understood to be an xverb, I've split all
 of the multi-line ones into single lines. \!
 
@@ -337,4 +350,6 @@ xverb "$wo"
 	* number                                DoHugoFix
 
 #endif	! _HUGOFIX_G
+
+#endif  ! ifclear NO_XVERBS
 #endif   ! ifset HUGOFIX

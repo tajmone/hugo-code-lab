@@ -579,7 +579,7 @@ replace CharDrop(char, obj)
 ! Also added support for transparent, non-container objects
 replace CheckReach(obj)
 {
-	local i,p
+	local i
 
 	if not obj or obj = parent(player)
 		return true
@@ -613,6 +613,8 @@ replace CheckReach(obj)
 		Contains(parent(player), obj)
 		return true
 
+#ifclear NO_OBJLIB   !  since the component class is part of objlib
+	local p
 	p = obj.part_of
 	while p
 	{
@@ -620,6 +622,7 @@ replace CheckReach(obj)
 		return true
 	p = p.part_of
 	}
+#endif
 
 #ifclear NO_VERBS
 	if parent(obj) is living
@@ -645,6 +648,7 @@ replace CheckReach(obj)
 		}
 	}
 
+#ifclear NO_OBJLIB
 	p = obj.part_of
 	while p
 	{
@@ -658,6 +662,7 @@ replace CheckReach(obj)
 		}
 		p = p.part_of
 	}
+#endif
 
 #ifset USE_ATTACHABLES
 	if parent(player).type = attachable
@@ -675,6 +680,26 @@ replace CheckReach(obj)
 	! "You can't reach it..."
 	Message(&CheckReach, 3, obj)
 }
+
+#ifset USE_DARK_ROOM
+! Roody's note: In games with dark rooms, I didn't like how they are treated
+! as non-rooms. This code makes dark rooms look more "room-y" when the player
+! moves into them by printing the name of the darkness object as if it were a
+! room name.
+
+
+! the darkness object is not a room because the room class will be replaced
+! further down in Roodylib and it doesn't really need to be a room anyway
+object darkness "Darkness"
+{}
+
+replace DarkWarning
+{
+	RLibMessage(&DescribePlace,1,darkness)
+	print CThe(player); " stumble"; MatchSubject(player); \
+		" around in the dark."
+}
+#endif
 
 !\ Roody's note : Replaced so a new line is still printed, even if indenting
 is turned off. \!
@@ -990,6 +1015,10 @@ replace PropertyList(obj, prop, artic, conjunction)
 	}
 	return n
 }
+
+#ifset USE_ELEVATED_PLATFORMS
+attribute elevated
+#endif
 
 !\ Roody's note: I replaced WhatsIn so printed things like the colon-printing
 (":") are sent to RLibMessages for easier message configuring.
@@ -2093,11 +2122,13 @@ replace EndGame(end_type)
 #endif
 }
 
+#ifclear NO_VERBS
 ! Roody's note: Companion routine to EndGame
 routine ProcessKey(entry,end_type)
 {
-   local r, i
+   local r,i
    r = -1
+	i = 0
 	if not entry
 		return -1
    select entry
@@ -2107,6 +2138,7 @@ routine ProcessKey(entry,end_type)
 		{
 			SpecialRoutine
 		}
+#ifclear NO_XVERBS
 		case "restart", "r"
 		{
 			ClearWordArray
@@ -2224,8 +2256,10 @@ else
 			}
 			r = 0
 		}
+#endif ! ifclear NO_XVERBS
    return r
 }
+#endif  ! ifclear NO_VERBS
 
 routine SpecialKey(end_type)
 {
@@ -4347,7 +4381,8 @@ object printstatuslib
 					highest = i.find_height
 					break
 				}
-				if higher(highest,a) = a
+!				if higher(highest,a) = a  figured aux math routines aren't neeeded
+				if a > highest
 				{
 					self.chosen_window = i
 					highest = i.find_height
@@ -5458,6 +5493,8 @@ routine PrepWord(str)
 	and returns with something like "You'll have to specify one object at a
 	time."
 \!
+
+#ifclear NO_OBJLIB
 replace character
 {
 	type character
@@ -5501,25 +5538,41 @@ replace door "door"
 #endif
 		{
 			! "You'll have to get out first..."
-			OMessage(door, 1)
+			RlibMessage(&DoGo, 1)      ! "You'll have to get up..."
 			return true
 		}
 
 		if self is not open and actor = player
 		{
 #ifclear NO_VERBS
-			if verbroutine = &DoGo
+			local verb_check
+#ifset USE_VEHICLES
+			if verbroutine = &DoMoveInVehicle
+				verb_check = true
+#endif
+			if verbroutine = &DoGo : verb_check = true
+
+			if verb_check
 			{
+				if player not in location
+				{
+					OMessage(door, 4)       ! "It is closed."
+					return true
+				}
+
 				if self is not locked and self is openable:
 				{
+#ifclear SKIP_DOORS
 					OMessage(door, 2)       ! "(opening it first)"
 					Perform(&DoOpen, self)
 					Main    ! counts as a turn
-					if self is open
-						Perform(&DoGo, self)
-					return true
+					if self is not open
+	!					Perform(&DoGo, self)
+						return true
+#endif   ! SKIP_DOORS
 				}
-				elseif self is lockable
+
+				if self is lockable and self is locked
 				{
 #ifclear NO_AUTOMATIC_DOOR_UNLOCK
 					RlibOMessage(door, 3)      ! "(unlocking <the blank> first))"
@@ -5536,11 +5589,13 @@ replace door "door"
 #endif
 						return true
 				}
-				else
+				elseif self is not open
 				{
 #endif
+#ifclear SKIP_DOORS
 					OMessage(door, 4)       ! "It is closed."
 					return true
+#endif ! SKIP_DOORS
 #ifclear NO_VERBS
 				}
 			}
@@ -5603,14 +5658,14 @@ other behavior (swinging doors, whatever), you might want to change this.
 ! Doors in your location now have a higher priority than other doors
 ! this might turn out to be really bad design, though. we'll see.
 !	parse_rank
-!		{
+!	{
 !		if Inlist(self,between,location)
-!			{
+!		{
 !			return 1
-!			}
+!		}
 !		else
 !			return -1
-!		}
+!	}
 }
 
 !\ Roody's note: replaced the female_character character class so it is of
@@ -5781,6 +5836,18 @@ replace themselves "themselves"
 ! Roody's note: New vehicle class for making it easier to have vehicles where
 ! DOWN or OUT is not the standard direction for exiting; works with new DoGo
 ! routine
+
+! Example of a vehicle that allows >DOWN and >OUT to exit
+!	before
+!	{
+!		parent(player) DoGo
+!		{
+!			if object = d_obj, out_obj
+!				return object
+!			return false
+!		}
+!	}
+
 replace vehicle
 {
 	type vehicle
@@ -5793,21 +5860,17 @@ replace vehicle
 	{
 		parent(player) DoGo
 		{
-			if word[2] = "out" and object = self
-			{
-				object = out_obj
-				return false
-			}
-			if (object ~= u_obj, out_obj) and object.type = direction
-			{
-			! "To walk, you'll have to get out..."
-				OMessage(vehicle, 1, self)
-				return true  ! returning true (1) will cause DoGo to not take up
-				             ! a turn
-			}
+#ifset USE_SMART_PARENTS
+			local a
+			a = CanGoDir
+			if not a
+				VMessage(&DoGo, 2)      ! "You can't go that way."
+			elseif a = 1
+				RlibMessage(&DoGo, 1)      ! "You'll have to get up..."
 			else
-				return object ! returning a greater-than-one value will execute
-				              ! Perform(&DoExit, self)
+#endif
+			! "To walk, you'll have to get out..."
+			OMessage(vehicle, 1, self)
 		}
 	}
 #endif
@@ -6430,6 +6493,7 @@ replace ObjectisAttached(obj, oldloc, newloc)
 	return true
 }
 #endif ! USE_ATTACHABLES
+#endif ! ifclear NO_OBJLIB
 
 !----------------------------------------------------------------------------
 !* REPLACED RESOURCE.H CODE
@@ -6961,7 +7025,7 @@ replace DoEnter
 	elseif player in object
 		VMessage(&DoEnter, 3)    ! already in it
 	elseif player not in location
-		VMessage(&DoGo, 3)       ! "You'll have to get up..."
+		RlibMessage(&DoGo, 1)       ! "You'll have to get up..."
 	elseif object is openable, not open
 		VMessage(&DoLookIn, 1)   ! "X is closed."
 	else
@@ -7127,35 +7191,59 @@ replace DoGet
 ! rid of jump. Also changed the answer for trying to go to a nearby,
 ! non-enterable object from "You can't enter that" to "<The object> is right
 ! here."
+! Also, if USE_ELEVATED_PLATFORMS is set, enterable objects with the "elevated"
+! attribute allow >DOWN as an exit.
+
 replace DoGo
 {
-	local moveto, JumpToEnd
+	local moveto, JumpToEnd, skip, vehicle_check
 #ifset NO_OBJLIB
 	local wordnum, m
 #endif
 
-	if player not in location               ! sitting on or in an obj.
+	if object = parent(player) or ! make sure player isn't already in object
+		not object ! or (not parent(player) and word[2] = "out")
+		skip = true
+
+	if player not in location and   ! sitting on or in an obj.
+		not skip
 	{
-#ifclear NO_OBJLIB
-		if (object ~= parent(player) and ! make sure player isn't already in object
-		not (object in direction and parent(player) = location.(object.dir_to))) \
-		and ((object ~= u_obj and parent(player) is platform) or
-			(object ~= out_obj and parent(player) is container)) and
-		(parent(player).type ~= vehicle) ! (since vehicles have their own code)
+		local a, b
+
+		b = parent(player).before	! i.e., a vehicle, etc.
+		if b = 1
+			return false ! so the error message doesn't take up a turn
+		elseif not b
 		{
-			VMessage(&DoGo, 3)      ! "You'll have to get up..."
+#ifset USE_ELEVATED_PLATFORMS
+			if parent(player) is elevated and object = d_obj
+				a++
+			elseif parent(player) is platform and object = u_obj and
+			parent(player) is not elevated
+#else
+			if parent(player) is platform and object = u_obj
+#endif
+				a++
+			elseif parent(player) is container and object = out_obj
+				a++
+		}
+
+		if	not a and not b
+		{
+#ifset USE_SMART_PARENTS
+			if not CanGoDir
+				VMessage(&DoGo, 2)      ! "You can't go that way."
+			else
+#endif
+				RlibMessage(&DoGo, 1)      ! "You'll have to get up..."
 			return false
 		}
-#endif
-		local b
-		b = parent(player).before	! i.e., a vehicle, etc.
-		if b > 1  or ! is b a direction?
-			((word[2] = "out","off") and object = parent(player)) ! "go out of <object>"
+		else
 			return Perform(&DoExit,parent(player))
-		elseif b
-			return false ! so the error message doesn't take up a turn
 	}
-	elseif obstacle
+
+
+	if obstacle and not skip
 	{
 #ifclear NO_OBJLIB
 		VMessage(&DoGo, 1)		! "X stops you from going..."
@@ -7211,8 +7299,13 @@ if not JumpToEnd
 			return
 		}
 
-		if not &object.door_to
+		if not &object.door_to and (word[2] ~= "to","toward","towards")
 		{
+			if word[2] = "out"
+			{
+				ParseError(6)  ! doesn't make any sense
+				return
+			}
 			if not object.door_to and object is enterable
 				return Perform(&DoEnter, object)
 		}
@@ -7223,7 +7316,7 @@ if not JumpToEnd
 			if object is container and (word[2] ~= "to","toward","towards")
 				VMessage(&DoEnter, 2)  ! "You can't enter..."
 			else
-				RLibMessage(&DoGo, 1) ! "The <object> is right here."
+				RLibMessage(&DoGo, 2) ! "The <object> is right here."
 			return
 		}
 		if moveto = 1
@@ -7232,13 +7325,16 @@ if not JumpToEnd
 }  !  if not JumpToEnd bracket
 
 #ifclear NO_OBJLIB
+
+!  may need to add some code for elevated platforms. not sure yet.
+
 	if moveto.type = direction and moveto in direction
 	{
 		if player not in location and object = out_obj
 		{
 			if parent(player) is platform
 			{
-				VMessage(&DoGo, 3)
+				RlibMessage(&DoGo, 1)
 				return false
 			}
 			else
@@ -7248,7 +7344,7 @@ if not JumpToEnd
 		{
 			if parent(player) is container
 			{
-				VMessage(&DoGo, 3)
+				RlibMessage(&DoGo, 1)
 				return false
 			}
 			else
@@ -7276,14 +7372,14 @@ if not JumpToEnd
 	!	player in location)
 			return Perform(&DoEnter, moveto)
 	}
-#else
+#else   ! ifset NO_OBJLIB
 	if m
 	{
 		if player not in location and m = out_to
 		{
 			if parent(player) is platform
 			{
-				VMessage(&DoGo, 3)
+				RlibMessage(&DoGo, 1)
 				return false
 			}
 			else
@@ -7293,7 +7389,7 @@ if not JumpToEnd
 		{
 			if parent(player) is container
 			{
-				VMessage(&DoGo, 3)
+				RlibMessage(&DoGo, 1)
 				return false
 			}
 			else
@@ -7304,7 +7400,7 @@ if not JumpToEnd
 		if moveto.door_to
 			moveto = moveto.door_to
 	}
-#endif
+#endif  !  end of ifset NO_OBJLIB
 
 	if moveto = false
 	{
@@ -7316,12 +7412,14 @@ if not JumpToEnd
 	elseif moveto = true                    ! already printed message
 		return true                     ! (moveto is never 1)
 
-	elseif player not in location           ! sitting on or in an obj.
+	elseif player not in location and           ! sitting on or in an obj.
+		not vehicle_check  ! make sure it's not a vehicle that can go through
+		                   ! this door
 	{
 		if parent(player) = moveto  ! does the direction lead to parent(player)?
 			VMessage(&DoEnter, 3)    ! already in it message
 		else
-			VMessage(&DoGo, 3)              ! "You'll have to get up..."
+			RlibMessage(&DoGo, 1)              ! "You'll have to get up..."
 	}
 	else
 	{
@@ -7386,8 +7484,10 @@ replace DoUnlock
 
 	!\ because setupdirectionobjects can sometimes dictate an xobject where we
 	don't want it, we'll get rid of directional xobjects here \!
+#ifclear NO_OBJLIB
 	if xobject and xobject.type = direction
 		xobject = 0
+#endif
 
 	if xobject ~= 0
 	{
@@ -7740,6 +7840,7 @@ replace DoOpen
 constant PRESS_ANY_KEY "[ press any key to exit ]"
 #endif
 
+#ifclear NO_XVERBS
 replace DoQuit
 {
 	PrintScore
@@ -7831,38 +7932,6 @@ replace DoScore
 		PrintScore
 }
 
-! Roody's note: Added some other situations where >GET could be called.
-replace DoTakeOff
-{
-!	if not Contains(player, object)
-!	{
-!		! So >REMOVE LOCK will >TAKE LOCK, etc.
-!		return Perform(&DoGet, object)
-!	}
-!	else
-	if parent(object) ~= player and
-		not (object is worn and object is clothing)
-	{
-		! So >REMOVE LOCK will >TAKE LOCK, etc.
-		return Perform(&DoGet, object)
-	}
-	if object is not clothing
-	{
-		VMessage(&DoTakeOff, 1)         ! "Can't do that..."
-		return false
-	}
-
-	if object is not worn
-		VMessage(&DoTakeOff, 2)          ! "You're not wearing that."
-	else
-	{
-		object is not worn
-		if not object.after
-			VMessage(&DoTakeOff, 3)  ! "You take it off."
-	}
-	return true
-}
-
 !\ Roody's note: The after_undo array is a way to execute code after a
 successful undo. It must be filled with routine addresses, though.
   "after_undo[0]= &CheckDaemon"
@@ -7933,6 +8002,41 @@ replace DoUndo
 		VMessage(&DoUndo)
 	ClearWordArray
 }
+
+#endif ! NO_XVERBS
+
+! Roody's note: Added some other situations where >GET could be called.
+replace DoTakeOff
+{
+!	if not Contains(player, object)
+!	{
+!		! So >REMOVE LOCK will >TAKE LOCK, etc.
+!		return Perform(&DoGet, object)
+!	}
+!	else
+	if parent(object) ~= player and
+		not (object is worn and object is clothing)
+	{
+		! So >REMOVE LOCK will >TAKE LOCK, etc.
+		return Perform(&DoGet, object)
+	}
+	if object is not clothing
+	{
+		VMessage(&DoTakeOff, 1)         ! "Can't do that..."
+		return false
+	}
+
+	if object is not worn
+		VMessage(&DoTakeOff, 2)          ! "You're not wearing that."
+	else
+	{
+		object is not worn
+		if not object.after
+			VMessage(&DoTakeOff, 3)  ! "You take it off."
+	}
+	return true
+}
+
 
 !----------------------------------------------------------------------------
 !* REPLACED VERBSTUB.H ROUTINES
@@ -9057,6 +9161,7 @@ routine DoKick
 push something, for accurate response messages (after finding the direction,
 it calls DoPushDirTo.
 \!
+#ifclear NO_OBJLIB
 routine DoPushDir
 {
 	local a,m
@@ -9089,6 +9194,7 @@ routine DoPushDir
 	! Let's run it
 	return Perform(&DoPushDirTo, object, m)
 }
+#endif
 
 !\ Roody's note- DoPushDirTo either prints a "can't do that" message or
 processes an object-pushing, depending on whether USE_ROLLABLES is set. \!
@@ -9549,6 +9655,43 @@ routine CallFinish(end_type)
 	endflag = end_type
 }
 
+! Roody's note: CanGoDir is an exit-checking routine so you can check to make
+! sure the direction the player is trying to go in is valid before printing
+! a relevant message. It hasn't had a lot of use and may not work in all
+! instances.
+
+#ifclear NO_OBJLIB
+routine CanGoDir
+{
+	local m
+	if object.type ~= direction and object is not enterable and
+		object.type ~= door
+		return false
+	select true
+		case (object in direction)
+		{
+			m = location.(object.dir_to)
+		}
+		case (object.type = door)
+		{
+			if location = object.between #1
+				m = object.between #2
+			else
+				m = object.between #1
+		}
+		case else
+		{
+			if object.door_to
+			{
+				m = object.door_to
+			}
+			else
+				return true
+		}
+	return m
+}
+#endif !  ifclear NO_OBJLIB
+
 !\ Roody's note: ClearArray, as you might guess, clears arrays of values.
 I made it mainly to stop having to write array-clearing loops each time.
 
@@ -9579,18 +9722,6 @@ routine ClearArray(array_to_be_cleared)
 routine ClearWordArray
 {
 	local n ! ,t
-!	for (n=1;n< word[] ; n++ )
-!	{
-!		if word[n] = ""
-!			t++
-!		else
-!		{
-!			t = 0
-!			word[n] = ""
-!		}
-!		if t = 2
-!			break
-!	}
 	for (n=20;n< 30 ; n++ )
 	{
 		if word[n] = ""
@@ -10015,7 +10146,20 @@ routine RLibMessage(r, num, a, b)
 		case &DoGo
 		{
 			select num
-				case 1	!  going to a non-enterable object in the same room
+				case 1
+				{
+				! thought I might put some elevated platform code here
+				!  but haven't yet
+					print CThe(player); " will have to get ";
+					if parent(player).prep #2
+						print parent(player).prep #2; " ";
+					elseif parent(player) is platform
+						print "off ";
+					else
+						print "out ";
+					print "of "; The(parent(player)); " first."
+				}
+				case 2	!  going to a non-enterable object in the same room
 					print Cthe(object) ; IsorAre(object,true) ;" right here."
 		}
 		case &DoHit
@@ -10065,11 +10209,13 @@ routine RLibMessage(r, num, a, b)
 				}
 				case 4:  print CArt(object); " slows to a stop."
 		}
+#ifclear NO_XVERBS
 		case &DoQuit
 		{
 			select num
 				case 1 : "Thanks for playing!"
 		}
+#endif
 		case &DoSmell
 		{
 			select num
@@ -10134,7 +10280,7 @@ routine NewRlibMessages(r, num, a, b)
    return true ! this line is only reached if we replaced something
 }
 
-
+#ifclear NO_OBJLIB
 routine RlibOMessage(obj, num, a, b)
 {
 	! Check first to see if the New<blank>OMessages routine provides a
@@ -10161,7 +10307,22 @@ routine RlibOMessage(obj, num, a, b)
 				print "(unlocking "; Art(self); " first)"
 			}
 	}
-
+#ifset USE_VEHICLES
+	case vehicle ! added in case I need to add any elevated special text
+	{
+		select num
+		case 1
+		{
+			 print "To walk, "; The(player); " will have to
+				get "; self.prep #2; " of "; The(self); \
+				".  Otherwise, try \""; self.vehicle_verbs; \
+				"\" ";
+			 if self.#vehicle_verbs > 1
+				print "or \""; self.vehicle_verbs #2; "\" ";
+			 print "and a direction."
+		}
+	}
+#endif
 }
 
 routine NewRlibOMessages(obj, num, a, b)
@@ -10178,5 +10339,6 @@ routine NewRlibOMessages(obj, num, a, b)
 
 	return true ! this line is only reached if we replaced something
 }
+#endif ! ifclear NO_OBJLIB
 
 #endif ! _ROODYLIB_H

@@ -1,8 +1,19 @@
 Ok, I've started a changelog!
-v 3.8 - * Added a vehicle-associated line to DoGo and a couple comments to the vehicle class object
-	* Added a HugoFix settings object so monitor settings are kept after a restart
+v 3.8 - * Added an "elevated" attribute for vehicles enterable platforms (such as ladders)
+          where "down" is an accepted exit direction
+	* Changed the vehicle class again (check out roodylibdocs.odt)
+	* Added USE_SMART_PARENTS flag so if the player tries going into an invalid direction while in an enterable object,
+	they get "You can't go that way." instead of "You'll have to get up/out."
+	* In doing so, updated DoGo, and the vehicle and door classes to support it
+	* Added SKIP_DOORS flag so player can breeze through unlocked doors without opening them like NPCs
+	* Added a HugoFix settings object so debug monitor settings are kept after a restart
 	* If daemon/fuse monitoring is on (in HugoFix), a prompt asks whether to run the relevant daemon/fuse (to
 	make it easy to skip during testing, if wanted)
+	* Got rid of an unnecessary AUX_MATH routine call in printstatuslib
+	* Made sure Roodylib is more NO_OBJLIB, NO_VERBS, and NO_XVERBS compatible
+	* Added USE_DARK_ROOM flag so dark rooms appear like an actual room when you enter them (check out roodylibdocs.odt)
+	* Updated flags.h to include new flags
+	* Update "go" grammar
 v 3.7 - * Added CallFinish, MakePlayer, CoolPause, PauseForKey routines
 	* Updated shell files to make it easier to turn Roodylib off (for tracking errors down to original library code)
 	* Updated credits text
