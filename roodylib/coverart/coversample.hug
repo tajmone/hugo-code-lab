@@ -35,7 +35,7 @@ constant GAMECOVER "nextday"
 
 !:: Grammar Library Inclusions (grammar must come first)
 #include "roodylib.g"
-#include "cover.g"
+#include "coverartlib.g"
 ! new grammar needs to be defined before the including verblib
 #include "verblib.g"        ! Verb Library
 
@@ -52,11 +52,11 @@ constant GAMECOVER "nextday"
 !}
 
 !constant RESOURCEFILE "TEST"
-! if a resource was used, it'd just be "NEXT DAY"
-constant COVERFILE "NEXT DAY.jpg"
+
+constant COVERFILE "NEXT DAY.jpg" ! if a resource was used, it'd just be "NEXT DAY"
 constant MINIMUMWIDTH 77
 
-#include "cover.h"
+#include "coverartlib.h"
 !::	Other Library Inclusions
 #ifset BETA
 #include "beta.h"

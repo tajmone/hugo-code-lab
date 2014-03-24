@@ -35,33 +35,33 @@ object scorenotifylib "scorenotify"
 	points 0
 #ifset _ROODYLIB_H
 	save_info
-		{
+	{
 		select self.score_notify
 			case 0 : SaveWordSetting("score_off")
 			case 1 : SaveWordSetting("score_on")
 		return true
-		}
+	}
 	type settings
 	in init_instructions
 	execute
-		{
+	{
 		local a
 		a = CheckWordSetting("scorenotify")
 		if a
-			{
+		{
 			select word[(a-1)]
 				case "score_off": self.score_notify = 0
 				case "score_on": self.score_notify = 1
-			}
 		}
+	}
 #endif
 #ifset _NEWMENU_H
 	usage_desc
-		{
+	{
 		"\BSCORE NOTIFICATION ON\b- Be notified when you score points."
 		Indent
 		"\BSCORE NOTIFICATION OFF\b- Play without score notifications."
-		}
+	}
 #endif ! NEWMENU
 }
 
@@ -71,9 +71,9 @@ object scorenotifymain
 	type settings
 	in main_instructions
 	execute
-		{
+	{
 		ScoreNotify
-		}
+	}
 }
 #endif  ! _ROODYLIB_H
 
@@ -87,22 +87,24 @@ global NOTIFY_FONT = BOLD_ON
 
 routine ScoreNotify
 {
-      if scorenotifylib.points and scorenotifylib.score_notify
-      {
-			  ""
-			  Font(NOTIFY_FONT)
-			  if scorenotifylib.points > 0
-           ScoreNotificationMessage(&ScoreNotify, 1, scorenotifylib.points ) ! "[Your score has gone up.]"
-			  else
-           ScoreNotificationMessage(&ScoreNotify, 2, -scorenotifylib.points ) ! "[Your score has gone down.]"
-			  Font((NOTIFY_FONT*2))
-      }
-		if scorenotifylib.points
-		{
-			score += scorenotifylib.points   ! add the points to the score
-			scorenotifylib.points = 0    ! reset the point counter
-			PrintStatusLine  ! update status bar with new score
-		}
+	if scorenotifylib.points and scorenotifylib.score_notify
+	{
+		""
+		Font(NOTIFY_FONT)
+		if scorenotifylib.points > 0
+			ScoreNotificationMessage(&ScoreNotify, 1, scorenotifylib.points )
+			! "[Your score has gone up.]"
+		else
+			ScoreNotificationMessage(&ScoreNotify, 2, -scorenotifylib.points )
+		! "[Your score has gone down.]"
+		Font((NOTIFY_FONT*2))
+	}
+	if scorenotifylib.points
+	{
+		score += scorenotifylib.points   ! add the points to the score
+		scorenotifylib.points = 0    ! reset the point counter
+		PrintStatusLine  ! update status bar with new score
+	}
 
 }
 
@@ -126,32 +128,36 @@ routine SubtractScore(a)
 
 routine DoScoreNotifyOnOff
 {
-      if scorenotifylib.score_notify
-            Perform(&DoScoreNotifyOff)
-      else
-            Perform(&DoScoreNotifyOn)
+	if scorenotifylib.score_notify
+		Perform(&DoScoreNotifyOff)
+	else
+		Perform(&DoScoreNotifyOn)
 }
 
 routine DoScoreNotifyOn
 {
-      if scorenotifylib.score_notify
-           ScoreNotificationMessage(&DoScoreNotifyOn, 1 ) ! "[Score notification already on.]"
-      else
-           {
-           ScoreNotificationMessage(&DoScoreNotifyOn, 2 ) ! "[Score notification on.]"
-           scorenotifylib.score_notify = 1
-           }
+	if scorenotifylib.score_notify
+		ScoreNotificationMessage(&DoScoreNotifyOn, 1 )
+		! "[Score notification already on.]"
+	else
+	{
+		ScoreNotificationMessage(&DoScoreNotifyOn, 2 )
+		! "[Score notification on.]"
+		scorenotifylib.score_notify = 1
+	}
 }
 
 routine DoScoreNotifyOff
 {
-      if not scorenotifylib.score_notify
-           ScoreNotificationMessage(&DoScoreNotifyOff, 1 ) ! "[Score notification already off.]"
-      else
-           {
-           ScoreNotificationMessage(&DoScoreNotifyOff, 2 ) ! "[Score notification off.]"
-           scorenotifylib.score_notify = 0
-           }
+	if not scorenotifylib.score_notify
+		ScoreNotificationMessage(&DoScoreNotifyOff, 1 )
+		! "[Score notification already off.]"
+	else
+	{
+		ScoreNotificationMessage(&DoScoreNotifyOff, 2 )
+		! "[Score notification off.]"
+		scorenotifylib.score_notify = 0
+	}
 }
 
 routine ScoreNotificationMessage(r, num, a, b)
@@ -160,23 +166,23 @@ routine ScoreNotificationMessage(r, num, a, b)
 
 	select r
 		case &DoScoreNotifyOn
-			{
+		{
 			select num
 				case 1:  "[Score notification already on.]"
 				case 2: "[Score notification on.]"
-			}
+		}
 		case &DoScoreNotifyOff
-			{
+		{
 			select num
 				case 1:  "[Score notification already off.]"
 				case 2: "[Score notification off.]"
-			}
+		}
 		case &ScoreNotify
-			{
+		{
 			select num
 				case 1 : "[Your score has gone up.]"
 				case 2 : "[Your score has gone down.]"
-			}
+		}
 }
 
 !\ The NewScoreNotificationMessages routine may be REPLACED and should return
@@ -185,15 +191,15 @@ true if a replacement message exists for routine <r> \!
 routine NewScoreNotificationMessages(r, num, a, b)
 {
    select r
-!	case &ScoreNotify
+!		case &ScoreNotify
 !		{
-!		select num
-!			case 1
+!			select num
+!				case 1
 !				{
-!				print "[Your score has gone up by "; number a; " points.]"
+!					print "[Your score has gone up by "; number a; " points.]"
 !				}
 !		}
-   case else : return false
+		case else : return false
    return true ! this line is only reached if we replaced something
 }
 

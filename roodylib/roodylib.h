@@ -2787,26 +2787,16 @@ replace MovePlayer(loc, silent, ignore)
 		while (true)
 		{
 			ret = player.before
-			if ret
-			{
-				LeavingMovePlayer = true
-				break
-			}
+			if ret : break
 			ret = location.before
-			if ret
-			{
-				LeavingMovePlayer = true
-				break
-			}
+			if ret : break
 			ret = loc.before
-			if ret
-			{
-				LeavingMovePlayer = true
-				break
-			}
+			if ret : break
 			break
 		}
+		if ret : LeavingMovePlayer = true
 	}
+
 	if (not LeavingMovePlayer)
 	{
 		move player to loc

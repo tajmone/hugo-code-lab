@@ -87,11 +87,11 @@ routine YouCanGo
    {
 		if go_dirs[n] and go_dirs[n].cango_name ~= SKIP
 		{
-		 go_dirs[0] = 1
-		 break
+			go_dirs[0] = 1
+			break
 		}
 		else
-		 go_dirs[0] = 0
+			go_dirs[0] = 0
    }
 
    if go_dirs[0] = 0                          ! if nowhere to go
@@ -107,7 +107,7 @@ routine YouCanGo
 	for (p=1; p<=12; p++)         ! determine whether list end
 	{
 	if go_dirs[p] ~= 0 and go_dirs[p].cango_name ~= SKIP
-	  cnt++
+		cnt++
 	}
 
    for (n=1; n<=12; n++)                ! begin Exits loop

@@ -39,31 +39,31 @@ object cheaplib "cheap"
 	type settings
 	in init_instructions
 	save_info
-		{
+	{
 		if cheap
 			return true
 		else
 			return false
-		}
+	}
 	execute
-		{
+	{
 		if CheckWordSetting("cheap") and not cheap
-			{
+		{
 			cheap = true
 			DrawCheap
-			}
 		}
+	}
 #ifset _NEWMENU_H
 #ifset USE_DEFAULT_MENU
 	usage_desc
-		{
+	{
 		Indent
 		"\BCHEAP/CHEAPMODE ON\b- Turns \"cheap mode\" on. \"Cheap mode\" is a
 		no-frills layout meant for interpreters with limited display
 		capabilities."
 		Indent
 		"\BCHEAP/CHEAPMODE OFF\b- Turns \"cheap mode\" off."
-		}
+	}
 #endif ! USE_DEFAULT_MENU
 #endif ! _NEWMENU_H
 }
@@ -72,32 +72,32 @@ routine DoCheapOnOff
 {
 	local a = 2
 	while a < 4
-		{
-	select word[a]
-		case "on"
+	{
+		select word[a]
+			case "on"
 			{
-			if not cheap
+				if not cheap
 				{
-				cheap = true
-				CheapMessage(&DoCheapOnOff, 1) ! "Cheap mode on."
-				DrawCheap
+					cheap = true
+					CheapMessage(&DoCheapOnOff, 1) ! "Cheap mode on."
+					DrawCheap
 				}
-			else
-				CheapMessage(&DoCheapOnOff, 2) ! "Cheap mode already on."
+				else
+					CheapMessage(&DoCheapOnOff, 2) ! "Cheap mode already on."
 			}
-		case "off"
+			case "off"
 			{
-			if cheap
+				if cheap
 				{
-				cheap = false
-				CheapMessage(&DoCheapOnOff, 3) ! "Cheap mode off."
-				PrintStatusLine
+					cheap = false
+					CheapMessage(&DoCheapOnOff, 3) ! "Cheap mode off."
+					PrintStatusLine
 				}
-			else
-				CheapMessage(&DoCheapOnOff, 4) ! "Cheap mode already off."
+				else
+					CheapMessage(&DoCheapOnOff, 4) ! "Cheap mode already off."
 			}
 		a++
-		}
+	}
 }
 
 routine DoCheapHelp
@@ -108,17 +108,17 @@ routine DoCheapHelp
 routine DoCheapToggle
 {
 	if cheap
-		{
+	{
 		cheap = 0
 		CheapMessage(&DoCheapToggle,1) ! "'Cheap' mode toggled off."
 		PrintStatusLine
-		}
+	}
 	else
-		{
+	{
 		cheap = true
 		CheapMessage(&DoCheapToggle,2) ! "'Cheap' mode toggled on."
 		DrawCheap(true)
-		}
+	}
 }
 
 routine DrawCheap ! this is basically InitScreen, slightly modified
@@ -140,17 +140,17 @@ routine CheapMessage(r, num, a, b)
 
 	select r
 		case &DoCheapHelp
-			{
+		{
 			select num
 				case 1
-					{
+				{
 					"To turn on \"cheap mode\", type \BCHEAP ON\b or
 					\BCHEAPMODE ON\b. This is the default behavior. To turn cheap
 					mode off, type \BCHEAP OFF\b or \BCHEAPMODE OFF\b."
-					}
-			}
+				}
+		}
 		case &DoCheapOnOff
-			{
+		{
 			select num
 				case 1
 					"\"Cheap\" mode on."
@@ -160,13 +160,13 @@ routine CheapMessage(r, num, a, b)
 					"\"Cheap\" mode off."
 				case 4
 					"\Cheap\" mode already off."
-			}
+		}
 		case &DoCheapToggle
-			{
+		{
 			select num
 				case 1: "\"Cheap\" mode toggled off."
 				case 2: "\"Cheap\" mode toggled on."
-			}
+		}
 }
 
 routine NewCheapMessages(r, num, a, b)

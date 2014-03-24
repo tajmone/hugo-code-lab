@@ -1,6 +1,9 @@
 !::
-! Cover.h by Roody Yogurt   Version 2.1
+! Cover.h by Roody Yogurt   Version 2.2
 !::
+!\ Changelog:
+	V2.2 - Got rid of "covers once" option since I decided it was kind of dumb.
+\!
 
 !\ The "Cover Art" Extension-
 
@@ -98,14 +101,15 @@ roody.yogurt@gmail.com!
 \!
 
 #ifset VERSIONS
-#message "CoverArt.h Version 2.1"
+#message "CoverArt.h Version 2.2"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
 #ifclear _ROODYLIB_H
-#message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
+#message error "Extension crediting requires \"roodylib.h\". Be sure to
+include it first!"
 #endif
-version_obj cover_version "CoverArt Version 2.1"
+version_obj cover_version "CoverArt Version 2.2"
 {
 	in included_extensions
 	desc_detail
@@ -156,7 +160,7 @@ object coverlib "coverlib v1"
 {
 	two_box 0
 	nocovers 0
-	alwayscovers 0
+	alwayscovers 1
 	coveronce 0
 ! if roodylib.h has been included before cover.h, nothing needs to be
 ! added to the init routine
@@ -207,18 +211,18 @@ object coverlib "coverlib v1"
 #endif
 #ifset _NEWMENU_H
 	usage_desc
-		{
+	{
 		if system(61) ! MINIMAL_PORT
 			return false
 		Indent
 		"\BCOVERS ON\b- Turns cover art on."
 		Indent
 		"\BCOVERS OFF\b- Turns cover art off."
-#if defined GAMECOVER
-		Indent
-		"\BCOVERS ONCE\b- Displays cover art once."
-#endif
-		}
+!#if defined GAMECOVER
+!		Indent
+!		"\BCOVERS ONCE\b- Displays cover art once."
+!#endif
+	}
 #endif  ! NEWMENU
 #endif  ! _ROODYLIB_H
 }
@@ -228,7 +232,7 @@ routine CoverArt
 {
 	local a, not_stay
 	not_stay = system(MINIMAL_INTERFACE) or (not display.hasgraphics)
-#ifclear #USE_CONFIG_SYSTEM
+#ifclear USE_CONFIG_SYSTEM
 	not_stay = not_stay or (not CoverSettings)
 #endif
 	if not_stay
@@ -249,117 +253,117 @@ routine CoverArt
 :STARTOVER
 	Font(PROP_OFF)
 	if display.needs_repaint
-		{
+	{
 		window 0
 		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 		cls
 		display.needs_repaint = false
-		}
+	}
 	if display.screenwidth = lower(display.screenwidth,(display.screenheight*2))
-		{
+	{
 		coverlib.two_box = false
-		}
+	}
 	else
-		{
+	{
 		if (display.screenheight > MINIMUMHEIGHT) and
 		display.screenwidth > MINIMUMWIDTH
-			{
-			coverlib.two_box = true
-			}
-		else
-			{
-			coverlib.two_box = false
-			}
-		}
-	if coverlib.two_box
 		{
-		a++
+			coverlib.two_box = true
 		}
+		else
+		{
+			coverlib.two_box = false
+		}
+	}
+	if coverlib.two_box
+	{
+		a++
+	}
 	run pressakey_window.win_init
 	window
 		{}
 	run pressakey_window.win_end
 	if not coverlib.two_box and not a
-		{
+	{
 		run coverpicture_window.win_init
 		window
-			{
+		{
 			run coverpicture_window.win_clear
 #if undefined RESOURCEFILE
 			picture COVERFILE
 #endif
 #if defined RESOURCEFILE
-   picture RESOURCEFILE , COVERFILE
+			picture RESOURCEFILE , COVERFILE
 #endif
-			}
+		}
 		run coverpicture_window.win_end
 		CoverPause
 		if not display.needs_repaint
-			{
-			a++
-			}
-		jump STARTOVER
-		}
-	elseif not coverlib.two_box and a
 		{
+			a++
+		}
+		jump STARTOVER
+	}
+	elseif not coverlib.two_box and a
+	{
 		run coverpicture_window.win_init
 		run coverpicture_window.win_end
 		run cover_text_border_window.win_init
 		window
-			{
+		{
 			run cover_text_border_window.win_clear
-			}
+		}
 		run cover_text_border_window.win_end
 		run cover_text_window.win_init
 		window
-			{
+		{
 			run cover_text_window.win_clear
 			locate 1,1
 			Font(PROP_ON)
 			CoverText
-			}
+		}
 		run cover_text_window.win_end
 		CoverPause
 		if display.needs_repaint
-			{
-			jump STARTOVER
-			}
-		}
-	else ! elseif two_box
 		{
+			jump STARTOVER
+		}
+	}
+	else ! elseif two_box
+	{
 		run coverpicture_window.win_init
 		window
-			{
+		{
 			run coverpicture_window.win_clear
 #if undefined RESOURCEFILE
 			picture COVERFILE
 #endif
 #if defined RESOURCEFILE
-   picture RESOURCEFILE, COVERFILE
+			picture RESOURCEFILE, COVERFILE
 #endif
-			}
+		}
 		run coverpicture_window.win_end
 		run cover_text_border_window.win_init
 		window
-			{
+		{
 			run cover_text_border_window .win_clear
-			}
+		}
 		run cover_text_border_window.win_end
 		run cover_text_window.win_init
 		window
-			{
+		{
 			run cover_text_window.win_clear
 			locate 1,1
 			Font(PROP_ON)
 			CoverText
-			}
+		}
 		run cover_text_window.win_end
 		CoverPause
 		if display.needs_repaint
-			{
+		{
 			jump STARTOVER
-			}
 		}
+	}
 	window 0
 	cls
 	locate 1,5
@@ -368,21 +372,21 @@ routine CoverArt
 
 window_class pressakey_window "press a key to continue"
 {
-  win_left     1  ! leftmost column
-  win_top      1  ! topmost row
-  win_right
+	win_left     1  ! leftmost column
+	win_top      1  ! topmost row
+	win_right
 		return display.screenwidth
-  win_bottom
+	win_bottom
 		return (display.screenheight - 4) ! * 4 / 5)
 
-  win_textcolor
-	return cover_text_window.win_textcolor
-  win_backcolor
-	return cover_text_window.win_backcolor
-  win_titlecolor
-	return cover_text_window.win_textcolor
-  win_titleback
-	return cover_text_window.win_backcolor
+	win_textcolor
+		return cover_text_window.win_textcolor
+	win_backcolor
+		return cover_text_window.win_backcolor
+	win_titlecolor
+		return cover_text_window.win_textcolor
+	win_titleback
+		return cover_text_window.win_backcolor
 	win_init
 	{
 		local x, y, titlelen, width, height
@@ -461,66 +465,63 @@ window_class pressakey_window "press a key to continue"
 
 window_class coverpicture_window
 {
-!  win_left     1  ! leftmost column
 	win_left 2
-  win_top    !  1  ! topmost row
-		{
+	win_top    !  1  ! topmost row
+	{
 		if not coverlib.two_box
-			{
-		return (higher((pressakey_window.win_bottom/2 - \
-		(((display.screenwidth/2)-3)/2)),3))
-			}
+		{
+			return (higher((pressakey_window.win_bottom/2 - \
+				(((display.screenwidth/2)-3)/2)),3))
+		}
 		else
 			return 3
-		}
-  win_right
-		{
+	}
+	win_right
+	{
 		if not coverlib.two_box
-			{
+		{
 			return (display.screenwidth-2)
-			}
+		}
 		else
 			return (display.screenwidth/2)
-		}
-  win_bottom
-		{
+	}
+	win_bottom
+	{
 !		return (self.win_right/2)
 		return (lower((pressakey_window.win_bottom/2 + \
-		(display.screenwidth/4)),(pressakey_window.win_bottom-1))-1)
-		}
+			(display.screenwidth/4)),(pressakey_window.win_bottom-1))-1)
+	}
 
-  win_textcolor
-	return cover_text_window.win_textcolor
-  win_backcolor
-	return cover_text_window.win_backcolor
+	win_textcolor
+		return cover_text_window.win_textcolor
+	win_backcolor
+		return cover_text_window.win_backcolor
 }
 
 window_class cover_text_border_window
 {
-  win_left
-		{
+	win_left
+	{
 		if not coverlib.two_box
 			return 1
 		else
 			return (display.screenwidth/2 + 1)
-		}
-  win_top      1  ! topmost row
+	}
+	win_top      1  ! topmost row
 !		return higher((pressakey_window.win_bottom/2 - \
 !		(display.screenwidth/4)),2)
-  win_right
+	win_right
 		return display.screenwidth
-  win_bottom
-		{
+	win_bottom
+	{
 !		return (self.win_right/2)
 		return lower((pressakey_window.win_bottom/2 + \
-		(display.screenwidth/4)),(pressakey_window.win_bottom-1))
-		}
-
-
-  win_textcolor
-	return cover_text_window.win_textcolor
-  win_backcolor
-	return cover_text_window.win_backcolor
+			(display.screenwidth/4)),(pressakey_window.win_bottom-1))
+	}
+	win_textcolor
+		return cover_text_window.win_textcolor
+	win_backcolor
+		return cover_text_window.win_backcolor
 }
 
 window_class cover_text_window
@@ -528,52 +529,51 @@ window_class cover_text_window
 !  win_left
 !	return (cover_text_border_window.win_left + 1)
 	win_left
-		{
-!		return (cover_text_border_window.win_left + 1)
-	return  (cover_text_border_window.win_left + coverpicture_window.win_left)
+	{
+		return  (cover_text_border_window.win_left + coverpicture_window.win_left)
 !	return (self.win_top/2 + cover_text_border_window.win_left)
-		}
-  win_top
-!	return (cover_text_border_window.win_top + 1 )
-	{return ( coverpicture_window.win_top + ((coverpicture_window.win_bottom - \
-	coverpicture_window.win_top)/2) - \
-	(lower(( (coverpicture_window.win_right - \
-	coverpicture_window.win_left)/4) , ( (coverpicture_window.win_bottom - \
-	coverpicture_window.win_top)/2) ) ) )}
-
-  win_right
-		{
+	}
+	win_top
+	{
+		return ( coverpicture_window.win_top + ((coverpicture_window.win_bottom - \
+			coverpicture_window.win_top)/2) - \
+			(lower(( (coverpicture_window.win_right - \
+			coverpicture_window.win_left)/4) , ( (coverpicture_window.win_bottom - \
+			coverpicture_window.win_top)/2) ) ) )
+	}
+	win_right
+	{
 		if not coverlib.two_box
 			return (cover_text_border_window.win_right - 1)
 		else
-			{
+		{
 			return lower(((cover_text_border_window.win_right + \
-			cover_text_border_window.win_left)/2 + \
-			(self.win_bottom - self.win_top)), \
-			(cover_text_border_window.win_right - 1) )
-			}
+				cover_text_border_window.win_left)/2 + \
+				(self.win_bottom - self.win_top)), \
+				(cover_text_border_window.win_right - 1) )
 		}
+	}
 
-  win_bottom
-	return (cover_text_border_window.win_bottom - 1)
+	win_bottom
+		return (cover_text_border_window.win_bottom - 1)
 
-  win_textcolor
+	win_textcolor
 	{
 #ifset _COLORLIB_H
-	if colorlib.default_colors
-		return DEF_SL_FOREGROUND
-	else
+		if colorlib.default_colors
+			return DEF_SL_FOREGROUND
+		else
 #endif
-	return coverforeground
+			return coverforeground
 	}
   win_backcolor
   {
  #ifset _COLORLIB_H
-	if colorlib.default_colors
-		return DEF_SL_BACKGROUND
-	else
+		if colorlib.default_colors
+			return DEF_SL_BACKGROUND
+		else
 #endif
-	return coverbackground ! background color
+			return coverbackground ! background color
 	}
 }
 
@@ -589,19 +589,19 @@ routine CoverPause
 	local key
 	key = system(READ_KEY)
 	if system_status
-		{
+	{
 		pause
 		return
-		}
+	}
 	else
+	{
+		while true
 		{
-			while true
-			{
-				key = system(READ_KEY)
-				if key: break
-				system(PAUSE_100TH_SECOND)
-			}
+			key = system(READ_KEY)
+			if key: break
+			system(PAUSE_100TH_SECOND)
 		}
+	}
 }
 
 routine CoverSettings
@@ -610,16 +610,16 @@ routine CoverSettings
 	if system(61) ! MINIMUM_INTERFACE.. will affect glk ports, too
 		return
 	readfile "coverdat"
-		{
+	{
 		coverlib.nocovers = readval
 		coverlib.alwayscovers = readval
 		coverlib.coveronce = readval
 		test2 = readval
-      }
+	}
    if test2 ~= FILE_CHECK
-		{
+	{
   !        print "Error reading file."
-      }
+	}
 
 	if coverlib.alwayscovers
 		return true
@@ -628,33 +628,33 @@ routine CoverSettings
 
 #if defined GAMECOVER
 	if coverlib.coveronce or test2 ~= FILE_CHECK
-		{
+	{
 		local a
 		a = coverlib.coveronce
 		test2 = 0
 		readfile GAMECOVER
-			{
+		{
 			coverlib.coveronce = readval
 			test2 = readval
-			}
+		}
 		if test2 ~= FILE_CHECK and a
 			coverlib.coveronce = 1
 		if coverlib.coveronce
-			{
+		{
 			writefile GAMECOVER
-				{
+			{
 				writeval ++coverlib.coveronce
 				writeval FILE_CHECK
-				}
 			}
 		}
+	}
 	writefile "coverdat"
 	{
-	writeval coverlib.nocovers
-	writeval coverlib.alwayscovers
-	writeval coverlib.coveronce
-	test2 = FILE_CHECK
-	writeval test2
+		writeval coverlib.nocovers
+		writeval coverlib.alwayscovers
+		writeval coverlib.coveronce
+		test2 = FILE_CHECK
+		writeval test2
 	}
 #endif
 	if coverlib.coveronce < 3
@@ -664,14 +664,14 @@ routine CoverSettings
 routine DoCoverHelp
 {
 	if system(MINIMAL_INTERFACE) or not display.hasgraphics
-		{
+	{
 		CoverArtMessage(&CoverArt,1)
 		return
-		}
+	}
 	CoverArtMessage(&DoCoverHelp,1) ! >COVERS ALWAYS, >COVERS NEVER
-#if defined GAMECOVER
-	CoverArtMessage(&DoCoverHelp,2) ! >COVERS ONCE
-#endif
+!#if defined GAMECOVER
+!	CoverArtMessage(&DoCoverHelp,2) ! >COVERS ONCE
+!#endif
 	""
 }
 
@@ -679,33 +679,42 @@ routine DoCoverSettings
 {
 	local a
 	if system(MINIMAL_INTERFACE) or not display.hasgraphics
-		{
+	{
 		CoverArtMessage(&CoverArt,1)
 		return
-		}
+	}
 	select word[2]
 		case "always","on"
-			{
+		{
 			a = 1
 			coverlib.alwayscovers = true
 			coverlib.nocovers = false
 			coverlib.coveronce = false
-			}
+		}
 		case "never","off"
-			{
+		{
 			a = 2
 			coverlib.alwayscovers = false
 			coverlib.nocovers = true
 			coverlib.coveronce = false
-			}
+		}
 #if defined GAMECOVER
 		case "once"
-			{
+		{
 			a = 3
 			coverlib.alwayscovers = false
 			coverlib.nocovers = false
 			coverlib.coveronce = true
-			}
+		}
+#endif
+#if defined DATA_FILE
+		case "once"
+		{
+			a = 3
+			coverlib.alwayscovers = false
+			coverlib.nocovers = false
+			coverlib.coveronce = true
+		}
 #endif
 	CoverArtMessage(&DoCoverSettings, a)
 #ifclear USE_CONFIG_SYSTEM
@@ -719,24 +728,24 @@ routine SaveCoverSettings
 {
 	local test2
 	writefile "coverdat"
-		{
+	{
 		writeval coverlib.nocovers
 		writeval coverlib.alwayscovers
 		writeval coverlib.coveronce
 		test2 = FILE_CHECK
 		writeval test2
-      }
+	}
    if test2 ~= FILE_CHECK
-		{
-          print "\n[Error saving file.]"
-      }
+	{
+		print "\n[Error saving file.]"
+   }
 
 #if defined GAMECOVER
 	writefile GAMECOVER
-		{
+	{
 		writeval coverlib.coveronce
 		writeval FILE_CHECK
-		}
+	}
 #endif
 
 }
@@ -751,9 +760,7 @@ fuse cover_fuse
 event in cover_fuse ! the "in" is optional
 {
 	if not self.tick
-		{
 		CoverInstructions
-		}
 }
 
 routine CoverInstructions
@@ -770,30 +777,30 @@ routine CoverArtMessage(r, num, a, b)
 
 	select r
 		case &CoverArt
-			{
+		{
 			select num
 				case 1
 					"Cover art is not available for this interpreter. Try Hugor
 					 today! Links at: http://ifwiki.org/index.php/Hugor"
-			}
+		}
 		case &DoCoverHelp
-			{
+		{
 			select num
 				case 1
-					{
+				{
 					"To turn on cover art, type \BCOVERS ON\b.
 					This is the default behavior. To turn cover art
 					off permenantly, type \BCOVER NEVER\b or \BCOVERS OFF\b.";
-					}
+				}
 				case 2
-					{
+				{
 					" To display a game's cover art just once, type \BCOVERS ONCE\b
 					(this feature is not supported across all games with cover
 					art).";
-					}
-			}
+				}
+		}
 		case &DoCoverSettings
-			{
+		{
 			select num
 				case 1
 					"Cover art on."
@@ -801,13 +808,13 @@ routine CoverArtMessage(r, num, a, b)
 					"Cover art off."
 				case 3
 					"Cover art shows once."
-			}
+		}
 #ifset COVER_INSTRUCT
 		case &CoverInstructions
-			{
+		{
 			select num
 				case 1 : "\n[Type \B>COVER HELP\b for Cover Art commands.]"
-			}
+		}
 #endif
 }
 
@@ -815,16 +822,16 @@ routine NewCoverArtMessages(r, num, a, b)
 {
 	select r
 
-	case &DoCoverHelp
-	{
-		select num
-		case 1: return false
-		case 2: return false
-	}
+		case &DoCoverHelp
+		{
+			select num
+			case 1: return false
+			case 2: return false
+		}
 
-        case else : return false
+		case else : return false
 
-       return true ! this line is only reached if we replaced something
+	return true ! this line is only reached if we replaced something
 }
 
 #endif

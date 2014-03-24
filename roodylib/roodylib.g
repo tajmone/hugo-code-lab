@@ -13,7 +13,6 @@ Also, "go to" now directs to DoGo, not DoEnter.   \!
 verb "go", "walk"
 	*							DoGo
 	* "in"/"into"/"inside"/"through" object            DoEnter
-!	* "out" container										DoExit
 	* "off" platform										DoExit
 	* "out"/"to"/"toward"/"towards" object            DoGo
 	* "to"/"toward"/"towards" object            DoGo

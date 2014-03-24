@@ -33,10 +33,27 @@
 #include "cheaplib.h"
 #endif
 
+#ifset PASTTENSE
+#include "pasttense.h"
+#endif
+
+#ifset USE_CONFIG_SYSTEM
+#include "config_sys.h"
+#endif
+
+#ifset USE_COVERART
+#include "coverartlib.h"
+#endif
+
+#ifset USE_COLORLIB
+#include "colorlib.h"
+#endif
+
 #ifset BETA
 #include "beta.h"
 #endif
 
-#ifset PASTTENSE
-#include "pasttense.h"
+#ifset DEBUG
+replace last_library_object
+{}
 #endif

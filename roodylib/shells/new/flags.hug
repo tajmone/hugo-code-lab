@@ -26,6 +26,14 @@
 !#set PASTTENSE           ! Compile with "pasttense.h"
 
 !----------------------------------------------------------------------------
+!* Configuration file inclusions
+!----------------------------------------------------------------------------
+!#set USE_CONFIG_SYSTEM   ! Include for the configuration file manager
+!#set USE_COVERART        ! Use the "fake cover art" extension.
+!#set USE_COLORLIB        ! Compile with colorlib, a library for
+                          !  font-color-intensive games
+
+!----------------------------------------------------------------------------
 !*Hugolib flags
 !----------------------------------------------------------------------------
 !#set HDX                 ! Compile as Hugo Debuggable Executable (see
@@ -66,7 +74,7 @@
 !#set AMERICAN_ENGLISH         ! Use American English quotation mark rules
 !#set NEW_EMPTY                ! Use more robust DoEmpty behavior (see roodylib)
 !#set NEW_FUSE                 ! Experimental new fuse definition
-!#set NEW_STYLE_PRONOUNS       ! Use New Style Pronouns (see comments)
+!#set NEW_STYLE_PRONOUNS       ! Use New Style Pronouns (see roodylib comments)
 !#set NO_AUTOMATIC_DOOR_UNLOCK ! Don't allow automatic door-unlocking
 !#set NO_MODE_CHANGE           ! Disallow >BRIEF, SUPERBRIEF, and VERBOSE
 !#set NO_SORTING               ! Don't use sorting routines

@@ -14,6 +14,8 @@ v 3.8 - * Added an "elevated" attribute for vehicles enterable platforms (such a
 	* Added USE_DARK_ROOM flag so dark rooms appear like an actual room when you enter them (check out roodylibdocs.odt)
 	* Updated flags.h to include new flags
 	* Update "go" grammar
+	* Added the coverart extension to Roodylib because of its configlib compatibility
+	* Updated old files to have UNIX line feeds and fixed indenting on older code
 v 3.7 - * Added CallFinish, MakePlayer, CoolPause, PauseForKey routines
 	* Updated shell files to make it easier to turn Roodylib off (for tracking errors down to original library code)
 	* Updated credits text

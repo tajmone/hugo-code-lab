@@ -88,43 +88,43 @@ object undolib "undolib"
 	in init_instructions
 	enough_elements 0
 	save_info
-		{
+	{
 		local a
 		if show_commands and self.enough_elements and
-		undocommands[0] ~= 1 and not continue_undo and
-		undocommands[0] ~= "" and word[1] = "undo"
-			{
+			undocommands[0] ~= 1 and not continue_undo and
+			undocommands[0] ~= "" and word[1] = "undo"
+		{
 				Font(ITALIC_ON)
 				print "[ undoing ";
 					Font(BOLD_ON|ITALIC_OFF)
 					print ">";
 					while undocommands[a] ~= ""
 					{
-					if undocommands[a] = "~and"
-						print ",";
-					else
-						print undocommands[a];
-					if undocommands[] = a + 1
-						break
-					elseif undocommands[++a] ~= "~and"
-						print " ";
+						if undocommands[a] = "~and"
+							print ",";
+						else
+							print undocommands[a];
+						if undocommands[] = a + 1
+							break
+						elseif undocommands[++a] ~= "~and"
+							print " ";
 					}
 					Font(BOLD_OFF|ITALIC_ON)
 	!			}
 				print "]"
 				Font(DEFAULT_FONT|ITALIC_OFF)
-			}
+		}
 		if continue_undo
 			return true
 		else
 			return false
-		}
+	}
 	execute
-		{
+	{
 		if not CheckWordSetting("undo") or continue_undo
 			return false
 		ContinueUndoSuccess ! "UNDOing several turns..."
-		}
+	}
 }
 
 
@@ -143,9 +143,9 @@ routine SaveCommand
 	local a, b
 	a = 1
 	while word[a] ~= "" and a <= undocommands[]
-		{
+	{
 		undocommands[b++] = word[a++]
-		}
+	}
 	if a < undocommands[]
 		undocommands[b] = ""
 	undolib.enough_elements = true
@@ -158,7 +158,7 @@ object undo_preparse
 	{
 		if not last_turn_true
 		{
-		ClearArray(undocommands)
+			ClearArray(undocommands)
 		}
 	}
 }
@@ -169,58 +169,58 @@ replace DoUndo
 	if not UNDO_OFF
 	{
 		if display.statusline_height > 2
-			{
+		{
 			local c
 			c = display.statusline_height
 			while word[c] ~= ""
-				{
+			{
 				c++
-				}
-			word[c] = "statusheight"
 			}
+			word[c] = "statusheight"
+		}
 		SaveWordSetting("undo")
 		local i
 		for i in init_instructions
-			{
+		{
 			if i.save_info
 				SaveWordSetting(i.name)
-			}
+		}
 		if undo
 		{
 			while continue_undo
-				{
+			{
 				if not undo
-					{
+				{
 					ContinueUndoFailure ! "Unable to UNDO enough."
 					break
-					}
 				}
+			}
 			for i in init_instructions
-				{
+			{
 				if CheckWordSetting(i.name)
 					run i.execute
-				}
+			}
 			c = 1
 			while c < 11
-				{
+			{
 				if word[c] = "statusheight"
 					break
 				c++
-				}
+			}
 			if c ~= 11
 				display.statusline_height = c
 			PrintStatusline
 			DescribePlace(location)
 #ifset USE_AFTER_UNDO
 			if after_undo[0]
-				{
+			{
 				local a
 				while after_undo[a] ~= 0
-					{
+				{
 					call after_undo[a]
 					after_undo[a++] = 0
-					}
 				}
+			}
 #endif ! USE_AFTER_UNDO
 			last_turn_true = true
 			ClearWordArray
@@ -265,16 +265,16 @@ replace ProcessKey(entry,end_type)
 		case SpecialKey(end_type) : r = &SpecialRoutine
 		case "quit", "q"! : r = &DoQuit
 		{
-		""
-		RLibMessage(&DoQuit,1,end_type) ! "Thanks for playing!"
-		""
-		display.title_caption = PRESS_ANY_KEY
-		if not system(61) ! if not simple port simple port
+			""
+			RLibMessage(&DoQuit,1,end_type) ! "Thanks for playing!"
+			""
+			display.title_caption = PRESS_ANY_KEY
+			if not system(61) ! if not simple port simple port
 			{
-			print PRESS_ANY_KEY;
-			HiddenPause
+				print PRESS_ANY_KEY;
+				HiddenPause
 			}
-		quit
+			quit
 		}
 	if not (call r) : return -1 : else : return true
 }

@@ -58,15 +58,15 @@ constant GAME_TITLE	"Score Notification Test Game"
 routine init
 {
 !: First Things First
-SetGlobalsAndFillArrays
+	SetGlobalsAndFillArrays
 !: Screen clear section
-SimpleIntro
-InitScreen
+	SimpleIntro
+	InitScreen
 !: Set up any special libries
-Init_Calls
+	Init_Calls
 !: Game opening
-IntroText
-MovePlayer(location)
+	IntroText
+	MovePlayer(location)
 }
 
 
@@ -122,6 +122,9 @@ room STARTLOCATION "Start Location"
 {
 }
 
+!Roody's note: This example exists just to show how to add or subtract points.
+!In a real game, you'll have to make sure points are only added once per action.
+
 object trophy "trophy"
 {
 	noun "trophy"
@@ -133,13 +136,13 @@ object trophy "trophy"
 	{
 		object DoGet
 		{
-		"You hoist the trophy."
-		AddScore(10)
+			"You hoist the trophy."
+			AddScore(10)
 		}
 		object DoDrop
 		{
-		"You drop the trophy."
-		SubtractScore(10)
+			"You drop the trophy."
+			SubtractScore(10)
 		}
 	}
 }
@@ -148,18 +151,18 @@ object trophy "trophy"
 replace NewScoreNotificationMessages(r, num, a, b)
 {
    select r
-	case &ScoreNotify
+		case &ScoreNotify
 		{
-		select num
-			case 1
+			select num
+				case 1
 				{
-				print "[Your score has gone up by "; number a; " points.]"
+					print "[Your score has gone up by "; number a; " points.]"
 				}
-			case 2
+				case 2
 				{
-				print "[Your score has gone down by "; number a; " points.]"
+					print "[Your score has gone down by "; number a; " points.]"
 				}
 		}
-   case else : return false
+		case else : return false
    return true ! this line is only reached if we replaced something
 }

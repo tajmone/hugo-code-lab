@@ -30,12 +30,14 @@ object jukebox_config "Next Day Jukebox v1"
 	load_info
 	{
 		self.play_music = readval
-		self.first_time = readval
+!		self.first_time = readval  ! uncomment if you want the setup to run only
+                                 ! the first time ever
 	}
 	save_info
 	{
 		writeval self.play_music
-		writeval self.first_time
+!		writeval self.first_time   ! uncomment if you want the setup to run only
+                                 ! the first time ever
 	}
 	setup
 	{
