@@ -22,7 +22,7 @@
 #endif
 
 #ifset VERSIONS
-#message "Config_sys.h Version 1.0"
+#message "Config_sys.h Version 1.1"
 #endif
 
 #ifclear _ROODYLIB_H
@@ -30,7 +30,7 @@
 #endif
 
 #ifset USE_EXTENSION_CREDITING
-version_obj config_sys_version "Config_Sys.h Version 1.0"
+version_obj config_sys_version "Config_Sys.h Version 1.1"
 {
 	in included_extensions
 	desc_detail
@@ -59,6 +59,9 @@ object configlib
 	execute
 	{
 		local i, l
+
+		if not child(config_instructions)
+			return
 		if not CheckWordSetting("undo") and not CheckWordSetting("restore")
 		{
 			for i in config_instructions
@@ -69,24 +72,26 @@ object configlib
 		}
 		if not CheckWordSetting("undo")
 		{
-			if not system(62)
-			{
+!			if not system(61)  ! useless check, some minimum ports support
+!			{                  ! configuration file saving/reading
 				LoadSettings
 				if not CheckWordSetting("restore")
 				{
 					for i in config_instructions
 					{
 						if i.setup
-						{
 							InitScreen
-						}
 					}
-					SaveSettings
+					if not SaveSettings
+						Config_Error
 				}
-			}
+!			}
 		}
 	}
 }
+
+routine Config_Error
+{}
 
 !\ config_instructions is an object for holding all of the configuration file
 objects \!
@@ -130,6 +135,9 @@ routine LoadSettings
 
 routine SaveSettings
 {
+	if not child(config_instructions)
+		return
+
 	writefile DATA_FILE
 	{
 		local i
@@ -141,6 +149,7 @@ routine SaveSettings
 		}
 		writeval FILE_CHECK
 	}
+	return (not system_status)
 }
 
 property name_sum alias n_to

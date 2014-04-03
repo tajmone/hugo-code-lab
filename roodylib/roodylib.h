@@ -356,6 +356,56 @@ replace CalculateHolding(obj)
 	}
 }
 
+#ifset NO_MENUS
+routine CenterTitle(a, lines,force)
+{
+#ifset CHEAP
+	if cheap and not force
+		return
+#endif !ifset CHEAP
+	local l, g, s ! (simple port)
+	g = IsGlk
+	s = (not g and system(61))
+	if not lines:  lines = 1
+
+	Font(BOLD_OFF|ITALIC_OFF|UNDERLINE_OFF|PROP_OFF)
+	l = string(_temp_string, a)
+	if not system(61)
+		window 0                        ! remove previous window
+
+	if g
+	{
+		window 1  ! draw an empty window so glk terps determine screenwidth properly
+		{}
+	}
+
+	while (l + 1) > (display.linelength * lines)
+	{
+		lines++
+	}
+
+	window lines
+	{
+		if not s ! not non-glk simple port
+		{
+			color SL_TEXTCOLOR, SL_BGCOLOR
+			cls
+			locate 1,1
+		}
+		print "\_";
+		if (l+1) < display.linelength
+			print to (display.linelength/2 - l/2);
+
+		print a;
+	}
+	color TEXTCOLOR, BGCOLOR, INPUTCOLOR
+	FONT(DEFAULT_FONT)
+	if not s and not force ! non-glk simple port
+		cls
+	if not system(61) and not force
+		locate 1, LinesFromTop
+}
+#else
 replace CenterTitle(a, lines,force)
 {
 #ifset CHEAP
@@ -410,8 +460,7 @@ replace CenterTitle(a, lines,force)
 	if not system(61) and not force
 		locate 1, LinesFromTop
 }
-
-!
+#endif
 
 #ifclear NO_SCRIPTS
 
@@ -1012,6 +1061,40 @@ replace PropertyList(obj, prop, artic, conjunction)
 				print conjunction; " ";
 			n++
 		}
+	}
+	return n
+}
+
+!----------------------------------------------------------------------------
+! ObjectIs(object)
+! prints a list of parenthetical attributes
+
+replace ObjectIs(obj)
+{
+	local n
+
+	if not &obj.desc_detail
+	{
+		if obj is clothing:  n = TestObjectIs(obj, worn, "being worn", n)
+		n = TestObjectIs(obj, light, "providing light", n)
+
+		if n:  print ")";
+	}
+	else
+		run obj.desc_detail
+}
+
+! Roody's note: was missing a space
+replace TestObjectIs(obj, attr, str, n)
+{
+	if obj is attr
+	{
+		if n = 0
+			print " (";
+		else
+			print " "; AND_WORD; " ";
+		print str;
+		n++
 	}
 	return n
 }
@@ -4493,15 +4576,8 @@ routine FindStatusHeight
 	! can't start off a string with a space, it seems
 	!if not location     ! so we'll save this space-writing code for the
 	!    print "\_";     ! "status-writing" routine
-	!else
-	if not light_source
-		print "In the dark";
-	else
-	{
-		print capital location.name;
-	!		 if FORMAT & DESCFORM_F
-		print "\_";
-	}
+	RlibMessage(&FindStatusHeight,1,location) ! "In the dark" or location
+	                                          ! name, depending
 	text to 0
 	a = StringLength(_temp_string)
 	text to _temp_string
@@ -4567,16 +4643,7 @@ routine WriteStatus
 	else
 		row = 1
 
-	if not location
-		print "\_";
-	elseif not light_source
-		print "\_In the dark";
-	else
-	{
-	!         if FORMAT & DESCFORM_F or (printstatuslib.terp_type = GLK_TERP)
-		print "\_";
-		print capital location.name;
-	}
+	RlibMessage(&WriteStatus,1,location) ! "in the dark" or location name
 
 	if statuswindow.find_height = 1 and STATUSTYPE
 	{
@@ -4621,16 +4688,7 @@ replace PrintStatusline
 		cls
 		if not simple
 			locate 1, 1
-		if not location
-			print "\_";
-		elseif not light_source
-			print "\_ In the dark";
-		else
-		{
-	!  if FORMAT & DESCFORM_F:
-			print "\_";
-			print capital location.name;
-		}
+		RlibMessage(&PrintStatusLine,1,location) ! "in the dark" or location name
 
 	! (The part we're changing)
 	! print to 65; ! is 65 characters good for every window size? No!
@@ -4980,7 +5038,7 @@ routine InitScreen
 
 routine CheapTitle
 {
-	if &display.title_caption
+	if display.title_caption
 	{
 		return display.title_caption
 	}
@@ -7978,12 +8036,13 @@ replace DoUndo
 				}
 			}
 #endif ! USE_AFTER_UNDO
-			last_turn_true = true
+			last_turn_true = true  ! should also be unnecessary but we'll leave it
 #ifclear NO_FANCY_STUFF
 			ClearWordArray
 #endif
-			verbroutine = &DoUndo
-			return true
+		!	verbroutine = &DoUndo  ! should be unnecessary?
+		!	return true
+			return
 		}
 		else
 			VMessage(&DoUndo)
@@ -10133,6 +10192,22 @@ routine RLibMessage(r, num, a, b)
 					print "? Futile."
 				}
 		}
+#ifclear NO_FANCY_STUFF
+		case &FindStatusHeight
+		{
+			select num
+				case 1
+				{
+					if not light_source
+						print "In the dark";
+					else
+					{
+						print capital a.name;
+						print "\_";
+					}
+				}
+		}
+#endif
 		case &DoGo
 		{
 			select num
@@ -10256,11 +10331,39 @@ routine RLibMessage(r, num, a, b)
 			select num
 				case 1: print ":"
 		}
+#ifset NO_FANCY_STUFF
+		case &PrintStatusLine
+		{
+			if not location
+				print "\_";
+			elseif not light_source
+				print "\_ In the dark";
+			else
+			{
+				print "\_";
+				print capital location.name;
+			}
+		}
+#endif
 		case &WhatsIn
 		{
 			select num
 				case 1: print ":"
 		}
+#ifclear NO_FANCY_STUFF
+		case &WriteStatus
+		{
+			if not location
+				print "\_";
+			elseif not light_source
+				print "\_In the dark";
+			else
+			{
+				print "\_";
+				print capital location.name;
+			}
+		}
+#endif
 }
 
 routine NewRlibMessages(r, num, a, b)

@@ -6,6 +6,9 @@
 #message "roodylib.g Grammar Version 2.4"
 #endif
 
+#ifclear _ROODYLIB_G
+#set _ROODYLIB_G
+
 #ifclear NO_VERBS
 !\ Roody's note: Redefined "go" so that the somewhat ingrammatical phrase
 "go off of <object>" can be supported. We'll see if this causes any problems.
@@ -59,15 +62,6 @@ verb "search"
 	* "under"/"underneath"/"beneath"/"below" object	DoLookUnder
 	* "in" object                           DoSearch
 	* object                                DoSearch
-#endif
-
-#ifset HUGOFIX
-verb "scope"
-	*                 DoScope
-	* "rooms"         DoScopeRooms
-
-xverb "verbtest"
-	*	object         DoVerbTest
 #endif
 
 ! updated "wear" and "remove" to use new checkheld system
@@ -133,6 +127,11 @@ verb "hit", "strike", "break", "attack", "whack", "beat", \
 	* object "with"/"using" held                            DoHit
 	* object                                                DoHit
 
+#ifclear NO_XYZZY
+verb "xyzzy", "plugh"
+	*	               DoXYZZY
+#endif  ! NO_XYZZY
+
 ! Roody's note: I've found that if you support "swim", players will also try
 ! "swim in [object]"
 #ifset _VERBSTUB_G
@@ -143,7 +142,7 @@ verb "swim", "dive"
 verb "wave"
 	*                                       DoWaveHands
 	* "hands"                               DoWaveHands
-	* "to"/"at" object                           DoWaveHands
+	* "to"/"at" object                      DoWaveHands
 	* held                                  DoWave
 #endif
 
@@ -154,15 +153,9 @@ verb "wave"
 !----------------------------------------------------------------------------
 #ifclear NO_XVERBS
 
-#ifclear NO_XYZZY
-xverb "xyzzy", "plugh"
-	*	               DoXYZZY
-#endif
 !\ Roody's note: To get around a bug in Hugo where only the first line of
 a multi-line xverb definition is understood to be an xverb, I've split all
 of the multi-line ones into single lines. \!
-
-#ifclear NO_XVERBS
 
 #ifset NO_MODE_CHANGE
 xverb "brief", "normal","superbrief", "short","verbose","long"
@@ -190,7 +183,7 @@ xverb "record"
 xverb "record"
 	* "on"/"off"                                            DoRecordOnOff
 
-#endif
+#endif  ! NO_RECORDING
 
 xverb "quit", "q"
 	*                                                       DoQuit
@@ -212,9 +205,23 @@ xverb "wide", "tall"
 
 #endif  ! ifclear NO_XVERBS
 
+! We'll allow HugoFix commands to work even in NO_XVERBS games as it is
+! assumed they'll only be used for betatesting.
+
 #ifset HUGOFIX
-#ifclear _HUGOFIX_G
-#set _HUGOFIX_G
+
+!#ifclear _HUGOFIX_G
+!#set _HUGOFIX_G
+!#endif	! _HUGOFIX_G
+
+xverb "scope"
+	*                 DoScope
+
+xverb "scope"
+	* "rooms"         DoScopeRooms
+
+xverb "verbtest"
+	*	object         DoVerbTest
 
 xverb "$", "$ca", "$fd", "$on", "$pm", "$pr", "$sc"
 	*                                       DoHugoFix
@@ -347,8 +354,6 @@ xverb "$wn"
 
 xverb "$wo"
 	* number                                DoHugoFix
-
-#endif	! _HUGOFIX_G
-
-#endif  ! ifclear NO_XVERBS
 #endif   ! ifset HUGOFIX
+
+#endif ! _ROODYLIB_G
