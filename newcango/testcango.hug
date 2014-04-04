@@ -5,7 +5,7 @@ constant GAME_TITLE	"GAME TITLE"
 
 !:: Flags
 !#set BETA                ! Compile with the comments-in-transcripts library
-                          !   addition (requires "beta.h")
+#set USE_ROODYLIB                          !   addition (requires "beta.h")
 !#set CHEAP
 #set HUGOFIX             ! Compile with HugoFix Debugging Library commands
                           !   available (type $? in game)
@@ -191,7 +191,7 @@ room SouthRoom "South Room"
 	{
 		PrintExits
 	}
-!	cango_name SKIP
+	cango_name SKIP
 	n_to EastRoom
 }
 

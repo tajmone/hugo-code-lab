@@ -44,7 +44,7 @@
 
 
 #ifset VERSIONS
-#message "can_go_lite.h Version 1.0"
+#message "can_go_lite.h Version 1.1"
 #endif
 #ifclear _CAN_GO_LITE
 #set _CAN_GO_LITE
@@ -53,7 +53,7 @@
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj can_go_version "Can Go Lite 1.0"
+version_obj can_go_version "Can Go Lite 1.1"
 {
 	in included_extensions
 	desc_detail
@@ -102,7 +102,7 @@ routine YouCanGo
    }
 
 	Indent(true)
-   "You can go ";
+	print CThe(player); " can go ";
 	local total
 	for (p=1; p<=12; p++)         ! determine whether list end
 	{

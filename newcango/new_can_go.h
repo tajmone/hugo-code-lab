@@ -8,19 +8,21 @@
 	      Added "inconsistent" global. When set to true, new_can_go uses the
 			less-consistent (but not fully random) exit-ordering system.
 	1.3 - Fixed AFTER_PERIOD mistake.
+	1.4 - don't remember
+	1.5 - changed some "print capital player.name"'s to "print CThe(player);"
 \!
 #ifclear _NEW_CAN_GO_H
 #set _NEW_CAN_GO_H
 
 #ifset VERSIONS
-#message "new_can_go.h Version 1.4"
+#message "new_can_go.h Version 1.5"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj can_go_version "Can Go Version 1.4"
+version_obj can_go_version "Can Go Version 1.5"
 {
 	in included_extensions
 	desc_detail
@@ -54,7 +56,7 @@ replace room
 	}
 	cant_go
 	{
-		print capital player.name ; " can't go that way."; AFTER_PERIOD ;
+		print CThe(player); " can't go that way."; AFTER_PERIOD ;
 		Perform(&PrintExits)
 	}
 }
@@ -197,6 +199,7 @@ declared together, you can do something like this: \!
 !			move i to direction_pile
 !		}
 }
+
 ! a bunch of objects to represent everything we're tracking
 object direction_pile
 {}
@@ -425,13 +428,13 @@ routine CanGoMessage(r, num, a, b)
 			select a
 				case 1
 				{
-					print capital player.name ; " can go ";
+					print CThe(player); " can go ";
 				}
 				case 2
 					" to ";
 		}
 		case 2
-			print capital player.name ; " can't go anywhere."
+			print CThe(player); " can't go anywhere."
 	}
 }
 

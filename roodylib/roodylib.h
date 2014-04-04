@@ -7244,17 +7244,17 @@ replace DoGet
 
 replace DoGo
 {
-	local moveto, JumpToEnd, skip, vehicle_check
+	local moveto, JumpToEnd, skip_ahead, vehicle_check
 #ifset NO_OBJLIB
 	local wordnum, m
 #endif
 
 	if object = parent(player) or ! make sure player isn't already in object
 		not object ! or (not parent(player) and word[2] = "out")
-		skip = true
+		skip_ahead = true
 
 	if player not in location and   ! sitting on or in an obj.
-		not skip
+		not skip_ahead
 	{
 		local a, b
 
@@ -7291,7 +7291,7 @@ replace DoGo
 	}
 
 
-	if obstacle and not skip
+	if obstacle and not skip_ahead
 	{
 #ifclear NO_OBJLIB
 		VMessage(&DoGo, 1)		! "X stops you from going..."
