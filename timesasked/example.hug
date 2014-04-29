@@ -11,54 +11,58 @@ character fred "Fred"
 					  ! own
 	              ! charnumber property, starting at 1
 	after
-		{
+	{
 		object DoAsk
-			{
+		{
 			local notcount ! let's create a variable that if true, the 'timesasked'
 								! counter does NOT increase
 			select xobject
-				case you: {
-								if not Asked
-									"You seem swell."
-								else
-									"I said you seem swell."
-								}
-				case STARTLOCATION: {
-										select Asked
-										case 0 : "I like swell places."
-										case 1: "This place seems swell."
-										case 2: "Sure, this place seems really swell."
-										case else: "I'm done talking about how swell this
-										place is."
-										}
+				case you
+				{
+					if not Asked
+						"You seem swell."
+					else
+						"I said you seem swell."
+				}
+				case STARTLOCATION
+				{
+					select Asked
+					case 0 : "I like swell places."
+					case 1: "This place seems swell."
+					case 2: "Sure, this place seems really swell."
+					case else: "I'm done talking about how swell this
+					place is."
+				}
 				case fred: "I'm just this guy."
 				case else: "I dunno!"
 			if not notcount
 				xobject.timesasked #(self.charnumber) =  Asked + 1
-			}
+		}
 
 		object DoTell
-				{
-				select xobject
-				case you: {
-								if not Told
-									"You seem swell."
-								else
-									"I said you seem swell."
-							 }
-				case STARTLOCATION: {
-										select Told
-										case 0 : "I like swell places."
-										case 1: "This place seems swell."
-										case 2: "Sure, this place seems really swell."
-										case else: "I'm done talking about how swell this
-										place is."
-										}
-				case self: "I'm just this guy."
-				case else: "I dunno!"
-				xobject.timestold #(self.charnumber) =  Told + 1
-				}
+		{
+			select xobject
+			case you
+			{
+				if not Told
+					"You seem swell."
+				else
+					"I said you seem swell."
+			}
+			case STARTLOCATION
+			{
+				select Told
+				case 0 : "I like swell places."
+				case 1: "This place seems swell."
+				case 2: "Sure, this place seems really swell."
+				case else: "I'm done talking about how swell this
+				place is."
+			}
+			case self: "I'm just this guy."
+			case else: "I dunno!"
+			xobject.timestold #(self.charnumber) =  Told + 1
 		}
+	}
 }
 
 ! Example of an object
@@ -79,29 +83,31 @@ replace CharRules(obj)  ! called by DoAskTellTopics
 	else
 		b = Told(obj)
 	select speaking
-		case fred :	{
-						select verbroutine
-							case &DoAsk:{
-								select obj
-									case you: a = b < 1
-									! "you" will show up as a topic if it hasn't been
-									! asked about
-									case STARTLOCATION: a = b < 3
-									! the start room will show up as a topic if it has
-									! been asked about less than three times
-									case fred: a = 1
-									! fred will always show up as a topic
-									case else : a = 0
-									! nothing else will show up as a topic
-									}
-							case &DoTell
-								{
-								select obj
-									case you: a = b < 1
-									case STARTLOCATION: a = b < 3
-									case fred: a = 1
-									case else : a = 0
-									}
-						}
+		case fred
+		{
+			select verbroutine
+				case &DoAsk
+				{
+					select obj
+						case you: a = b < 1
+						! "you" will show up as a topic if it hasn't been
+						! asked about
+						case STARTLOCATION: a = b < 3
+						! the start room will show up as a topic if it has
+						! been asked about less than three times
+						case fred: a = 1
+						! fred will always show up as a topic
+						case else : a = 0
+						! nothing else will show up as a topic
+				}
+				case &DoTell
+				{
+					select obj
+						case you: a = b < 1
+						case STARTLOCATION: a = b < 3
+						case fred: a = 1
+						case else : a = 0
+				}
+		}
 	return a
 }

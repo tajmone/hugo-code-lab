@@ -4,10 +4,22 @@
 constant GAME_TITLE	"NewSimpleTalk Example Game"
 
 !:: Flags
+!#set BETA                ! Compile with the comments-in-transcripts library
+                          !   addition (requires "beta.h")
+!#set CHEAP
 !#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
                           !   available (type $? in game)
-!#set VERSIONS            ! Print library versions at compile time
+!#set PRECOMPILED_LIBRARY ! Use a precompiled header library (see manual)
+!#set VERBSTUBS           ! Include the grammar and routines from verbstubs.g
+                          !   and verbstubs.h, respectively
+!#set USE_ATTACHABLES     ! Use attachable items
+!#set USE_PLURAL_OBJECTS  ! Use plural objects
 !#set USE_ROODYLIB
+!#set USE_VEHICLES        ! Use vehicle objects
+!#set VERSIONS            ! Print library versions at compile time
+
+!:: switches              ! example how one can add compiler switches to source
+!#switches -ls            ! print compilation stats to .LST file
 
 #ifset HUGOFIX
 #set DEBUG
@@ -25,13 +37,14 @@ constant AFTER_PERIOD " "     ! include one space after full stops (as opposed t
 #include "roodylib.g"
 #endif
 
-! new grammar needs to be defined before the including verblib
-#include "verblib.g"        ! Verb Library
 
 verb "addscore"
 	*					DoAddScore
-#include "hugolib.h"        ! Standard  Hugo Library
 
+! new grammar needs to be defined before the including verblib
+#include "verblib.g"        ! Verb Library
+
+#include "hugolib.h"        ! Standard  Hugo Library
 #ifset USE_ROODYLIB
 #include "roodylib.h"         ! Hugo  Library Updates
 #endif
@@ -47,23 +60,28 @@ verb "addscore"
 #include "cheaplib.h"
 #endif
 
+!:: Other constants and global variables
+!constant IFID "put-IFID here"
+
 !::	Game Initialization	routine
 routine init
 {
 !: First Things First
-SetGlobalsAndFillArrays
+	SetGlobalsAndFillArrays
 !: Screen clear section
-#ifset _ROODYLIB_H
-SimpleIntro
-InitScreen
+#ifclear _ROODYLIB_H
+	CenterTitle("Hugo Interactive Fiction")
+	cls
+#else
+	SimpleIntro
+	InitScreen
 !: Set up any special libries
-Init_Calls
+	Init_Calls
 #endif
 !: Game opening
-IntroText
-MovePlayer(location)
+	IntroText
+	MovePlayer(location)
 }
-
 
 routine SetGlobalsAndFillArrays
 {
@@ -77,13 +95,10 @@ routine SetGlobalsAndFillArrays
 	SL_TEXTCOLOR    = BLACK
 	SL_BGCOLOR      = WHITE
 	FORMAT 		= NOINDENT_F + LIST_F
-#ifclear _ROODYLIB_H
-	color TEXTCOLOR, BGCOLOR
-	cls
-#endif
 	display.title_caption = "newsimpletalk game"
 	verbosity = 2
 	counter = -1                    ! 1 turn before turn 0
+	!ask_color = 0
 	STATUSTYPE = 1   ! 1 = score/turns, 2 = time, 3 = moves: score:
 	prompt = ">"
 	DEFAULT_FONT = PROP_ON
@@ -100,10 +115,8 @@ routine	main
 	run	location.each_turn
 	runevents
 	RunScripts
-#ifset _ROODYLIB_H
-	if GrandParent(speaking) ~= location
+	if parent(speaking) ~= location
 		speaking = 0
-#endif
 	PrintStatusLine
 #ifset _ROODYLIB_H
 	Main_Calls
@@ -112,11 +125,11 @@ routine	main
 
 routine IntroText
 {
-        "\n\"Initial text goes here.\""
-        print ""    ! For a blank line between the intro and the game title
+	"\n\"Initial text goes here.\""
+	print ""    ! For a blank line between the intro and the game title
 
-	   Version
-	   "\n\"Secondary text goes here.\""
+	Version
+	"\n\"Secondary text goes here.\""
 }
 
 player_character you "you"
@@ -160,54 +173,54 @@ routine SayQ (char, line)
 {
 	select(char)
 	case Brendon
-		{
+	{
 		select(line)
 		case 1: {">This is the first thing you can say to char one."}
 		case 2: {">This is the second thing you can say to char one."}
-		}
+	}
 	case dwarf
-		{
+	{
 		select(line)
 		case 1: {">This is the first thing you can say to char two."}
 		case 2: {">This is the second thing you can say to char two."}
 		case 3: ">Tell me about Brendon's quips."
-		}
+	}
 }
 
 routine Respond (char, line)
 {
 	local dont_remove
 	select(char)
-	case Brendon
+		case Brendon
 		{
-		select(line)
-		case 1: "This is the first response from character number one."
-		case 2: "This is the second response from character number one."
+			select(line)
+				case 1: "This is the first response from character number one."
+				case 2: "This is the second response from character number one."
 		}
-	 case dwarf
-	{
-		select(line)
-		case 1: "This is the first response from character number two."
-		case 2: "This is the second response from character number two."
-		case 3
+		case dwarf
 		{
-		"Brendon's first possible quip is ";
-		if not QuipOn(Brendon,1)
-			print "not ";
-		"available and has ";
-		if not BeenSpoken(Brendon,1)
-			print "not ";
-		"been spoken."
-		"Brendon's third possible quip is ";
-		if not QuipOn(Brendon,3)
-			print "not ";
-		"available and has ";
-		if not BeenSpoken(Brendon,3)
-			print "not ";
-		"been spoken."
-		dont_remove = true
+			select(line)
+				case 1: "This is the first response from character number two."
+				case 2: "This is the second response from character number two."
+				case 3
+				{
+					"Brendon's first possible quip is ";
+					if not QuipOn(Brendon,1)
+						print "not ";
+					"available and has ";
+					if not BeenSpoken(Brendon,1)
+						print "not ";
+					"been spoken."
+					"Brendon's third possible quip is ";
+					if not QuipOn(Brendon,3)
+						print "not ";
+					"available and has ";
+					if not BeenSpoken(Brendon,3)
+						print "not ";
+					"been spoken."
+					dont_remove = true
+				}
 		}
-	}
 ! Let's turn off whichever quip we selected unless we set dont_remove to true
 	if not dont_remove
 		SetQuip(char,line,0,1)

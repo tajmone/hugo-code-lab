@@ -1,5 +1,5 @@
 !::
-! TIMESASKED Version 1.2 by Roody Yogurt
+! TIMESASKED Version 1.3 by Roody Yogurt
 !::
 
 !\
@@ -23,17 +23,14 @@ of times asked/told) should "inherit"  the topics class. Example:
 
 player_character you "you"
 {
-	inherits topics ! we can ask about ourselves
+	inherits topics ! we can ask characters about ourselves
 }
 
-Now, every character should get their own charnumber property (starting at 1)
-and inherit the talkcount class AND the topics class (assuming you can ask
-about themselves / ask others about them). Example:
+Now, every character should inherit the "chartopics" class. Example:
 
 character randomshmoe "Random Schmoe"
 {
-	charnumber 1
-	inherits talkcount topics
+	inherits chartopics
 }
 
 Now, witihn a character's normal DoAsk/DoTell xobject code, you can get the
@@ -59,14 +56,14 @@ by checking Asked(<other object>) or Told(<other object>)
 #set _TIMESASKED_H
 
 #ifset VERSIONS
-#message "timesasked.h Version 1.2"
+#message "timesasked.h Version 1.3"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj timesasked_version "TimesAsked Version 1.2"
+version_obj timesasked_version "TimesAsked Version 1.3"
 {
 	in included_extensions
 	desc_detail
@@ -98,8 +95,10 @@ class topics
 	timestold #TOTALCHARACTERS
 }
 
-class talkcount
+class chartopics
 {
+	charnumber 0
+	inherits topics
 	asktopicsleft #MAXTOPICS
 	telltopicsleft #MAXTOPICS
 }
@@ -108,21 +107,50 @@ class talkcount
 ! conversation topics and such
 class topic_object
 {
-	found_in {return location}
+	found_in
+		return location
 	before
-		{
+	{
 		object
-			{
+		{
 			"Don't be silly."
-			}
+		}
 		xobject
-			{
+		{
 			if verbroutine = &DoAsk,&DoAskQuestion,&DoTell,&DoTalk
 				return false
 			"Don't be silly."
-			}
 		}
+	}
 	is known
+}
+
+object timesaskedlib "timesasked"
+{
+#ifset _ROODYLIB_H
+	type settings
+	in init_instructions
+	did_print 0
+	execute
+	{
+		if not CheckWordSetting("restore") and not CheckWordSetting("undo")
+			SetCharNumbers
+	}
+#endif  ! _ROODYLIB_H
+}
+
+routine SetCharNumbers
+{
+	local i = 1
+	local n
+	while i <= objects
+	{
+		if i.#charnumber and i ~= chartopics
+		{
+			i.charnumber = ++n
+		}
+		i++
+	}
 }
 
 !\ ChangeValueAsked - utility routine for manually changing the
@@ -184,12 +212,12 @@ routine TopicsList(obj, prop, artic)
 			if artic
 				The(b)
 			else
-				{
+			{
 				if b = speaking or b = player
 					print b.pronoun #4;
 				else
 					Art(b)
-				}
+			}
 
 			if a < total and total > 2
 				print ", ";
@@ -207,11 +235,11 @@ routine TopicsList(obj, prop, artic)
 routine DoAskTellTopics
 {
 	if not speaking
-		{
+	{
 		TimesAskedVMessage(&DoAskTellTopics,1) !	"You are not talking to anyone
 															!   at the moment."
 		return false
-		}
+	}
 
 	local i,j
 
@@ -243,18 +271,18 @@ routine DoAskTellTopics
 	local m,n
 	TimesAskedVMessage(&DoAskTellTopics,5) ! "("
 	if PropCheck(speaking,asktopicsleft)
-		{
+	{
 		TimesAskedVMessage(&DoAskTellTopics,2) ! "You can ask <char> about..."
 		m = 1
-		}
+	}
 	if PropCheck(speaking,telltopicsleft)
-		{
+	{
 		if m
 			print " ";
 		TimesAskedVMessage(&DoAskTellTopics, 3 , m) ! "You can tell <char>
 																  ! about..."
 		n = 1
-		}
+	}
 	if not n and not m
 		TimesAskedVMessage(&DoAskTellTopics,4) ! "You have nothing to talk about
 												         !  at this time."
@@ -267,17 +295,17 @@ routine TimesAskedVMessage(r, num, a, b)
 
 	select r
 		case &DoAskTellTopics
-			{
+		{
 			select num
 				case 1: "You are not talking to anyone at the moment."
 				case 2
-					{
+				{
 					print "You can ask "; speaking.name ; " about ";
 					TopicsList(speaking,asktopicsleft)
 					print ".";
-					}
+				}
 				case 3
-					{
+				{
 					print "You can tell ";
 					if a
 						print speaking.pronoun #2 ;
@@ -286,17 +314,19 @@ routine TimesAskedVMessage(r, num, a, b)
 					print " about ";
 					TopicsList(speaking,telltopicsleft)
 					print ".";
-					}
+				}
 				case 4
-					{ print "You have nothing to talk about at this time."; }
+				{
+					print "You have nothing to talk about at this time.";
+				}
 				case 5
-					{
+				{
 					if not a
 						print "(";
 					else
 						print ")"
-					}
-			}
+				}
+		}
 }
 
 !\ The NewTimesAskedVMessages routine may be REPLACED and should return

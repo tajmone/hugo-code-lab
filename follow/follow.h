@@ -190,28 +190,27 @@ routine FollowMessage(r, num, a, b)
 
 	select r
 	case &MoveFollowers
-		{
+	{
 		select num
 			case 1:
-				{
+			{
 				print capital PrintArrayList(moved_follower, a);
 				" follow";
 				if a = 1 and moved_follower[0] is not plural:  "s";
 				if not location.follow_message
-					{
+				{
 					print " ";
 					if player_person = 1,2
-						{
+					{
 						print player.pronoun #2;
-						}
+					}
 					else
 						print player.name;
 					"."
-					}
-				event_flag = true
 				}
-		}
-
+				event_flag = true
+			}
+	}
 }
 
 routine NewFollowMessages(r, num, a, b)

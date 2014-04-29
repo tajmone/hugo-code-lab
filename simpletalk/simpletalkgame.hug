@@ -1,7 +1,22 @@
 !::
 ! Phototalk example game
 !
+!::
+
 !:: Flags
+!#set BETA                ! Compile with the comments-in-transcripts library
+                          !   addition (requires "beta.h")
+!#set CHEAP
+!#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
+                          !   available (type $? in game)
+!#set PRECOMPILED_LIBRARY ! Use a precompiled header library (see manual)
+!#set VERBSTUBS           ! Include the grammar and routines from verbstubs.g
+                          !   and verbstubs.h, respectively
+!#set USE_ATTACHABLES     ! Use attachable items
+!#set USE_PLURAL_OBJECTS  ! Use plural objects
+!#set USE_ROODYLIB
+!#set USE_VEHICLES        ! Use vehicle objects
+!#set VERSIONS            ! Print library versions at compile time
 
 !:: switches              ! example how one can add compiler switches to source
 !#switches -ls            ! print compilation stats to .LST file
@@ -10,125 +25,131 @@
 #set DEBUG
 #endif
 
-#ifset HDX
-#switches -d              ! if the -d switch is not set in the compiler itself, #set HDX will produce
-                          ! a Hugo Debuggable Executable (.HDX) with extension .HEX
-#endif                    ! Sneaky!
-
-
-!:: Constants and globals  (some constants must be set before hugolib is included)
-
+!:: Other pre-Hugolib.h Constants
+! (some constants must be set before hugolib is included)
 
 constant RELEASE "1.3"         ! Game release number
 
 constant AFTER_PERIOD " "     ! include one space after full stops (as opposed to two)
-!constant IFID "put-IFID here"
 
-!:: Includes (grammar must come first)
-! put your new grammar here
+!:: Grammar Library Inclusions (grammar must come first)
+#ifset USE_ROODYLIB
+#include "roodylib.g"
+#endif
 
 verb "phototalk"
-verb "phototalk"
-     * xobject                           DoTalk
+	* xobject                           DoTalk
 	* "to" xobject					 DoTalk
 
 ! new grammar needs to be defined before the including verblib
-#include "verblib.g"    ! Verb Library
+#include "verblib.g"        ! Verb Library
 
-#ifset PRECOMPILED_LIBRARY
-#link "hugolib.hlb"     ! Your Precompiled Library
-#else
-#include "hugolib.h"    ! Standard Hugo Library
+#include "hugolib.h"        ! Standard  Hugo Library
+#ifset USE_ROODYLIB
+#include "roodylib.h"         ! Hugo  Library Updates
 #endif
 
 #include "simpletalk.h"
+
+!::	Other Library Inclusions
+#ifset BETA
+#include "beta.h"
+#endif
+
+#ifset CHEAP
+#include "cheaplib.h"
+#endif
+
+!:: Other constants and global variables
+!constant IFID "put-IFID here"
+
 !----------------------------------------------------------------------------
 ! Set up the quip declarations
 
 array qflag[100]  			! Total number of quips in the game
 array quips[5] = 20, 20, 20, 20, 20 	! 5 = number of characters, the 20s are how many quips are alloted to each
 
-!:: Game Initialization routine
+
+!::	Game Initialization	routine
 routine init
 {
-	   MAX_SCORE = 300
-	   ranking[0] = "Limey Bastard"
-	   ranking[1] = "Neophyte"
-    	ranking[2] = "Master of Souls"
-	   TEXTCOLOR 	= WHITE
-	   BGCOLOR 	= BLACK
-	   SL_TEXTCOLOR    = BLACK
-	   SL_BGCOLOR      = WHITE
-	   FORMAT 		= NOINDENT_F + LIST_F
-        STATUSTYPE = 1  ! 0 = none :: 1 = score/turns :: 2 = time
-        counter = -1    ! 1 step before first turn
-
-        color TEXTCOLOR, BGCOLOR
-
-        verbosity = 2   ! 1 = normal (rooms described only if not previously
-                        !     described)
-                        ! 2 = full (rooms described every time they are entered)
-
-        display.title_caption = "phototalk.h game"  ! used for GUI clients for title bar text.
-        prompt = ">"
-
-        window 0 ! resets the windows in case the player is restarting a game
-        cls
-
-        DEFAULT_FONT = PROP_ON
-        Font(DEFAULT_FONT)
-
-        !:: Opening Text
-        "\n\"Initial text goes here.\""
-        print ""    ! For a blank line between the intro and the game title
-
-	   Version
-	   "\n\"Secondary text goes here.\""
-
-        player = you
-        location = bedroom
-			loop_talk = true
-			can_quit = true
-        move player to location
-        old_location = location
-        FindLight(location)
-        DescribePlace(location)
-        location is visited
-        CalculateHolding(player)
-
-        #ifset USE_PLURAL_OBJECTS
-        InitPluralObjects
-        #endif
-
-	   SetUpQuips
+!: First Things First
+	SetGlobalsAndFillArrays
+!: Screen clear section
+#ifclear _ROODYLIB_H
+	CenterTitle("Hugo Interactive Fiction")
+	cls
+#else
+	SimpleIntro
+	InitScreen
+!: Set up any special libries
+	Init_Calls
+#endif
+!: Game opening
+	IntroText
+	MovePlayer(location)
 }
 
-!:: Main game loop
-#ifset PRECOMPILED_LIBRARY
-replace main
+routine SetGlobalsAndFillArrays
 {
-#else
-routine main
+	MAX_SCORE = 300
+	ranking[0] = "Limey Bastard"
+	ranking[1] = "Neophyte"
+	ranking[2] = "Master of Souls"
+	TEXTCOLOR 	= WHITE
+	BGCOLOR 	= BLACK
+	SL_TEXTCOLOR    = BLACK
+	SL_BGCOLOR      = WHITE
+	FORMAT 		= NOINDENT_F + LIST_F
+	display.title_caption = "phototalk.h game"  ! used for GUI clients for title bar text.
+	verbosity = 2
+	counter = -1                    ! 1 turn before turn 0
+	loop_talk = true
+	can_quit = true
+	!ask_color = 0
+	STATUSTYPE = 1   ! 1 = score/turns, 2 = time, 3 = moves: score:
+	prompt = ">"
+	DEFAULT_FONT = PROP_ON
+	player = you
+	location = bedroom
+	SetUpQuips
+}
+
+!::	Main game loop
+routine	main
 {
+	counter	= counter +	1
+	run	location.each_turn
+	runevents
+	RunScripts
+	if parent(speaking) ~= location
+		speaking = 0
+	PrintStatusLine
+#ifset _ROODYLIB_H
+	Main_Calls
 #endif
-        counter = counter + 1
-        PrintStatusLine
-        run location.each_turn
-        runevents
-        RunScripts
-        if speaking not in location
-                speaking = 0
+}
+
+routine IntroText
+{
+!:: Opening Text
+	"\n\"Initial text goes here.\""
+	print ""    ! For a blank line between the intro and the game title
+
+	Version
+	"\n\"Secondary text goes here.\""
+
 }
 
 routine SetUpQuips
 {
-SetQuip(1,0,1)
-SetQuip(1,1,1)
-SetQuip(1,2,0)
-SetQuip(1,3,1)
-SetQuip(2,0,1)
-SetQuip(2,1,1)
-SetQuip(2,2,1)
+	SetQuip(1,0,1)
+	SetQuip(1,1,1)
+	SetQuip(1,2,0)
+	SetQuip(1,3,1)
+	SetQuip(2,0,1)
+	SetQuip(2,1,1)
+	SetQuip(2,2,1)
 }
 
 player_character you "you"
@@ -150,7 +171,7 @@ room bedroom "Bedroom"
 
 character Brendon "Brendon"
 {
-charnumber 1
+	charnumber 1
 
 	in bedroom
 	nouns "brendon" "mccollough" "fighter" "warrior"
@@ -162,7 +183,7 @@ charnumber 1
 
 character dwarf "dwarf"
 {
-charnumber 2
+	charnumber 2
 
 	in bedroom
 	nouns "dwarf" "fighter"
@@ -176,20 +197,20 @@ routine SayQ (char, line)
 {
 	select(char)
 	case 1
-		{
+	{
 		select(line)
 		case 0: {">This is the first thing you can say to char one."}
 		case 1: {">This is the second thing you can say to char one."}
 		case 2: {"Not available."}
 		case 3: {">This is the fourth thing you can say to char one."}
-		}
+	}
 	case 2
-		{
+	{
 		select(line)
 		case 0: {">This is the first thing you can say to char two."}
 		case 1: {">This is the second thing you can say to char two."}
 		case 2: ">Tell me about Brendon's quips."
-		}
+	}
 }
 
 routine Respond (char_num, line)
@@ -211,9 +232,9 @@ routine Respond (char_num, line)
 			dont_remove = true
 		}
 	}
-	 case 2
-		{
-			select(line)
+	case 2
+	{
+		select(line)
 			case 0: "This is the first response from character number two."
 			case 1: "This is the second response from character number two."
 			case 2
@@ -234,7 +255,7 @@ routine Respond (char_num, line)
 				"been spoken."
 				dont_remove = true
 			}
-		}
+	}
 ! Let's turn off whichever quip we selected unless we set dont_remove to true
 	if not dont_remove
 		SetQuip(char_num,line,NOT_AVAILABLE,SPOKEN)

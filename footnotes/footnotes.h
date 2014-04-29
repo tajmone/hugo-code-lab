@@ -82,30 +82,30 @@ object footnotelib "footnote"
 	showfootnotes 1
 #ifset _ROODYLIB_H
 	save_info
-		{
+	{
 		select self.showfootnotes
 			case 0 : SaveWordSetting("never")
 			case 1 : SaveWordSetting("once")
 			case 8 : SaveWordSetting("always")
 		return true
-		}
+	}
 	type settings
 	in init_instructions
 	execute
-		{
+	{
 		local a
 		a = CheckWordSetting("footnote")
 		if a
-			{
+		{
 			select word[(a-1)]
 				case "never": self.showfootnotes = 0
 				case "once": self.showfootnotes = 1
 				case "always": self.showfootnotes = 8
-			}
 		}
+	}
 #ifset _NEWMENU_H
 	usage_desc
-		{
+	{
 		Indent
 		"\BFOOTNOTE #- Prints applicable footnote."
 		Indent
@@ -115,7 +115,7 @@ object footnotelib "footnote"
 		Indent
 		"\BFOOTNOTES ALWAYS\b- Footnote prompts show each time (not just the
 		first time)."
-		}
+	}
 #endif ! NEWMENU
 #endif  ! _ROODYLIB_H
 }
@@ -126,20 +126,20 @@ object footnotemain
 	type settings
 	in main_instructions
 	execute
-		{
+	{
 		FootnoteNotify
-		}
+	}
 #endif  ! _ROODYLIB_H
 }
 
 routine DoFootnote
 {
 	if not object
-		{
+	{
 		FootnoteMessage(&DoFootnote,1) ! "The proper syntax is
 												 ! >FOOTNOTE [number]."
 		return false
-		}
+	}
 	local a
 	a = object
 	if a < 1 or a >= MAXFOOTNOTES
@@ -157,16 +157,16 @@ routine AddFootnote(num,silent)
 	local a
 	a = InList(footnotelib,footnotearray,num)
 	if not a and footnotelib.showfootnotes
-		{
+	{
 		footnotelib.footnotearray #(++footnotelib.totalfootnotes) = num
 		if not silent
 			footnotelib.footnote_notify = footnotelib.totalfootnotes
-		}
+	}
 	elseif a and footnotelib.showfootnotes = 8
-		{
+	{
 		if not silent
 			footnotelib.footnote_notify = a
-		}
+	}
 }
 
 routine FootnoteNotify
@@ -185,10 +185,10 @@ routine Footnote(num)
 	local a
 	a = InList(footnotelib,footnotearray,num)
 	if not a and footnotelib.showfootnotes
-		{
+	{
 		AddFootnote(num,1)
 		FootnoteMessage(&Footnote,1) ! "("; "Footnote #"; ")";
-		}
+	}
 	elseif a and footnotelib.showfootnotes = 8
 		FootnoteMessage(&Footnote,2, a) ! "("; "Footnote #"; ")";
 }
@@ -236,26 +236,26 @@ routine FootnoteMessage(r, num, a, b)
 
 	select r
 		case &DoFootnote
-			{
+		{
 			select num
 				case 1: "The proper syntax is >FOOTNOTE [number]."
 				case 2: "That isn't a valid footnote number."
 				case 3: "You haven't encountered that footnote yet."
-			}
+		}
 		case &FootNoteNotify
-			{
+		{
 			print "\I("; "Footnote "; number footnotelib.footnote_notify; ")\i"
-			}
+		}
 		case &FootNote
-			{
+		{
 			select num
 				case 1
 					print "("; "Footnote "; number footnotelib.totalfootnotes; ")";
 				case 2
 					print "("; "Footnote ";  number a ; ")";
-			}
+		}
 		case &DoFootnoteMode
-			{
+		{
 			select num
 				case 1: "Footnotes are already on."
 				case 2: "Footnotes on."
@@ -268,7 +268,7 @@ routine FootnoteMessage(r, num, a, b)
 							to make sure it is always printed, use \"footnotes always\".
 							Use \"footnotes never\" to turn footnote printing off or
 							\"footnotes normal\" to restore the default mode."
-			}
+		}
 }
 
 !\ The NewFootnoteMessages routine may be REPLACED and should return

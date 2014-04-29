@@ -156,13 +156,13 @@ object boxdrawlib
 ! if roodylib.h has been included before newboxdraw.h, nothing needs to be
 ! added to the main routine
 #ifset _ROODYLIB_H
-type settings
+	type settings
 	in main_instructions
 	execute
-		{
+	{
 		if boxdrawlib.epigram_on
 			Box(true,1)
-		}
+	}
 #endif  ! _ROODYLIB_H
 }
 
@@ -172,7 +172,7 @@ routine Epigram(pauseflag,pauseprompt)
 	local a
 	a = system(61) ! minimal interface?
 	if pauseflag
-		{
+	{
 		if a ! not simple port
 			Box()
 		else
@@ -200,9 +200,9 @@ routine Epigram(pauseflag,pauseprompt)
 		}
 #endif
 		""
-		}
+	}
 	else
-	boxdrawlib.EPIGRAM_ON = true
+		boxdrawlib.EPIGRAM_ON = true
 	return false
 }
 
@@ -219,133 +219,133 @@ routine Box(epiflag, remember)   ! epiflag should never be supplied by user
 
 	if boxdrawlib.BOX_TEXTCOLOR = 0 and
 		boxdrawlib.BOX_BGCOLOR = 0 ! if box colors haven't been set
-		{
+	{
 		boxdrawlib.BOX_TEXTCOLOR = DEF_BACKGROUND
 		boxdrawlib.BOX_BGCOLOR = DEF_FOREGROUND
-		}
+	}
 
 
-if remember
+	if remember
 	{
-	x = display.cursor_column
-	y = display.cursor_row
+		x = display.cursor_column
+		y = display.cursor_row
 	}
 	if m ! minimal port
 		epiflag = 0
 	Font(PROP_OFF)
 
 	for (a=0; a < MAX_BOX_LINES; a++)
-		{
+	{
 		old_lng = lng
 		if box_array[a] = 0,""
 			break
 		l = string(_temp_string, box_array[a])
 		lng = higher(old_lng,l)
-		}
+	}
 
 	if lng >= (display.linelength - 4)    ! if strings too long
-		{                             ! display them using normal
+	{                             ! display them using normal
 		print ""                      ! left-justifying engine routine
 		for (b=0; b < MAX_BOX_LINES; b++)
-			{
+		{
 			if box_array[b] = 0,""
 				break
 			print box_array[b]
-			}
+		}
 		b = 0
 
 		while( b < box_array[])            ! then flush the array
-			{
+		{
 			box_array[b] = 0
 			if b = (MAX_BOX_LINES - 1)
 			break
 			b++
-			}
-
-		return false                        ! and bail out
 		}
 
-		lng = lng + 4
-		if not mod(display.linelength,2) and not mod(lng,2)   ! if screen width and string
-			endpos = (display.linelength/2 + lng/2)             ! length evenly divide by 2
-		else
-			endpos = ((display.linelength/2 + lng/2) + 1)       ! if one or both lengths odd
-		startpos = (display.linelength/2 - lng/2)
+		return false                        ! and bail out
+	}
 
-		if epiflag
-			startpos += 1
+	lng = lng + 4
+	if not mod(display.linelength,2) and not mod(lng,2)   ! if screen width and string
+		endpos = (display.linelength/2 + lng/2)             ! length evenly divide by 2
+	else
+		endpos = ((display.linelength/2 + lng/2) + 1)       ! if one or both lengths odd
+	startpos = (display.linelength/2 - lng/2)
 
-		if epiflag                          ! if this is epigram
-			locate startpos, row
-		else                                ! elseif this is regular box
-			print to startpos;
+	if epiflag
+		startpos += 1
+
+	if epiflag                          ! if this is epigram
+		locate startpos, row
+	else                                ! elseif this is regular box
+		print to startpos;
 	if not m
 		color boxdrawlib.BOX_TEXTCOLOR, boxdrawlib.BOX_BGCOLOR
                                           !        Draw:
-		print to endpos;                 !   top of box
-		if not epiflag
-			{
-			color TEXTCOLOR, BGCOLOR
-			print to display.linelength      !       End Line
-			}
+	print to endpos;                 !   top of box
+	if not epiflag
+	{
+		color TEXTCOLOR, BGCOLOR
+		print to display.linelength      !       End Line
+	}
 
-		for (b=0; b < a; b++)
-			{
-			l = string(_temp_string, box_array[b])
-			if epiflag                          ! if this is epigram
-				locate startpos, ++row
-			else                                ! elseif this is regular box
-				print to startpos;
-	if not m
+	for (b=0; b < a; b++)
+	{
+		l = string(_temp_string, box_array[b])
+		if epiflag                          ! if this is epigram
+			locate startpos, ++row
+		else                                ! elseif this is regular box
+			print to startpos;
+		if not m
 			color boxdrawlib.BOX_TEXTCOLOR, boxdrawlib.BOX_BGCOLOR
 				                            !       Draw:
-			print " ";                     ! left side of box
-			if m
-				Font(BOLD_ON)
-			print to (display.linelength/2 - l/2); box_array[b];     ! the string, centered
-			print to endpos;    ! right side of box
-			if not epiflag
-				{
-				color TEXTCOLOR, BGCOLOR
-				print to display.linelength               !  End Line, Repeat
-				}
-			}
-		if epiflag                            ! if this is epigram
-			locate startpos, ++row
-		else                                  ! elseif this is regular box
-			print to startpos;
+		print " ";                     ! left side of box
+		if m
+			Font(BOLD_ON)
+		print to (display.linelength/2 - l/2); box_array[b];     ! the string, centered
+		print to endpos;    ! right side of box
+		if not epiflag
+		{
+			color TEXTCOLOR, BGCOLOR
+			print to display.linelength               !  End Line, Repeat
+		}
+	}
+	if epiflag                            ! if this is epigram
+		locate startpos, ++row
+	else                                  ! elseif this is regular box
+		print to startpos;
 	if not m
 		color boxdrawlib.BOX_TEXTCOLOR, boxdrawlib.BOX_BGCOLOR
 			                              !       Draw:
-		print to endpos;            ! bottom of box
-		if not epiflag
-			{
-			color TEXTCOLOR, BGCOLOR
-			print to display.linelength                 !       End Line
-			}
-
-		a = 0
-		while (a < box_array[])              ! flush string array
-			{
-			box_array[a] = 0
-			if a = (MAX_BOX_LINES - 1)
-				break
-			a++
-			}
-
+	print to endpos;            ! bottom of box
+	if not epiflag
+	{
 		color TEXTCOLOR, BGCOLOR
-		if m
-			Font(BOLD_OFF)
-		Font(DEFAULT_FONT)
-		boxdrawlib.EPIGRAM_ON = false       ! turn off epigram switch and
+		print to display.linelength                 !       End Line
+	}
 
-		if remember
-			{
-				if not m
-					locate x, y
-			}
+	a = 0
+	while (a < box_array[])              ! flush string array
+	{
+		box_array[a] = 0
+		if a = (MAX_BOX_LINES - 1)
+			break
+		a++
+	}
 
-		return true                           ! go home happy and contented
+	color TEXTCOLOR, BGCOLOR
+	if m
+		Font(BOLD_OFF)
+	Font(DEFAULT_FONT)
+	boxdrawlib.EPIGRAM_ON = false       ! turn off epigram switch and
+
+	if remember
+	{
+		if not m
+			locate x, y
+	}
+
+	return true                           ! go home happy and contented
 }
 
 routine BoxdrawMessage(r, num, a, b)
@@ -356,10 +356,10 @@ routine BoxdrawMessage(r, num, a, b)
 
 	select r
 		case &Epigram
-			{
+		{
 			select num
 				case 1: "\_ Press a key to continue...";
-			}
+		}
 }
 
 routine NewBoxDrawMessages(r, num, a, b)

@@ -74,15 +74,15 @@ verb "footnotes"
 routine init
 {
 !: First Things First
-SetGlobalsAndFillArrays
+	SetGlobalsAndFillArrays
 !: Screen clear section
-SimpleIntro
-InitScreen
+	SimpleIntro
+	InitScreen
 !: Set up any special libries
-Init_Calls
+	Init_Calls
 !: Game opening
-IntroText
-MovePlayer(location)
+	IntroText
+	MovePlayer(location)
 }
 
 
@@ -139,28 +139,32 @@ player_character you "you"
 room STARTLOCATION "Start Location"
 {
 	long_desc
-		{
+	{
 		"Blah blah blah. ";
 		Footnote(1)
-		}
+	}
 	e_to eastroom
 }
 
 room eastroom "East Room"
 {
 	long_desc
-		{
+	{
 		"East room desciption."
 		AddFootnote(2)
-		}
+	}
 	w_to STARTLOCATION
 }
 
 routine PrintFootnote(num)
 {
 	select num
-	        case 1 : "Actually, this game was also submitted to the 2011 Hugo Comp. That's TWO comps! Crazy, right?"
-		case 2 : "[ Ok, so you converse in different ways with different characters. Get over it. ]"
+		case 1
+			"Actually, this game was also submitted to the 2011 Hugo Comp. That's
+			TWO comps! Crazy, right?"
+		case 2
+			"[ Ok, so you converse in different ways with different characters.
+			Get over it. ]"
 }
 
 routine DoFootnoteAlways

@@ -61,15 +61,15 @@ verb "stop"
 routine init
 {
 !: First Things First
-SetGlobalsAndFillArrays
+	SetGlobalsAndFillArrays
 !: Screen clear section
-SimpleIntro
-InitScreen
+	SimpleIntro
+	InitScreen
 !: Set up any special libries
-Init_Calls
+	Init_Calls
 !: Game opening
-IntroText
-MovePlayer(location)
+	IntroText
+	MovePlayer(location)
 }
 
 
@@ -132,32 +132,32 @@ character friendlygiant "friendly giant"
    noun "giant"
 	in STARTLOCATION
    order_response
-      {
-      ! a response to GIANT, FOLLOW ME
-      if verbroutine = &DoFollow and object = player  ! DoFollow can be found in verbstub
-          {
-          if self is following
-              "The giant says, \"I'm already following you!\""
-          else
-              {
-              "The giant says, \"OK!\""
-              AddFollower(self)
-              }
-          return true
-          }
-      elseif verbroutine = &DoStop ! DoStop is made up for this example
-          {
-          if self is not following
-              "The giant says, \"I wasn't following you!\""
-          else
-              {
-              "The giant says, \"OK!\""
-              RemoveFollower(self)
-              }
-          return true
-          }
+	{
+	! a response to GIANT, FOLLOW ME
+		if verbroutine = &DoFollow and object = player  ! DoFollow can be found in verbstub
+		{
+			if self is following
+				"The giant says, \"I'm already following you!\""
+			else
+			{
+				"The giant says, \"OK!\""
+				AddFollower(self)
+			}
+			return true
+		}
+		elseif verbroutine = &DoStop ! DoStop is made up for this example
+		{
+			if self is not following
+				"The giant says, \"I wasn't following you!\""
+			else
+			{
+				"The giant says, \"OK!\""
+				RemoveFollower(self)
+			}
+			return true
+		}
       return false ! for other commands, do the normal behavior
-      }
+	}
 }
 
 

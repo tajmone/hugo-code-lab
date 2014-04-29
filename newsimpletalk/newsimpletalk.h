@@ -302,14 +302,14 @@ routine PhotoMessage(r, num, a, b)
 
 	select r
 		case &PhotoTalk
-			{
+		{
 			select num
 				case 1: "Please select one:"
 				case 2: "Eeeagh! Stage fright! Abort!"
 				case 3: "You really have nothing to say right now."
-			}
+		}
 		case &GetDial
-			{
+		{
 			select num
 				case 1
 				{
@@ -320,13 +320,13 @@ routine PhotoMessage(r, num, a, b)
 				}
 !\ If you want a custom prompt, make sure &GetDial case 1 is
 	{ return "prompt text" } , not just "prompt text"     \!
-			}
+		}
 		case &DoTalk
-			{
+		{
 			select num
 				case 1: "You can't talk to that!"
 				case 2: 	print "Just talking to "; art(object); " will suffice."
-			}
+		}
 }
 
 !\ The NewPhotoMessages routine may be REPLACED and should return

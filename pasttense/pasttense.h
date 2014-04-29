@@ -33,8 +33,8 @@ version_obj pasttense_version "PastTense Version 1.5"
 #message error "pasttense.h must be included BEFORE newconverse.h!"
 #endif
 
-constant WAS_WORD        "was"
-constant WERE_WORD        "were"
+constant WAS_WORD "was"
+constant WERE_WORD "were"
 constant THERE_WORD	"there"
 
 global pasttense

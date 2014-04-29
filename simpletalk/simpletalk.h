@@ -44,17 +44,17 @@ routine SayQ (char, line)
 	local dont_remove
 	select(char)
 	case 1
-		{
+	{
 		select(line)
 		case 0: {">This is the first thing you can say to char one."}
 		case 1: {">This is the second thing you can say to char one."}
-		}
+	}
 	case 2
-		{
+	{
 		select(line)
 		case 0: {">This is the first thing you can say to char two."}
 		case 1: {">This is the second thing you can say to char two."}
-		}
+	}
 	if not dont_remove
 		SetQuip(char,line,0,1)
 	else
@@ -65,17 +65,17 @@ routine Respond (char, line)
 {
 	select(char)
 	case 1
-		{
+	{
 		select(line)
 		case 0: "This is the first response from character number one."
 		case 1: "This is the second response from character number one."
-		}
-	 case 2
-		{
+	}
+	case 2
+	{
 		select(line)
 		case 0: "This is the first response from character number two."
 		case 1: "This is the second response from character number two."
-		}
+	}
 ! Let's turn off whichever quip we selected
 	SetQuip(char,line,0)
 }
@@ -145,8 +145,8 @@ replace DoTalk
 		}
 		elseif object is not living
 		{
-		PhotoMessage(&DoTalk, 1) ! "you can't talk to that"
-		return false
+			PhotoMessage(&DoTalk, 1) ! "you can't talk to that"
+			return false
 		}
 		else
 		{
@@ -158,7 +158,7 @@ replace DoTalk
 				b = Phototalk
 				a = higher(a,b)
 				if loop_talk and (not MoreTalk or not b)
-						break
+					break
 				elseif not loop_talk
 					break
 				main
@@ -320,9 +320,9 @@ routine SetQuip (char, line, onoff, markused)
 	local x n
 
 	for (x=0; x<char; x++)
-		{
-	    	n += quips[x]
-		}
+	{
+		n += quips[x]
+	}
 
 	n += line
 
@@ -339,9 +339,9 @@ routine QuipOn (char, line)
 	local x n
 
 	for (x=0; x<char.charnumber; x++)
-		{
-	     n += quips[x]
-		}
+	{
+		n += quips[x]
+	}
 	n += line
 	if (qflag[n] & AVAILABLE)
 		return true
@@ -352,9 +352,9 @@ routine BeenSpoken(char, line)
 	local x n
 
 	for (x=0; x<char.charnumber; x++)
-		{
-	     n += quips[x]
-		}
+	{
+		n += quips[x]
+	}
 	n += line
 	if (qflag[n] & SPOKEN)
 		return true
@@ -389,15 +389,15 @@ routine PhotoMessage(r, num, a, b)
 
 	select r
 		case &PhotoTalk
-			{
+		{
 			select num
 				case 1: "Please select one:"
 				case 2: "Eeeagh! Stage fright! Abort!"
 				case 3: "You really have nothing to say right now."
 
-			}
+		}
 		case &GetDial
-			{
+		{
 			select num
 				case 1
 				{
@@ -408,9 +408,9 @@ routine PhotoMessage(r, num, a, b)
 				}
 !\ If you want a custom prompt, make sure &GetDial case 1 is
 	{ return "prompt text" } , not just "prompt text"     \!
-			}
+		}
 		case &DoTalk
-			{
+		{
 			select num
 				case 1: "You can't talk to that!"
 				case 2
@@ -421,7 +421,7 @@ routine PhotoMessage(r, num, a, b)
 				}
 	!			"\nDo you want to keep talking? ";
 				case 3: 	print "Just talking to "; art(object); " will suffice."
-			}
+		}
 }
 
 !\ The NewPhotoMessages routine may be REPLACED and should return
