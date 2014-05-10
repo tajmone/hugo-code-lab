@@ -1,7 +1,12 @@
 !::
 ! New Game (Shell)
 !::
-constant GAME_TITLE	"GAME TITLE"
+
+!:: Raise limits, if necessary (here are some of the limits you're likely to
+!   run into first).
+!$MAXROUTINES = 320
+!$MAXDICT = 1024
+!$MAXDICTEXTEND = 0 ! (needed for adding more dictionary words mid-game)
 
 !:: Flags
 !#set BETA                ! Compile with the comments-in-transcripts library
@@ -24,9 +29,14 @@ constant GAME_TITLE	"GAME TITLE"
 #set DEBUG
 #endif
 
-!:: Other pre-Hugolib.h Constants
-! (some constants must be set before hugolib is included)
+!:: Constants and global variables (some constants must be set before hugolib
+!   is included):
 
+constant GAME_TITLE "GAME TITLE"
+constant AUTHOR "YOUR NAME"
+constant RELEASE "1.0"
+!constant BLURB "An Interactive Blah"
+!constant IFID "put-IFID here"
 !constant AFTER_PERIOD " "     ! include one space after full stops (as opposed
                                !   to two)
 !constant INDENT_SIZE 0        ! no indentation in room descriptions and room
@@ -50,9 +60,6 @@ constant GAME_TITLE	"GAME TITLE"
 #include "beta.h"
 #endif
 
-!:: Other constants and global variables
-!constant IFID "put-IFID here"
-
 !::	Game Initialization	routine
 routine init
 {
@@ -60,11 +67,10 @@ routine init
 	SetGlobalsAndFillArrays
 !: Screen clear section
 #ifclear _ROODYLIB_H
-	window 0
-	cls
 	CenterTitle("Hugo Interactive Fiction")
+	cls
 #ifset USE_PLURAL_OBJECTS
-        InitPluralObjects
+	InitPluralObjects
 #endif
 #else
 	SimpleIntro
@@ -96,9 +102,14 @@ routine SetGlobalsAndFillArrays
 	SL_TEXTCOLOR = DEF_SL_FOREGROUND
 	SL_BGCOLOR = DEF_SL_BACKGROUND
 	INPUTCOLOR = MATCH_FOREGROUND
+#if defined TITLECOLOR
+	TITLECOLOR = DEF_FOREGROUND
+#endif
 	prompt = ">"
 	DEFAULT_FONT = PROP_ON
+#if defined GAME_TITLE
 	display.title_caption = GAME_TITLE
+#endif
 #ifset _ROODYLIB_H
 	MakePlayer(you,2) ! sets player as you object, second person
 #else
@@ -109,25 +120,27 @@ routine SetGlobalsAndFillArrays
 
 routine IntroText
 {
-	"Intro text goes here.\n"
-
-	print "\B"; GAME_TITLE ; "\b"  ! prints game title
+	"Intro text goes here."
+#if defined DoVersion
+	""
+	DoVersion
+#endif
 
 }
 
 !::	Main game loop
 routine	main
 {
-	counter	= counter +	1
-	run	location.each_turn
+	counter = counter + 1
+	run location.each_turn
 	runevents
-	RunScripts
+	runscripts
 #ifset _ROODYLIB_H
-	if GrandParent(speaking) ~= location
+	SpeakerCheck
 #else
 	if parent(speaking) ~= location
-#endif
 		speaking = 0
+#endif
 	PrintStatusLine
 #ifset _ROODYLIB_H
 	Main_Calls

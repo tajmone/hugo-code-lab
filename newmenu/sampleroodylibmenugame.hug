@@ -102,11 +102,11 @@ routine SetGlobalsAndFillArrays
 !::	Main game loop
 routine	main
 {
-	counter	= counter +	1
-	run	location.each_turn
+	counter = counter +	1
+	run location.each_turn
 	runevents
 	RunScripts
-	if speaking	not	in location
+	if speaking not in location
 		speaking = 0
 	PrintStatusLine
 	Main_Calls
@@ -114,34 +114,9 @@ routine	main
 
 routine IntroText
 {
-        print ""    ! For a blank line between the intro and the game title
-
-        Font(BOLD_ON)
-        print GAME_TITLE
-        Font(BOLD_OFF)
-        "Game Blurb"
-#ifset BETA
-	string(_temp_string, serial$, 8)
-	"beta build: \B20";
-	StringPrint(_temp_string, 6, 8)
-	StringPrint(_temp_string, 0, 2)
-	StringPrint(_temp_string, 3, 5)
-	"\b"
-#endif
-        print BANNER;
-        #ifset HUGOFIX
-        print " (Now with HugoFix Technology TM!)"
-        #else
-        print ""
-        #endif
-#if defined IFID
-        print IFID
-#endif
-		print "Type \BABOUT\b to see the cool new menu system."
-#ifset BETA
-	"\n(\INOTE:  This beta release is intended for testing only, not for
-	distribution to the general public.  Please report any errors,
-	bugs, etc. to the author. To make a comment, type \"\B* COMMENT TEXT\b\" at the prompt.\i)"
+	"Intro text goes here.\n"
+#if defined DoVersion
+	DoVersion
 #endif
 }
 

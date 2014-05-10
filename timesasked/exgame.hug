@@ -38,6 +38,9 @@ constant GAME_TITLE	"GAME TITLE"
 #include "roodylib.g"
 #endif
 
+xverb			"topics"
+*										DoAskTellTopics
+
 ! new grammar needs to be defined before the including verblib
 #include "verblib.g"        ! Verb Library
 
@@ -46,7 +49,7 @@ constant GAME_TITLE	"GAME TITLE"
 #include "roodylib.h"         ! Hugo  Library Updates
 #endif
 
-#include "timesasked.h"
+#include "timesasked2.h"
 
 !::	Other Library Inclusions
 #ifset BETA
@@ -200,7 +203,7 @@ character fred "Fred"
 
 replace CharRules(obj)  ! called by DoAskTellTopics
 {
-	local a, b
+	local ret, b
 	if verbroutine = &DoAsk
 		b = Asked(obj)
 	else
@@ -212,19 +215,19 @@ replace CharRules(obj)  ! called by DoAskTellTopics
 				case &DoAsk
 				{
 					select obj
-						case you: a = b < 1
-						case STARTLOCATION: a = b < 3
-						case fred: a = 1
-						case else : a = 0
+						case you: ret = b < 1
+						case STARTLOCATION: ret = b < 3
+						case fred: ret = 1
+						case else : ret = 0
 				}
 				case &DoTell
 				{
 					select obj
-						case you: a = b < 1
-						case STARTLOCATION: a = b < 3
-						case fred: a = 1
-						case else : a = 0
+						case you: ret = b < 1
+						case STARTLOCATION: ret = b < 3
+						case fred: ret = 1
+						case else : ret = 0
 				}
 	}
-	return a
+	return ret
 }

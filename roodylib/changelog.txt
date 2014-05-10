@@ -1,4 +1,8 @@
 Ok, I've started a changelog!
+v 3.9 - * updated ObjectIs and TestObjectIs
+	* small fix to CheapTitle
+	* updated CenterTitle to work with the NO_MENUS flag
+	* changed "skip" local variable in DoGo to "skip_ahead" since newcango.h already uses a SKIP constant
 v 3.8 - * Added an "elevated" attribute for vehicles enterable platforms (such as ladders)
           where "down" is an accepted exit direction
 	* Changed the vehicle class again (check out roodylibdocs.odt)

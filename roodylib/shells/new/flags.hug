@@ -78,6 +78,7 @@
 !#set NO_AUTOMATIC_DOOR_UNLOCK ! Don't allow automatic door-unlocking
 !#set NO_MODE_CHANGE           ! Disallow >BRIEF, SUPERBRIEF, and VERBOSE
 !#set NO_SORTING               ! Don't use sorting routines
+!#set NO_VERSION               ! Don't use Roodylib's DoVersion routine
 !#set NO_XYZZY                 ! Don't use >XYZZY response code
 !#set OBJECT_SORTING           ! Use object-sorting system
 !#set ROUTINE_GRAMMAR_HELPER   ! Use Routine Grammar Helper (see comments)
@@ -93,7 +94,8 @@
 !#set USE_ROLLABLES            ! Include Roodylib's object-rolling code
 !#set USE_SMART_PARENTS        ! Trying to go in an invalid direction while
                                !  in an enterable object gives "You can't go
-										 !  that way." instead of "You'll have to get
-										 !  up/out."
+                               !  that way." instead of "You'll have to get
+                               !  up/out."
 !#set USE_STRING_MANIPULATION  ! Include string manipulation routines
 !#set USE_SUPERCONTAINER       ! Use supercontainer object class
+!#set USE_TIME_SYSTEM          ! Enable time-tracking routines

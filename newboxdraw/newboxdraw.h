@@ -178,7 +178,11 @@ routine Epigram(pauseflag,pauseprompt)
 		else
 			Box(true,1)
 		if pauseprompt
+		{
+			if not a
+				locate 1, display.windowlines
 			BoxdrawMessage(&Epigram,1) ! "Press a key to continue..."
+		}
 #ifset _ROODYLIB_H
 		HiddenPause
 #else

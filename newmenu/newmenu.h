@@ -1,11 +1,12 @@
 !::
-! NEWMENU.H  Version 3.1 by Roody Yogurt
+! NEWMENU.H  Version 3.2 by Roody Yogurt
 !::
 !\
 
 	For a nice overview of this contribution, check out:
 	http://hugo.gerynarsabode.org/index.php?title=NewMenu.h
 
+	version 3.2 - Got rid of extra screen clears and other code cleaning
 	version 3.1 - added alt_title property for option objects. if provided,
 	              the name property is still used as a menu choice, but alt_title
 					  is used to title the actual page.
@@ -68,23 +69,26 @@
 	title_bg
 
    version 1.5 - fixed message routines
-	New in version 1.2- added "options_gap" property for menucategory objects. Controls spaces
-	between "[N]ext item..." text and menu options, giving more configurability.
+	New in version 1.2- added "options_gap" property for menucategory objects.
+	Controls spaces between "[N]ext item..." text and menu options, giving more
+	configurability.
 
-	New in version 1.1- added "title_gap" property to menucategory object. Put in a true value
-	if you want that menu to have a blank line between the title and "[N]ext item..." text
+	New in version 1.1- added "title_gap" property to menucategory object. Put in
+	a true value if you want that menu to have a blank line between the title and
+	"[N]ext item..." text
 
 This is an update to Kent Tessman's menu routine in the Hugo Library.
 Differences in this version:
 
 - Adds some "hidden" text so transcripts look better.
-- Adds asterisk-highlighting when used with glk interpreters (requires glk.h and possibly cheapglk.h)
-- Adds support to cheapglk interpreters (requires cheapglk.h and glk.h)
+- Adds asterisk-highlighting when used with glk interpreters
+- Adds support to cheapglk interpreters
 - Has built-in support for Guilty Bastards style hints
 
-As it is based on the original menu routine and Guilty Bastards hint routine, this
-extension draws on those two things a fair amount, despite having been worked around, so
-this thing couldn't have been written without Kent's original work.
+As it is based on the original menu routine and Guilty Bastards hint routine,
+this extension draws on those two things a fair amount, despite having been
+worked around, si this thing couldn't have been written without Kent's original
+work.
 
 First things first-
 Include this file after "hugolib.h".
@@ -97,47 +101,56 @@ replace main_menu "TITLE OF YOUR MAIN MENU"
 	inherits menu_category
 }
 
-Now, calling MakeMenu from a DoAbout or DoHelp routine will automaticaly bring up that menu. (if
-you have several different menus that can be called by different commands, call MakeMenu([other_menu_object]).
+Now, calling MakeMenu from a DoAbout or DoHelp routine will automaticaly bring
+up that menu. (if you have several different menus that can be called by
+different commands, call MakeMenu([other_menu_object]).
 
 Now let's fill that menu with choices. For this, we use option objects.
 
 option contact_choice "Contact"
 {
 	in main_menu    ! which menu it is
-	menu_text	{
-					""
-					"\_ Feel free to send me your thoughts and suggestions at roody.yogurt@gmail.com! What an amazing discourse we will have!\n"
-					CoolPause(1)
-					}
+	menu_text
+	{
+		""
+		"\_ Feel free to send me your thoughts and suggestions at
+		roody.yogurt@gmail.com! What an amazing discourse we will have!\n"
+		CoolPause(1)
+	}
 }
 
-The menu_text property holds the text you want on the page. Personally, I believe every time the game is paused,
-there should be some "press key to continue," so I've included a CoolPause routine for doing that quickly.
+The menu_text property holds the text you want on the page. Personally, I
+believe every time the game is paused, there should be some "press key to
+continue," so I've included a CoolPause routine for doing that quickly.
 
 CoolPause([true_if_bottom_of_screen], [optional text])
 
-CoolPause can also do "press a key" in the status bar by putting a 0 in the first value, but as far as menu choices go,
-you'll probably want the text at the bottom. If you want something different than the default "press a key" text, put your
-string in the optional text field.
+CoolPause can also do "press a key" in the status bar by putting a 0 in the
+first value, but as far as menu choices go, you'll probably want the text at
+the bottom. If you want something different than the default "press a key"
+text, put your string in the optional text field.
 
-Of course, if you are in love with the old way, you could just put a regular pause there.
+Of course, if you are in love with the old way, you could just put a regular
+pause there.
 
-You can make change when an option is available by changing its option_available value.
+You can make change when an option is available by changing its option_available
+value.
 Of course, return true when you want it available:
 
 option helicopter_choice "Whoa, a Helicopter!"
 {
 	in main_menu
-	option_available {
-							if helicopter is known
-								return true
-							else
-								return false
-							}
-	menu_text	{
-					! helicopter text
-					}
+	option_available
+	{
+		if helicopter is known
+			return true
+		else
+			return false
+	}
+	menu_text
+	{
+		! helicopter text
+	}
 }
 
 If you want an option to lead to *another* menu, give it a menu_link property:
@@ -145,24 +158,24 @@ If you want an option to lead to *another* menu, give it a menu_link property:
 option submenu_choice "CHOICE LEADING TO SUBMENU"
 {
 	in main_menu
-	menu_link	[submenu menucategory object]
+	menu_link  [submenu menucategory object]
 }
 
 Hints!
 
-So yeah, this thing also supports hints. Just make a hint menucategory object, and
-fill it with hint_options like this:
+So yeah, this thing also supports hints. Just make a hint menucategory object,
+and fill it with hint_options like this:
 
 hint_option studiopass_hints "How do I get on the studio lot?"
 {
 	in hint_menu
 	hints_available
-		{
+	{
 		if studio_lot is visited
 			return true
 		else
 			return false
-		}
+	}
 	hint1
 	{
 		"Movie studio security is on par with Area 51.  To get on
@@ -185,21 +198,22 @@ hint_option studiopass_hints "How do I get on the studio lot?"
 
 	Hmmm, that should be everything! E-mail me if you have any questions!
 
-											Roody Yogurt
-											roody.yogurt@gmail.com
+                                 Roody Yogurt
+                                 roody.yogurt@gmail.com
 \!
 #ifclear _NEWMENU_H
 #set _NEWMENU_H
 
 #ifset VERSIONS
-#message "NewMenu.h Version 3.1"
+#message "NewMenu.h Version 3.2"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
 #ifclear _ROODYLIB_H
-#message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
+#message error "Extension crediting requires \"roodylib.h\". Be sure to include
+it first!"
 #endif
-version_obj newmenu_version "NewMenu Version 3.1"
+version_obj newmenu_version "NewMenu Version 3.2"
 {
 	in included_extensions
 	desc_detail
@@ -211,12 +225,8 @@ version_obj newmenu_version "NewMenu Version 3.1"
 
 #ifset _ROODYLIB_H
 
-! eh, this message was kind of annoying, so it is commented out now
-!
-!#ifclear USE_SORTING
-!#message warning "#set USE_SORTING if you want to make use of the menu
-!priority system!"
-!#endif
+! Be sure to not #set NO_SORTING if you need to use the priority property
+! to order menu options.
 
 object menulib "menu"
 {
@@ -248,19 +258,19 @@ array common_commands[TOTAL_COMMANDS]
 routine MenuInit
 {
 	common_commands[0] = "OPEN","CLOSE","LOCK","UNLOCK",
-	"WEAR", "REMOVE","TURN ON","TURN OFF", "DRINK",  ! "EAT",
+	"WEAR", "REMOVE","TURN ON","TURN OFF", "DRINK",  "EAT",
 	"SIT" , "MOVE", "INSERT"
 
 ! the 0s below show where commands switch from regular to verbstub
 #ifset _ROODYLIB_H
-	common_commands[12] = "SEARCH"
+	common_commands[13] = "SEARCH"
 #ifset _VERBSTUB_G
-	common_commands[13] = 0, "PUSH", "PULL", "YELL", "JUMP", "THROW",
+	common_commands[14] = 0, "PUSH", "PULL", "YELL", "JUMP", "THROW",
 	"SLEEP", "KISS", "WAVE", "CLIMB", "WAKE", "SWIM",
 	"DIG", "TIE", "BURN", "CUT"
 #endif ! _VERBSTUB_G
 #elseif set _VERBSTUB_G  !VERBSTUB_G *without* ROODYLIB
-	common_commands[12] = "SEARCH", 0, "PUSH", "PULL", "YELL", "JUMP",
+	common_commands[13] = "SEARCH", 0, "PUSH", "PULL", "YELL", "JUMP",
 	"THROW", "SLEEP", "KISS", "WAVE", "CLIMB", "WAKE",
 	"SWIM", "DIG", "TIE", "BURN", "CUT"
 		! Changed Throw  and Throw At listings to just Throw
@@ -339,13 +349,7 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 {
 	local glktest, count, category, old_category
  	local h,r, simple_port
-	if not glktest
-	{
-		if display.windowlines > (display.screenheight + 100)
-		{
-			glktest = true
-		}
-	}
+
 	if not recurse
 	{
 		if not CheaporSimple
@@ -358,12 +362,14 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 			""
 			MenuMessage(&MakeMenu,7) ! "Opening the menu..."
 		}
-!		""
 	}
+
+	if display.windowlines > (display.screenheight + 100)
+		glktest = true
+
 	if not glktest and system(61)
 		simple_port = true
-	if not (CheaporSimple = 2 or simple_port)
-		cls
+
 	r = recurse + 1
 	if not menu_title
 		h = main_menu
@@ -415,7 +421,7 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 			}
 		}
 #ifset _ROODYLIB_H
-#ifset USE_SORTING
+#ifclear NO_SORTING
 		if c
 		{
 			SortArray(menuitem,count,&MenuPriority,1)
@@ -451,14 +457,10 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 		menuitem[0] = h
 		category = Menu(count, 0, old_category,h.title_gap,h.options_gap)
 		old_category = category
-		if not (CheaporSimple = 2 or simple_port)
-			cls
 		if category
 		{
 			if menuitem[category].menu_link
-			{
 				MakeMenu(menuitem[category].menu_link,0,r)
-			}
 			else
 			{
 				do
@@ -468,9 +470,6 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 						color MENU_BGCOLOR, MENU_BGCOLOR
 						MenuMessage(&MakeMenu,4) ! "[WINDOW RESIZED]"
 						color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-!						""
-!						cls
-!						locate 1,1
 					}
 					display.needs_repaint = false
 					if not (CheaporSimple = 2 or simple_port)
@@ -481,16 +480,12 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 					if not simple_port
 					{
 						if menuitem[category].alt_title
-						{
 							CenterTitle(menuitem[category].alt_title)
-						}
 						else
 							CenterTitle(menuitem[category].name)
 					}
 					if not CheapOrSimple
-					{
 						locate 1,TopPageMargin
-					}
 
 					run menuitem[category].menu_text
 					if not (CheaporSimple = 2 or simple_port)
@@ -499,8 +494,6 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 				while (display.needs_repaint = true  )
 
 				window 0 ! only to draw a line in simple interpreters
-				if not (CheaporSimple = 2 or simple_port)
-					cls
 			}
 		}
 		else
@@ -523,7 +516,7 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 					if not simple_port
 						cls
 					if not system(61) ! glk or minimum port
-						locate 1, (display.statusline_height + 1)
+						locate 1, display.windowlines !(display.statusline_height + 1)
 #endif
 #ifset CHEAP
 				}
@@ -532,20 +525,22 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 				{
 					MenuMessage(&MakeMenu,6) ! "Returning to the game..."
 #ifset CHEAP
-					if not cheap
+					if cheap
+						Font(DEFAULT_FONT) ! just in case
+					else
 #endif
 						PrintStatusline
-					Font(DEFAULT_FONT) ! just in case
 					DescribePlace(location, true)
 #ifset NEW_FUSE
 					runevents
 #endif
 				}
 			}
-			return false
+			return
 		}
 	}
 }
+
 
 routine TopPageMargin
 {
@@ -609,8 +604,6 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 				display.needs_repaint = false
 			print newline
 			Font(PROP_OFF|BOLD_OFF|ITALIC_OFF)
-	!		MenuMessage(&Menu, 2)		! print key commands
-	!		""
 			local sel = 1
 			Indent
 			print "\_  ";
@@ -658,6 +651,7 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 			{
 				if not simple_port
 					cls
+
 				local m
 				! This section "fakes" CenterTitle, so it appears to be
 				! a regular title window, when in actuality, the whole menu
@@ -719,7 +713,7 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 				}
 				print ""
 			}
-			Font(DEFAULT_FONT)
+!			Font(DEFAULT_FONT)
 			word[0] = PauseForKey
 			if not system(61)
 			{
@@ -747,34 +741,28 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 				case 'Q', 'q', ESCAPE_KEY
 				{
 					if not system(61)
-					{
 						window 0
-					}
 					if not simple_port
-					{
 						cls
-						Font(DEFAULT_FONT)
-					}
 					return 0
 				}
 				case ENTER_KEY
 				{
-					color MENU_BGCOLOR, MENU_BGCOLOR
 					if not system(61)
 					{
-						window 1, (3+ optionsgap + titlegap), display.screenwidth, ( num + 5 + titlegap + optionsgap )
-		!				window
+						color MENU_BGCOLOR, MENU_BGCOLOR
+	!					window 1, (3+ optionsgap + titlegap), display.screenwidth,
+	!					( num + 5 + titlegap + optionsgap )
+						window ! redraws last window
 						{
 							cls
 						}
+						color MENU_TEXTCOLOR, MENU_BGCOLOR
 						window 0
 					}
-					if not simple_port
-						Font(DEFAULT_FONT)
 
-					oldselection = selection
+!					oldselection = selection
 
-					color MENU_TEXTCOLOR, MENU_BGCOLOR
 					return selection
 				}
 

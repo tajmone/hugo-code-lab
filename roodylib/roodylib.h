@@ -301,6 +301,38 @@ replace Deactivate(a)
 }
 #endif ! ifclear NO_FUSES
 
+! Roody's note: Added a new global variable so it's not so important to add
+! a holding property to all containers. Character objects still have a holding
+! property by default.
+
+global holding_global
+
+replace Acquire(newparent, newchild)
+{
+	local p,h
+
+	CalculateHolding(newparent)
+
+	if newparent.#holding
+		h = newparent.holding
+	else
+		h = holding_global
+
+	if h + newchild.size > newparent.capacity
+		return false
+	else
+	{
+		p = parent(newchild)
+		move newchild to newparent
+		CalculateHolding(p)
+		newchild is moved
+		newchild is not hidden
+		if newparent.#holding
+			newparent.holding = newparent.holding + newchild.size
+		return true
+	}
+}
+
 ! AssignPronoun(object)
 ! sets the appropriate pronoun global to <object>
 
@@ -342,17 +374,30 @@ replace AssignPronoun(obj)
 }
 
 !\ Roody's note: This has some extra code added to avoid mobile object
-confusion (written by Mike Snyder). \!
+confusion (written by Mike Snyder). Also added support for global_holding
+so not all containers necessarily need a holding property. \!
 
 replace CalculateHolding(obj)
 {
 	local i
 
-	obj.holding = 0
-	for i in obj
+	if obj.#holding
 	{
-		if not (i is worn and i is clothing and obj = player)
-			obj.holding = obj.holding + i.size
+		obj.holding = 0
+		for i in obj
+		{
+			if not (i is worn and i is clothing and obj = player)
+				obj.holding = obj.holding + i.size
+		}
+	}
+	else
+	{
+		holding_global = 0
+		for i in obj
+		{
+			if not (i is worn and i is clothing and obj = player)
+				holding_global = holding_global + i.size
+		}
 	}
 }
 
@@ -636,8 +681,21 @@ replace CheckReach(obj)
 #ifclear NO_VERBS
 ! added a check to make sure the player doesn't have the same parent as the
 ! object before doing "x is closed." messages
+	local parentcheck
+#ifset USE_SUPERCONTAINER
+	if parent(object).type = SuperContainer
+	{
+		if InList(parent(object), contents_in, object) and
+			InList(parent(object), contents_in, player)
+			parentcheck = true
+	}
+	else
+#endif
+	if parent(object) = parent(player)
+		parentcheck = true
+
 	if (verbroutine ~= &DoLook, &DoLookIn) and parent(object) and
-		parent(object) ~= player and (parent(object) ~= parent(player))
+		parent(object) ~= player and not parentcheck
 	{
 	! used to check for transparent here, but FindObject should make that not
 	! necessary
@@ -840,14 +898,16 @@ replace ListObjects(thisobj, conjunction)
 				if list_count = 1 and id_count <= 1 and
 					obj is not plural
 				{
-					print " "; IS_WORD;
+					RLibMessage(&ListObjects,1, IS_WORD) ! "is"
+				!	print " "; IS_WORD;
 				}
 				else
 				{
-					print " "; ARE_WORD;
+					RLibMessage(&ListObjects,1, ARE_WORD) ! "are"
+				!	print " "; ARE_WORD;
 				}
 				if FORMAT & LIST_F
-					RLibMessage(&ListObjects,1) ! ":"
+					RLibMessage(&ListObjects,2) ! ":"
 				FORMAT = FORMAT & ~ISORARE_F    ! clear it
 			}
 
@@ -1178,11 +1238,7 @@ replace WhatsIn(obj)
 		if obj.contains_desc    ! custom heading
 		{
 			if FORMAT & LIST_F
-#ifset _ROODYLIB_H
 				RLibMessage(&WhatsIn, 1 )  !  ":"
-#else
-				":"
-#endif
 		}
 		else
 		{
@@ -1195,32 +1251,23 @@ replace WhatsIn(obj)
 				Message(&WhatsIn, 1, totallisted)
 
 				if FORMAT & LIST_F
-#ifset _ROODYLIB_H
 					RLibMessage(&WhatsIn, 1 )  !  ":"
-#else
-					":"
-#endif
 			}
 			elseif obj is living and not obj.prep
 			{
 				! "X has..."
 				Message(&WhatsIn, 2, obj, totallisted)
 				if FORMAT & LIST_F
-#ifset _ROODYLIB_H
 					RLibMessage(&WhatsIn, 1 )  !  ":"
-#else
-					":"
-#endif
 			}
 			else
 			{
 				if list_count < totallisted
 					! "Also sitting on/in..."
-					Message(&Whatsin, 3, obj)
+					RLibMessage(&WhatsIn, 2, obj )
 				else
 					! "Sitting on/in..."
-					Message(&Whatsin, 4, obj)
-				The(obj)
+					RLibMessage(&WhatsIn, 3, obj )
 				FORMAT = FORMAT | ISORARE_F
 			}
 		}
@@ -1310,9 +1357,9 @@ replace YesorNo
 			case else
 			{
 				if ++count < 10
-					Message(&YesorNo, 1)	! ask "yes" or "no"
+					RlibMessage(&YesorNo, 1)	! ask "yes" or "no"
 				else
-					Message(&YesorNo, 2)
+					RlibMessage(&YesorNo, 2)
 				GetInput
 				w = word[1]
 			}
@@ -1787,6 +1834,120 @@ replace Art(obj, a)
 		print " ["; number obj; "]";
 }
 
+! Roody's note: just replaced to add a note that a holding property isn't so
+! important with Roodylib
+replace HugoFixAudit
+{
+	local obj, err, count
+
+	Font(PROP_OFF)
+
+	"Validating library object setup..."
+
+	! Make sure "nothing" is object 0
+	if nothing ~= 0
+	{
+		"\"nothing\" object is not object 0"
+		err++
+	}
+
+#ifset USE_PLURAL_OBJECTS
+	! Check for proper plural/identical objects initialization
+	local i
+
+	"Validating plural/identical objects..."
+	count = 0
+
+	for (obj=1; obj<objects; obj++)
+	{
+		if (obj.type = plural_class, identical_class) and
+			(obj ~= plural_class, identical_class)
+		{
+			count++
+
+			if not obj.plural_of
+			{
+				err++
+				"Plural/identical class ";
+				print "\""; obj.name; "\" ("; number obj; ")";
+				" has no 'plural_of' property"
+			}
+			elseif obj.type = identical_class
+			{
+				for (i=1; i<=obj.#plural_of; i++)
+				{
+					if obj.plural_of #i.identical_to ~= obj
+					{
+						err++
+						"Identical object ";
+						print "\""; obj.plural_of #i.name; "\" ";
+						print "("; number obj.plural_of #i; ") ";
+						"should have 'identical_class' ";
+						print "\""; obj.name; "\" ";
+						print "("; number obj; ") ";
+						"in 'identical_to' property"
+					}
+				}
+			}
+		}
+	}
+
+	print number count;
+	" plural/identical object(s) checked"
+
+#endif	! ifset USE_PLURAL_OBJECTS
+
+	"Validating containers and platforms..."
+	count = 0
+
+	for (obj=1; obj<objects; obj++)
+	{
+		if obj is container or obj is platform
+		{
+			count++
+
+			local a
+			if obj.capacity and not obj.#holding and not &obj.holding
+			{
+				if obj is container
+					"Container ";
+				else
+					"Platform ";
+				print "\""; obj.name; "\" ("; number obj; ")";
+				" has 'capacity' but no 'holding' property"
+				err++
+				a++
+			}
+			if a
+			{
+				"\B(Roodylib containers and platforms should still work even
+				without the holding property.)\b"
+			}
+			if obj.holding and not obj.#capacity and not &obj.capacity
+			{
+				if obj is container
+					"Container ";
+				else
+					"Platform ";
+				print "\""; obj.name; "\" ("; number obj; ")";
+				" has 'holding' but no 'capacity' property"
+				err++
+			}
+		}
+	}
+
+	print number count;
+	" container/platform object(s) checked"
+
+	print "[";
+	if err
+		print number err;
+	else
+		print "No";
+	" error(s)/warning(s) found by HugoFixAudit]"
+	Font(DEFAULT_FONT)
+}
+
 !\ DoScope and DoScopeRooms - Here are two debugging routines for reminding you
 what objects are in scope of various rooms. "SCOPE" will just list the items
 in scope of the current location, while "SCOPE ROOMS" will list all objects
@@ -2154,6 +2315,146 @@ routine DoVerbTest
 			move object to location
 	}
 #endif  !ifset USE_VERBSTUB
+}
+
+! Roody's note:  The following routines are called at the beginning of the game,
+! allowing to start monitoring various things before the game has actually
+! started.
+
+routine HugoFixInit
+{
+	local simple_port, key
+
+	if not IsGlk and system(61)
+		simple_port = true
+
+!	Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
+
+   while true
+	{
+		local ret
+		while true
+		{
+			if not simple_port
+				cls
+			else
+				""
+			if not simple_port
+				CenterTitle("HugoFix Debugging Options")
+			if display.needs_repaint
+				display.needs_repaint = false
+			print newline
+!			Font(PROP_OFF|BOLD_OFF|ITALIC_OFF)
+			Indent
+			print "\_  ";
+			Font(BOLD_ON)
+			print "HugoFix Debugging Options"
+			Font(BOLD_OFF)
+			""
+			PrintHugoFixOptions
+			print ""
+			"Select the number of your choice (or ESCAPE to begin the game)"
+			key = HiddenPause
+			local numb
+	!		pause
+			if key = 'q','Q', '0', ESCAPE_KEY, ' ', ENTER_KEY
+			{
+!				printchar key
+!				"\n"
+				ret = 0
+				break
+			}
+			else
+				numb = key - 48
+			if numb and (numb > 0) and (numb < 6)
+			{
+!				printchar key ! word[0]
+!				"\n"
+				ret = numb
+				break
+			}
+			""
+		}
+		if not simple_port
+			cls
+		if ret
+		{
+			local cheap_mode
+			select ret
+				case 1: OnOrOff(D_OBJNUM)
+				case 2: OnOrOff(D_SCRIPTS)
+				case 3: OnOrOff(D_FUSES)
+				case 4: OnOrOff(D_FINDOBJECT)
+				case 5: OnOrOff(D_PARSE)
+			window 0 ! only to draw a line in simple interpreters
+#ifset CHEAP
+			cheap_mode = cheap
+#endif
+			if not (cheap_mode or simple_port)
+				cls
+		}
+		else
+		{
+			break
+		}
+	}
+}
+
+routine PrintHugoFixOptions
+{
+	local sel = 1
+	while sel < 6
+	{
+		Indent
+		print number sel; ". ";
+		select sel
+			case 1
+			{
+				print "Toggle object numbers (";
+				if (debug_flags & D_OBJNUM)
+					print "ON";
+				else
+					print "OFF";
+				")"
+			}
+			case 2
+			{
+				print "Script Monitor (";
+				if (debug_flags & D_SCRIPTS)
+					print "ON";
+				else
+					print "OFF";
+				")"
+			}
+			case 3
+			{
+				print "Fuse/Daemon Monitor (";
+				if (debug_flags & D_FUSES)
+					print "ON";
+				else
+					print "OFF";
+				")"
+			}
+			case 4
+			{
+				print "FindObject Monitoring (";
+				if (debug_flags & D_FINDOBJECT)
+					print "ON";
+				else
+					print "OFF";
+				")"
+			}
+			case 5
+			{
+				print "Parser Monitoring (";
+				if (debug_flags & D_PARSE)
+					print "ON";
+				else
+					print "OFF";
+				")"
+			}
+		sel++
+	}
 }
 
 #endif  ! #ifset HUGOFIX
@@ -2660,6 +2961,20 @@ replace FindObject(obj, objloc, recurse)
 			parser_data[PARSER_STATUS] |= FINDOBJECT_KNOWN
 	}
 
+	local supercheck
+#ifset USE_SUPERCONTAINER
+	if p.type = SuperContainer
+	{
+		if InList(p, contents_in, obj) and p is not open and p is openable and
+			p is not transparent
+		{
+			if p ~= parent(player) or (p = parent(player) and
+				InList(p, contents_on, player))
+				supercheck = true
+		}
+	}
+#endif
+
 	if obj = objloc or
 		(player in obj and obj ~= objloc and (obj~=location or not recurse)) or
 		p = obj or p = objloc or p = player
@@ -2668,7 +2983,7 @@ replace FindObject(obj, objloc, recurse)
 		FindObjectIsFound = true
 	}
 	elseif (p is not openable or p is platform) and p is not quiet and
-		p ~= nothing
+		p ~= nothing and not supercheck
 	{
 		if FindObject(p, objloc, true) and ObjectisKnown(p)
 		{
@@ -3698,11 +4013,11 @@ replace PrintScore(end_of_game)
 			! A complicated formula, since only
 			! integer division is allowed:
 			!
-			local rank
-			rank = (score*MAX_RANK)/MAX_SCORE
-			if rank > MAX_RANK
-				rank = MAX_RANK
-			print ranking[rank];
+			local temp_rank
+			temp_rank = (score*MAX_RANK)/MAX_SCORE
+			if temp_rank > MAX_RANK
+				temp_rank = MAX_RANK
+			print ranking[temp_rank];
 !\ Changed so that if the score goes over the MAX_SCORE, it continues
 to give the highest ranking. \!
 		}
@@ -4259,8 +4574,11 @@ class unheld_to_player
 					object = obj
 					xobject = xobj
 
-					if b not in object
-						object.holding = object.holding - b.size
+					if object.#holding
+					{
+						if b not in object
+							object.holding = object.holding - b.size
+					}
 				}
 
 				thisobj = nextobj
@@ -4802,6 +5120,7 @@ object hugofixlib "hugofixlib"
 {
 	in init_instructions
 	type settings
+	did_print true
 #ifclear NO_FANCY_STUFF
 	save_info
 	{
@@ -4873,6 +5192,7 @@ object hugofixlib "hugofixlib"
 					a++
 				}
 #endif
+				HugoFixInit
 			}
 	}
 }
@@ -5200,7 +5520,7 @@ games. Just #set USE_SUPERCONTAINER to use. \!
 property capacity_in alias n_to
 property capacity_on alias ne_to
 
-attribute actually_transparent
+! attribute actually_transparent     ! this attribute is never actually used
 
 ! You can change define this constant beforehand if you want more (or less)
 ! than the default maximum:
@@ -5296,12 +5616,14 @@ class SuperContainer
 		xobject DoPutIn
 		{
 			! "in"
-			if PrepWord("in") or PrepWord("into") or PrepWord("inside")
+!			if PrepWord("in") or PrepWord("into") or PrepWord("inside")
+			if PrepWord("in","into","inside")
 			{
 				if self is openable and self is not open
 				{
-					CThe(self)
-					" is closed."
+				!	CThe(self)  ! figured, might as well use the official DoPutIn
+				!	" is closed."   ! message
+					VMessage(&DoPutIn, 2)    ! "It's closed."
 					return true
 				}
 				elseif object is clothing and object is worn
@@ -5348,7 +5670,8 @@ class SuperContainer
 		object DoLookIn
 		{
 			! "in"
-			if PrepWord("in") or PrepWord("into") or PrepWord("inside")
+!			if PrepWord("in") or PrepWord("into") or PrepWord("inside")
+			if PrepWord("in","into","inside")
 			{
 				if self is openable and self is not open and
 				self is not transparent
@@ -5505,20 +5828,35 @@ routine MoveOnto(p, obj)
 ! PrepWord(str) return true if the word "str" is the preposition used
 ! in the player input.
 
-routine PrepWord(str)
+! Roody's note: modified this to take care of all possibilities in one go.
+
+routine PrepWord(str1,str2,str3)
 {
 	local i
 	for (i=1; i<=words; i++)
 	{
 		if not ObjWord(word[i], object)
 		{
-			if word[i] = str
-				return true
-			if word[i] = ""
-				break
+			select word[i]
+				case "": break
+				case str1, str2, str3 : return true
 		}
 	}
 }
+!routine PrepWord(str)
+!{
+!	local i
+!	for (i=1; i<=words; i++)
+!	{
+!		if not ObjWord(word[i], object)
+!		{
+!			if word[i] = str
+!				return true
+!			if word[i] = ""
+!				break
+!		}
+!	}
+!}
 #endif ! USE_SUPERCONTAINER
 
 !----------------------------------------------------------------------------
@@ -7008,8 +7346,11 @@ replace DoEmpty
 			object = obj
 			xobject = xobj
 			player.holding = a
-			if b not in object
-				object.holding = object.holding - b.size
+			if object.#holding
+			{
+				if b not in object
+					object.holding = object.holding - b.size
+			}
 		}
 
 		thisobj = nextobj
@@ -7090,6 +7431,8 @@ replace DoEnter
 
 ! Roody's note: Fixed a bug Juhana Leinonen found where "X is closed."
 ! messages weren't properly printing the parent's name.
+! Also added support for enterable supercontainers.
+
 replace DoExit
 {
 	local p
@@ -7124,13 +7467,23 @@ replace DoExit
 
 	p = parent(player)
 
+	local parentcheck
+
+#ifset USE_SUPERCONTAINER
+	if p.type = SuperContainer
+	{
+		if InList(p, contents_on, player)
+			parentcheck = true
+	}
+#endif
+
 #ifclear NO_OBJLIB
 	if object and player not in object
 #else
 	if object and player not in object
 #endif
 		VMessage(&DoExit, 1)             ! "You aren't in that."
-	elseif p is openable, not open
+	elseif (p is openable, not open) and not parentcheck
 	{
 		object = p
 		VMessage(&DoLookIn, 1)           ! "X is closed."
@@ -7141,7 +7494,7 @@ replace DoExit
 			object = p
 		move player to location
 		if not object.after
-			VMessage(&DoExit, 2)     ! "You get out.."
+			RlibMessage(&DoExit, 2)      ! "You get out.."
 	}
 	return true
 }
@@ -7233,6 +7586,15 @@ replace DoGet
 	}
 	return true
 }
+
+! Roody's note: I created a global to be set by DoGo called "exit_type"
+! It keeps track of whether the successful direction used uses a door
+! or direction. Mainly, this just exists so DescribePlace can have some
+! kind of info saved in case you want to write code for specifying
+! when pronouns should be assigned to room items without extensive
+! word array checking.
+global exit_type
+constant non_door_portal 3
 
 ! Roody's note: Makes "you'll have to get up" message more container/platform
 ! specific also has some code to work with new vehicle replacement. Also got
@@ -7369,6 +7731,11 @@ if not JumpToEnd
 		}
 		if moveto = 1
 			return true
+
+		if object.type = door
+			exit_type = door
+		else
+			exit_type = non_door_portal
 	}
 }  !  if not JumpToEnd bracket
 
@@ -7412,9 +7779,13 @@ if not JumpToEnd
 		if &moveto.door_to or moveto.type = door
 		{
 			moveto = moveto.door_to
+			exit_type = door
 		}
 		elseif moveto.door_to
+		{
 			moveto = moveto.door_to
+			exit_type = non_door_portal
+		}
 		elseif moveto is enterable ! or
 	!	(((moveto is platform) or (moveto is container)) and
 	!	player in location)
@@ -7447,23 +7818,27 @@ if not JumpToEnd
 		moveto = location.m
 		if moveto.door_to
 			moveto = moveto.door_to
+		exit_type = non_door_portal
 	}
 #endif  !  end of ifset NO_OBJLIB
 
 	if moveto = false
 	{
+		exit_type = 0
 		if not location.cant_go
 			VMessage(&DoGo, 2)      ! "You can't go that way."
 		return false
 	}
-
 	elseif moveto = true                    ! already printed message
+	{
+		exit_type = 0
 		return true                     ! (moveto is never 1)
-
+	}
 	elseif player not in location and           ! sitting on or in an obj.
 		not vehicle_check  ! make sure it's not a vehicle that can go through
 		                   ! this door
 	{
+		exit_type = 0
 		if parent(player) = moveto  ! does the direction lead to parent(player)?
 			VMessage(&DoEnter, 3)    ! already in it message
 		else
@@ -7478,6 +7853,10 @@ if not JumpToEnd
 			return true
 		verbroutine = m
 \!
+		if not exit_type
+		{
+			exit_type = direction
+		}
 		MovePlayer(moveto)
 
 		return true
@@ -7719,7 +8098,8 @@ replace DoLookIn
 
 	if not light_source
 		VMessage(&DoLook, 1)     ! "It's too dark to see anything."
-	elseif object is not container and object is not transparent
+	elseif object is not container and object is not transparent and
+		object is not platform
 		ParseError(12,object) ! "You can't do that with the thing."
 	elseif object is living
 	{
@@ -7881,6 +8261,47 @@ replace DoOpen
 	return true
 }
 
+! Roody's note: First off, I changed the grammar for DoPutIn so &DoPutIn
+! message one gets called at all, but I'm also replacing that message here
+! since I didn't especially like the original wording.
+
+replace DoPutIn
+{
+	if not xobject
+		RlibMessage(&DoPutIn, 1)    ! "Put it in what?"
+	elseif object is clothing and object is worn
+		VMessage(&DoDrop, 1)     ! "Have to take it off first..."
+	elseif xobject is container, openable, not open
+		VMessage(&DoPutIn, 2)    ! "It's closed."
+	elseif object = xobject
+		VMessage(&DoPutIn, 3)    ! putting something in itself
+	elseif xobject is not container and xobject is not platform
+		VMessage(&DoPutIn, 7)    ! "Can't do that with..."
+	elseif Contains(object, xobject)
+		VMessage(&DoPutIn, 4)    ! putting a parent in its child
+	elseif object in xobject
+		VMessage(&DoPutIn, 8)	! "It's already in..."
+	elseif CheckReach(object)
+	{
+		if CheckReach(xobject)
+		{
+			if Acquire(xobject,object)
+			{
+				if not object.after
+				{
+					if not xobject.after
+						! "You put X in/on Y."
+						VMessage(&DoPutIn, 5)
+				}
+			}
+			else
+				! "There's no room..."
+				VMessage(&DoPutIn, 6)
+		}
+	}
+	return true
+}
+
 !----------------------------------------------------------------------------
 ! Roody's note: Changed DoQuit to give one final ending message
 
@@ -7907,6 +8328,8 @@ replace DoQuit
 		}
 		quit
 	}
+	else
+		RLibMessage(&DoQuit,2) ! "Continuing on."
 }
 
 replace DoRestart
@@ -7934,6 +8357,8 @@ replace DoRestart
 		else
 			return true
 	}
+	else
+		RlibMessage(&DoRestart, 1) ! "Continuing on."
 }
 
 !----------------------------------------------------------------------------
@@ -8272,6 +8697,21 @@ add something like the following to SetupGlobalsandFillArrays:
 
 constant DESCFORM_I 4096
 
+! Roody's note: Here is the routine to replace if you'd like there to
+! be some instances where pronouns are not set to room objects. Have
+! it return false for pronouns not to be set.
+routine AssignPronounsToRoom
+{
+!	An example of a check. In this case, pronouns would not be set
+!   when the player enters doors or "non_door_portals"
+!	if (word[1] = "examine","x","l","look","watch") or
+!	exit_type = direction
+!	{
+!		return true
+!	}
+	return true
+}
+
 #ifclear NEW_DESCRIBEPLACE
 replace Describeplace(place, long)
 {
@@ -8280,7 +8720,8 @@ replace Describeplace(place, long)
 	if not place
 		place = location
 
-	parser_data[PARSER_STATUS] &= ~PRONOUNS_SET
+	if AssignPronounsToRoom
+		parser_data[PARSER_STATUS] &= ~PRONOUNS_SET
 
    ! Since, for example, a room description following entering via
    ! DoGo does not trigger before/after properties tied to looking
@@ -8295,6 +8736,8 @@ replace Describeplace(place, long)
 			return Perform(&DoLookAround)
 	}
 #endif
+
+	exit_type = 0  ! clear the exit_type global
 
 	if not light_source
 	{
@@ -8561,7 +9004,8 @@ replace Describeplace(place, long)
 	if not place
 		place = location
 
-	parser_data[PARSER_STATUS] &= ~PRONOUNS_SET
+	if AssignPronounsToRoom
+		parser_data[PARSER_STATUS] &= ~PRONOUNS_SET
 
 	! Since, for example, a room description following entering via
 	! DoGo does not trigger before/after properties tied to looking
@@ -8576,6 +9020,8 @@ replace Describeplace(place, long)
 			return Perform(&DoLookAround)
 	}
 #endif
+
+	exit_type = 0  ! clear the exit_type global
 
 	if not light_source
 	{
@@ -9802,11 +10248,12 @@ routine ClearPronoun(obj)
 
 routine CoolPause(bottom,pausetext)
 {
-	local a, m
+	local a
 	local simple_port
 	simple_port = not (display.windowlines > (display.screenheight + 100)) and system(61)
 	if pausetext
 	{
+		local m
 		m = string(_temp_string, pausetext)
 		if display.screenwidth > m
 			a = pausetext
@@ -9817,8 +10264,12 @@ routine CoolPause(bottom,pausetext)
 	if cheap
 		bottom = true
 #endif
+#ifset NO_STRING_ARRAYS
+	bottom = true
+#endif
 	if not bottom
 	{
+#ifclear NO_STRING_ARRAYS
 		Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
 		if not system(61)
 		{
@@ -9852,6 +10303,7 @@ routine CoolPause(bottom,pausetext)
 		Font(DEFAULT_FONT)
 		PauseForKey
 		""
+#endif ! ifclear NO_STRING_ARRAYS
 	}
 	else
 	{
@@ -10058,6 +10510,506 @@ routine PauseForKey(p)	! Where p is a prompt, if it ends up being used
 	return key
 }
 
+! Roody's note: SpeakerCheck just replaces one of the common bits of code
+!  in the main routine, mostly so the main routine becomes something authors
+!  don't really need to touch (and just looks nicer).  You can replace this
+!  routine if your game requires a more intensive check, like calling
+!  the GrandParent routine or FindObject.
+
+routine SpeakerCheck
+{
+	if speaking not in location
+		speaking = 0
+}
+
+!----------------------------------------------------------------------------
+!* TIME-KEEPING RESOURCES
+!----------------------------------------------------------------------------
+
+! Roody's note: Most of this code is from Kent Tessman's Future Boy! with
+! just a couple of additions of my own. Now, Hugo doesn't do real-time games
+! (like Infocom's Border Zone), but it can catch the current time and the
+! following code allows for figuring out the time difference betwen this
+! or that time (useful for music jukebox extensions or other misc uses).
+!
+! Since it's rare for games to use this, set the #USE_TIME_SYSTEM flag
+! to enable it.
+!----------------------------------------------------------------------------
+#ifset USE_TIME_SYSTEM
+
+#ifclear _SYSTEM_H
+#include "system.h" ! these routines use this extension
+#endif
+
+! we alias these time object properties just because we can
+property tm_year alias u_to
+property tm_month alias d_to
+property tm_day alias s_to
+property tm_hour alias n_to
+property tm_minute alias e_to
+property tm_second alias w_to
+
+! Roody's note : An object class to hold times.
+class time_object
+{
+	tm_year 0
+	tm_month 0
+	tm_day 0
+	tm_hour 0
+	tm_minute 0
+	tm_second 0
+}
+
+! Roody's note: Sets the current time to a time_object provided as an argument.
+routine GetCurrentTime(current)
+{
+	current.tm_year   = GetSystemTimeValue(TIME_YEAR)
+	if current.tm_year = 0
+		return false
+
+	current.tm_month  = GetSystemTimeValue(TIME_MONTH)
+	current.tm_day    = GetSystemTimeValue(TIME_DAY)
+	current.tm_hour   = GetSystemTimeValue(TIME_HOURS)
+	current.tm_minute = GetSystemTimeValue(TIME_MINUTES)
+	current.tm_second = GetSystemTimeValue(TIME_SECONDS)
+
+	return true
+}
+
+! Roody's note: Checks if the year provided is a leap year.
+routine IsLeapYear(year)
+{
+	! Years not divisible by 4 are not leap years
+	if mod(year, 4)
+		return false
+
+	! Years divisible by 400 are leap years
+	if mod(year, 400) = 0
+		return true
+
+	! Years divisible by 100 are not leap years
+	if mod(year, 100) = 0
+		return false
+
+	! If we get here, it's a leap year
+	return true
+}
+
+! Roody's note: Determines difference between "current" and "previous"
+! time_objects, saving to "result" time_object.
+routine CalculateTimeDifference(current, previous, result)
+{
+	local years, months, days, hours, minutes, seconds
+
+	years = current.tm_year - previous.tm_year
+	if years < 0
+	{
+		! current must be later than previous
+		return false
+	}
+
+	months = current.tm_month - previous.tm_month
+	if months < 0
+	{
+		months = months + 12
+		years--
+	}
+
+	days = current.tm_day - previous.tm_day
+	if days < 0
+	{
+		local d
+		if previous.tm_month = 4, 6, 9, 11
+			d = 30
+		elseif previous.tm_month = 2
+		{
+			if IsLeapYear(previous.tm_year)
+				d = 29
+			else
+				d = 28
+		}
+		else
+			d = 31
+
+		days = days + d
+		months--
+	}
+
+	hours = current.tm_hour - previous.tm_hour
+	if hours < 0
+	{
+		hours = hours + 24
+		days--
+	}
+
+	minutes = current.tm_minute - previous.tm_minute
+	if minutes < 0
+	{
+		minutes = minutes + 60
+		hours--
+	}
+
+	seconds = current.tm_second - previous.tm_second
+	if seconds < 0
+	{
+		seconds = seconds + 60
+		minutes--
+	}
+
+	result.tm_year = years
+	result.tm_month = months
+	result.tm_day = days
+	result.tm_hour = hours
+	result.tm_minute = minutes
+	result.tm_second = seconds
+
+	return true
+}
+
+! Roody's note: Adds time_object "time1" to time_object "time2", saving it to
+! time_object "result"
+routine AddTimes(time1, time2, result)
+{
+	local d
+	if time1.tm_month = 4, 6, 9, 11
+		d = 30
+	elseif time1.tm_month = 2
+	{
+		if IsLeapYear(time1.tm_year)
+			d = 29
+		else
+			d = 28
+	}
+	else
+		d = 31
+
+	result.tm_year = 0
+	result.tm_month = 0
+	result.tm_day = 0
+	result.tm_hour = 0
+	result.tm_minute = 0
+!	result.tm_second = 0
+
+	result.tm_second = time1.tm_second + time2.tm_second
+	if result.tm_second >= 60
+	{
+		result.tm_second = result.tm_second - 60
+		result.tm_minute++
+	}
+
+	result.tm_minute = result.tm_minute + time1.tm_minute + time2.tm_minute
+	if result.tm_minute >= 60
+	{
+		result.tm_minute = result.tm_minute - 60
+		result.tm_hour++
+	}
+
+	result.tm_hour = result.tm_hour + time1.tm_hour + time2.tm_hour
+	if result.tm_hour >= 24
+	{
+		result.tm_hour = result.tm_hour - 24
+		result.tm_day++
+	}
+
+	result.tm_day = result.tm_day + time1.tm_day + time2.tm_day
+	if result.tm_day >= d
+	{
+		result.tm_day = result.tm_day - d
+		result.tm_month++
+	}
+
+	result.tm_month = result.tm_month + time1.tm_month + time2.tm_month
+	if result.tm_month >= 12
+	{
+		result.tm_month = result.tm_month - 12
+		result.tm_year++
+	}
+
+	result.tm_year = result.tm_year + time1.tm_year + time2.tm_year
+}
+
+! Roody's note: Copies one time_object to another one
+routine CopyTimeValue(time_orig, time_copy)
+{
+	time_copy.tm_year   = time_orig.tm_year
+	time_copy.tm_month  = time_orig.tm_month
+	time_copy.tm_day    = time_orig.tm_day
+	time_copy.tm_hour   = time_orig.tm_hour
+	time_copy.tm_minute = time_orig.tm_minute
+	time_copy.tm_second = time_orig.tm_second
+
+	return true
+}
+
+! Roody's note: Prints a time_object, with or without seconds.
+routine PrintTimeValue(time, no_seconds)
+{
+	local printed
+
+	if time.tm_year
+	{
+		NumberWord(time.tm_year)
+		" year";
+		if time.tm_year > 1
+			print "s";
+		printed++
+	}
+
+	if time.tm_month
+	{
+		if printed
+			print ", ";
+		NumberWord(time.tm_month)
+		" month";
+		if time.tm_month > 1
+			print "s";
+		printed++
+	}
+
+	if time.tm_day
+	{
+		if printed
+			print ", ";
+		NumberWord(time.tm_day)
+		" day";
+		if time.tm_day > 1
+			print "s";
+		printed++
+	}
+
+	if time.tm_hour
+	{
+		if printed
+			print ", ";
+		NumberWord(time.tm_hour)
+		" hour";
+		if time.tm_hour > 1
+			print "s";
+		printed++
+	}
+
+	if time.tm_minute
+	{
+		if printed
+			print ", ";
+		NumberWord(time.tm_minute)
+		" minute";
+		if time.tm_minute > 1
+			print "s";
+		printed++
+	}
+
+	if time.tm_second and (no_seconds = false or printed = 0)
+	{
+		if printed
+		{
+			if printed > 1
+				",";
+			" and ";
+		}
+		NumberWord(time.tm_second)
+		" second";
+		if time.tm_second > 1
+			print "s";
+	}
+}
+
+! A routine that counts the seconds since the "then_object" time object
+routine SecondsSince(then_object)
+{
+	local a
+	if then_object.tm_year or then_object.tm_day or then_object.tm_month
+		return 1000
+	a = then_object.tm_second + (then_object.tm_minute * 60) \
+	    + (then_object.tm_hour * 60 * 60)
+	return a
+}
+
+! A simple routine for comparing two time objects
+routine IsTimeLonger(first, second)
+{
+	if first.tm_year > second.tm_year
+		return true
+	elseif first.tm_month > second.tm_month
+		return true
+	elseif first.tm_day > second.tm_day
+		return true
+	elseif first.tm_hour > second.tm_hour
+		return true
+	elseif first.tm_second > second.tm_second
+		return true
+	else
+		return false
+}
+#endif ! #ifset USE_TIME_SYSTEM
+
+!----------------------------------------------------------------------------
+!* DoVersion system
+!----------------------------------------------------------------------------
+! Roody's note: I figured it'd be nice if Roodylib provided a DoVersion
+! routine by default. It's designed to be configurable and use whatever parts
+! that you like, but you can always just straight up replace it with whatever
+! you'd like.
+!
+! Just the same, you can #set NO_VERSION to disallow it.
+!----------------------------------------------------------------------------
+
+#ifclear NO_VERSION
+#if defined GAME_TITLE ! skip this whole section if GAME_TITLE is not define
+
+! Roody's note: I thought it'd be convenient to hold the compilation year
+! in a global.
+
+global build_year
+
+object versionlib "versionlib"
+{
+	in init_instructions
+	type settings
+	execute
+	{
+		if not CheckWordSetting("undo")
+		{
+			if not CheckWordSetting("restore")
+			{
+				string(_temp_string, serial$, 8)
+				local i,n, factor = 1
+				for (i=7; i>5; i--)
+				{
+					n = _temp_string[i]
+					if n >= '0' and n <= '9'
+					{
+						n -= '0'
+						build_year += (n*factor)
+					}
+					elseif i = 0 and n = '-'
+						build_year = -build_year
+					else
+						build_year = 0
+
+					factor *= 10
+				}
+				build_year = build_year + 2000
+			}
+		}
+	}
+}
+
+! Roody's note: Replace this if you'd like to change the order or further tweak
+! the DoVersion response.
+routine DoVersion
+{
+	print GameTitle
+#if defined BLURB
+	 print BLURB ! "An Interactive Blahblahblah"
+#endif
+#ifclear NO_COPYRIGHT
+	Copyright
+#endif
+	PrintBanner
+	ReleaseAndSerialNumber
+#if defined IFID
+	print "IFID: "; IFID
+#endif
+#ifset BETA
+	BetaNotes
+#endif
+#ifset DEMO_VERSION
+	DemoNotes
+#endif
+	OtherNotes
+}
+
+! Roody's note: I changed TITLECOLOR to a global. Set it to something else in
+! SetGlobalsAndFillArrays if you'd like to provide a special title color.
+
+global TITLECOLOR = DEF_FOREGROUND
+
+routine GameTitle
+{
+	color TITLECOLOR
+	Font(BOLD_ON | ITALIC_OFF)
+	print GAME_TITLE;
+	Font(BOLD_OFF | ITALIC_OFF)
+	color TEXTCOLOR
+#ifset DEMO_VERSION
+	print "\B (demo version)\b";
+#endif
+#ifset HUGOFIX
+	print "\I (HugoFix Debugging Suite Enabled)\i";
+#endif
+}
+
+routine Copyright
+{
+#if defined AUTHOR
+	print "Copyright \#169 "; number build_year;
+	" by ";
+	print AUTHOR
+#endif
+}
+
+routine PrintBanner
+{
+	print BANNER; " / ";
+	print "Roodylib "; ROODYVERSION
+}
+
+routine ReleaseAndSerialNumber
+{
+	string(_temp_string, serial$, 8)
+#if defined RELEASE
+	print "Release "; RELEASE; " / ";
+#endif
+#if clear BETA
+	print "Serial Number ";
+	StringPrint(_temp_string, 0, 2)
+	StringPrint(_temp_string, 3, 5)
+	StringPrint(_temp_string, 6, 8)
+#else
+	" \BBETA BUILD # 20";
+	StringPrint(_temp_string, 6, 8)
+	StringPrint(_temp_string, 0, 2)
+	StringPrint(_temp_string, 3, 5)
+	Font(BOLD_OFF)
+#endif
+	print newline
+}
+
+#ifset BETA
+routine BetaNotes
+{
+	color TITLECOLOR
+	"\n\BDO NOT DISTRIBUTE!\b";
+	color TEXTCOLOR
+	" This beta release is intended for testing only, not for
+	distribution to the general public.";
+#if defined EMAIL
+   " Please report any errors,
+	bugs, etc. to \I<";
+	print EMAIL;">\i."
+#endif
+	"\nHI, TESTERS:  Please type \B>SCRIPT ON\b and send in your transcripts."
+}
+#endif ! ifset BETA
+
+#ifset DEMO_VERSION
+routine DemoNotes
+{
+#if defined WEBSITE
+	"\n(Like this demo?  Visit \B";
+	print WEBSITE; "\b for the full version.)"
+#endif
+}
+#endif ! DEMO_VERSION
+
+! Roody's note: This routine exists solely to be replaced, if you'd like other
+! trailing text to the DoVersion response.
+routine OtherNotes
+{}
+#endif ! if defined GAME_TITLE
+#endif ! ifclear NO_VERSION
+
 !----------------------------------------------------------------------------
 !* REPLACED LAST LIBRARY OBJECT
 !----------------------------------------------------------------------------
@@ -10131,6 +11083,16 @@ routine RLibMessage(r, num, a, b)
 					! Print ", in <something>" if necessary
 					if location = a and player not in a
 					{
+#ifset USE_SUPERCONTAINER
+						if parent(player).type = SuperContainer
+						{
+							if InList(parent(player), contents_in, player)
+								print ", ";  parent(player).prep #1; " ";
+							else
+								print ", "; parent(player).prep #2; " ";
+						}
+						else
+#endif
 						if parent(player).prep
 							print ", "; parent(player).prep; " ";
 						elseif parent(player) is platform
@@ -10191,8 +11153,30 @@ routine RLibMessage(r, num, a, b)
 					}
 					print "? Futile."
 				}
+				case 2
+				{
+					print CThe(player); " get"; MatchSubject(player); " ";
+#ifset USE_SUPERCONTAINER
+					if object.type = SuperContainer
+					{
+						if InList(object, contents_in, player)
+							print "out ";
+						else
+							print "off ";
+					}
+					else
+#endif
+					if object.prep #2
+						print object.prep #2;
+					elseif object is platform
+						print "off";
+					else
+						print "out";
+					print " of "; The(object); "."
+				}
 		}
 #ifclear NO_FANCY_STUFF
+#ifclear NO_STRING_ARRAYS
 		case &FindStatusHeight
 		{
 			select num
@@ -10208,6 +11192,7 @@ routine RLibMessage(r, num, a, b)
 				}
 		}
 #endif
+#endif
 		case &DoGo
 		{
 			select num
@@ -10216,6 +11201,16 @@ routine RLibMessage(r, num, a, b)
 				! thought I might put some elevated platform code here
 				!  but haven't yet
 					print CThe(player); " will have to get ";
+#ifset USE_SUPERCONTAINER
+					if parent(player).type = SuperContainer
+					{
+						if InList(parent(player), contents_in, player)
+							print "out ";
+						else
+							print "off ";
+					}
+					else
+#endif
 					if parent(player).prep #2
 						print parent(player).prep #2; " ";
 					elseif parent(player) is platform
@@ -10274,11 +11269,29 @@ routine RLibMessage(r, num, a, b)
 				}
 				case 4:  print CArt(object); " slows to a stop."
 		}
+	case &DoPutIn
+	{
+		select num
+		case 1:
+		{
+			print "You'll have to be a little more specific
+				about exactly where you'd like ";
+			if player_person ~= 2:  print The(player, true); " ";
+			print "to "; word[1] ; " that."
+		}
+	}
 #ifclear NO_XVERBS
 		case &DoQuit
 		{
 			select num
-				case 1 : "Thanks for playing!"
+				case 1 : "\IThanks for playing!\i"
+				case 2
+					"Continuing on."
+		}
+		case &DoRestart
+		{
+			select num
+				case 1 : "Continuing on."
 		}
 #endif
 		case &DoSmell
@@ -10322,14 +11335,15 @@ routine RLibMessage(r, num, a, b)
 		case &DoXYZZY
 		{
 		! text suggested by Rob O'Hara. Approved by Ben Parrish.
-			print capital player.name; " mumble"; MatchSubject(player);
+			print CThe(player); " mumble"; MatchSubject(player);
 			" an ancient reference to an archaic game. Nothing happens."
 		}
 #endif
 		case &ListObjects
 		{
 			select num
-				case 1: print ":"
+				case 1: print " "; a;
+				case 2: print ":"
 		}
 #ifset NO_FANCY_STUFF
 		case &PrintStatusLine
@@ -10349,8 +11363,30 @@ routine RLibMessage(r, num, a, b)
 		{
 			select num
 				case 1: print ":"
+				case 2
+				{
+					print "Also ";
+					if a.prep
+						print a.prep; " ";
+					elseif a is platform
+						print "sitting on ";
+					else
+						print "inside ";
+					The(a)
+				}
+				case 3
+				{
+					if a.prep
+						print capital a.prep; " ";
+					elseif a is platform
+						print "Sitting on ";
+					else
+						print "Inside ";
+					The(a)
+				}
 		}
 #ifclear NO_FANCY_STUFF
+#ifclear NO_STRING_ARRAYS
 		case &WriteStatus
 		{
 			if not location
@@ -10364,6 +11400,17 @@ routine RLibMessage(r, num, a, b)
 			}
 		}
 #endif
+#endif
+		case &YesorNo
+		{
+			if FORMAT & DESCFORM_I
+				""
+			select num
+			case 1
+				print "Please answer YES or NO: ";
+			case 2
+				print "YES or NO: ";
+		}
 }
 
 routine NewRlibMessages(r, num, a, b)
@@ -10388,7 +11435,7 @@ routine RlibOMessage(obj, num, a, b)
 		select num
 			case 1
 			{
-				print CThe(xobject) ; " allows "; player.name ; " to take ";
+				print CThe(xobject) ; " allows "; The(player) ; " to take ";
 				print The(object); "."
 			}
 	}

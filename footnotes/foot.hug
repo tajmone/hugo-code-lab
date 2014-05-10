@@ -5,8 +5,6 @@ constant GAME_TITLE "GAME TITLE"
 
 !:: Flags
 !#set BETA                ! Compile with the comments-in-transcripts library addition (requires "beta.h")
-!#set CHEAPGLK				  ! Compile with cheapglk checks
-!#set GLK		           ! Compile with glk checks
 !#set HUGOFIX             ! Compile with HugoFix Debugging Library commands available (type $? in game)
 !#set HDX                 ! Compile as Hugo Debuggable Executable (see below for details)
 !#set VERBSTUBS           ! Include the grammar and routines from verbstubs.g and verbstubs.h, respectively
@@ -59,13 +57,6 @@ verb "footnotes"
 #include "beta.h"
 #endif
 
-#ifset GLK
-#include "glk.h"
-#endif
-
-#ifset CHEAPGLK
-#include "cheapglk.h"
-#endif
 
 !:: Other constants and global variables
 !constant IFID "put-IFID here"

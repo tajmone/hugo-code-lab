@@ -179,11 +179,12 @@ routine DoAbout
 option contact_choice "Contact"
 {
 	in main_menu    ! which menu it is
-	menu_text	{
-						""
-					"\_ Feel free to send me your thoughts and suggestions at roody.yogurt@gmail.com! What an amazing discourse we will have!\n"
-					CoolPause(1)
-					}
+	menu_text
+	{
+			""
+		"\_ Feel free to send me your thoughts and suggestions at roody.yogurt@gmail.com! What an amazing discourse we will have!\n"
+		CoolPause(1)
+	}
 }
 
 option submenu_choice "Choice Leading To Your Submenu"
@@ -194,7 +195,10 @@ option submenu_choice "Choice Leading To Your Submenu"
 
 menu_category hint_menu "WHOA IT'S A HINT MENU"
 {
-	title_gap {return main_menu.title_gap}
+	title_gap
+	{
+		return main_menu.title_gap
+	}
 }
 
 hint_option studiopass_hints "How do I get on the studio lot?"

@@ -51,6 +51,28 @@ verb "push","pull","press","move","roll", "shove", "yank", "tug"
 	* "on" object		DoMove
 	* object		 DoMove
 
+! Roody's note: Added to make use of some DoPutIn code where an xobject is not
+! provided.
+verb "put", "place", "set"
+	*                                                       DoVague
+#ifset USE_CHECKHELD
+	* "down" multi                                          DoDrop_CheckHeld
+	* multi "on"/"onto" "ground"/"floor"                    DoPutonGround_CheckHeld
+	* multi "outside" xobject                               DoPutonGround_CheckHeld
+	* multi "down"                                          DoDrop_CheckHeld
+	* multi "in"/"into"/"inside" container                  DoPutIn_CheckHeld
+	* multi "on"/"onto" platform                            DoPutIn_CheckHeld
+	* held                                                  DoPutIn_CheckHeld
+#else
+	* "down" multiheld                                      DoDrop
+	* multiheld "on"/"onto" "ground"/"floor"                DoPutonGround
+	* multiheld "outside" xobject                           DoPutonGround
+	* multiheld "down"                                      DoDrop
+	* multiheld "in"/"into"/"inside" container              DoPutIn
+	* multiheld "on"/"onto" platform                        DoPutIn
+	* held                                                  DoPutIn
+#endif
+
 #ifclear _VERBSTUB_G
 verb "smell", "sniff", "inhale", "breathe"
 	*                                       DoSmell
@@ -203,6 +225,12 @@ xverb "display"
 xverb "wide", "tall"
 	*                                                       DoDisplay
 
+#ifclear NO_VERSION
+#if defined GAME_TITLE
+xverb "version"
+	*                                                       DoVersion
+#endif ! if defined GAME_TITLE
+#endif ! ifclear NO_VERSION
 #endif  ! ifclear NO_XVERBS
 
 ! We'll allow HugoFix commands to work even in NO_XVERBS games as it is
