@@ -26,9 +26,9 @@
 					  Added it to MakeMenu so authors have the option of calling
 					  up menus after the game, too
 	version 2.6 - common_commands array was being overwritten by MenuInit
-	              Changed the default printing behavior of CoolPause
+	              Changed the default printing behavior of MenuPause
 					  Changed text in the Special Commands page
-					  CoolPause with top pause message now always one line window
+					  MenuPause with top pause message now always one line window
 					     (instead of current display.status_window height)
 	version 2.5 - added some code for dealing with changing window sizes
 	mid-menu
@@ -114,19 +114,19 @@ option contact_choice "Contact"
 	{
 		""
 		"\_ Feel free to send me your thoughts and suggestions at
-		roody.yogurt@gmail.com! What an amazing discourse we will have!\n"
-		CoolPause(1)
+		roody.yogurt@gmail.com! What an amazing discourse we will have!"
+		! MenuPause will be called automatically
 	}
 }
 
 The menu_text property holds the text you want on the page. Personally, I
 believe every time the game is paused, there should be some "press key to
-continue," so I've included a CoolPause routine for doing that quickly.
+continue," so I've included a MenuPause routine for doing that quickly.
 
-CoolPause([true_if_bottom_of_screen], [optional text])
+MenuPause([optional text],[true if text goes in statusline])
 
-CoolPause can also do "press a key" in the status bar by putting a 0 in the
-first value, but as far as menu choices go, you'll probably want the text at
+MenuPause can also do "press a key" in the status bar by putting a 1 in the
+second value, but as far as menu choices go, you'll probably want the text at
 the bottom. If you want something different than the default "press a key"
 text, put your string in the optional text field.
 
@@ -221,8 +221,6 @@ version_obj newmenu_version "NewMenu Version 3.2"
 }
 #endif
 
-#ifset USE_DEFAULT_MENU
-
 #ifset _ROODYLIB_H
 
 ! Be sure to not #set NO_SORTING if you need to use the priority property
@@ -239,7 +237,22 @@ object menulib "menu"
 		if not CheckWordSetting("undo")
 		{
 			if not CheckWordSetting("restore")
+			{
+#ifset USE_DEFAULT_MENU
 				MenuInit
+#endif
+#ifset DEBUG
+				local i
+				for (i=(menu_category + 1);i<=objects ;i++ )
+				{
+					if i.type = menu_category and parent(i) = nothing and
+					i ~= menu_category
+					{
+						move i to menu_pages
+					}
+				}
+#endif
+			}
 		}
 	}
 }
@@ -249,6 +262,7 @@ property usage_desc ! some text describing what commands turn a library's
 
 #endif ! _ROODYLIB_H
 
+#ifset USE_DEFAULT_MENU
 #if undefined TOTAL_COMMANDS
 constant TOTAL_COMMANDS 35
 #endif
@@ -321,22 +335,28 @@ property hints_available alias in_to
 property hints_revealed alias out_to
 property priority alias parse_rank
 
+object menu_pages
+{}
+
 class menu_category
 {
+	type menu_category
 	title_gap  0 ! lines between menu title and "[N]ext key"
 	options_gap 1 ! lines between "[N]ext key" and menu options
 }
 
 class option
 {
+	type option
 	option_available true
 #ifset _ROODYLIB_H
 	priority 0
 #endif
 }
 
-option hint_option
+option hint_option "(hint_option)"
 {
+	type hint_option
 	menu_text
 	{
 		Help_Hints(self)
@@ -348,19 +368,23 @@ option hint_option
 routine MakeMenu(menu_title,end_o_game, recurse)
 {
 	local glktest, count, category, old_category
- 	local h,r, simple_port
+ 	local h,r, simple_port, menu_select, menu_bg
 
 	if not recurse
 	{
-		if not CheaporSimple
+		menu_select = MENU_SELECTCOLOR
+		menu_bg = MENU_BGCOLOR
+		if not (CheaporSimple = 2 or simple_port)
 		{
 			color BGCOLOR, BGCOLOR
 			MenuMessage(&MakeMenu,1) ! "[OPENING MENU]"
+			""
 		}
 		else
 		{
-			""
+!			""
 			MenuMessage(&MakeMenu,7) ! "Opening the menu..."
+!			""
 		}
 	}
 
@@ -378,34 +402,9 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 
    while true
 	{
-		if h.page_text_color
-			MENU_TEXTCOLOR = h.page_text_color
-		else
-			MENU_TEXTCOLOR = 0
-		if h.page_bg_color
-			MENU_BGCOLOR = h.page_bg_color
-		else
-			MENU_BGCOLOR = 0
-		if h.title_color
-			MENU_SELECTCOLOR = h.title_color
-		else
-			MENU_SELECTCOLOR = 0
-		if h.title_bg
-			MENU_SELECTBGCOLOR = h.title_bg
-		else
-			MENU_SELECTBGCOLOR = 0
+		if not CheapOrSimple
+			SetPageColors(h)
 
-		if MENU_TEXTCOLOR=0 and MENU_BGCOLOR=0  ! must not have been set
-		{
-			MENU_TEXTCOLOR = TEXTCOLOR
-			MENU_BGCOLOR = BGCOLOR
-		}
-
-		if MENU_SELECTCOLOR= 0 AND MENU_SELECTBGCOLOR = 0
-		{
-			MENU_SELECTCOLOR = SL_TEXTCOLOR
-			MENU_SELECTBGCOLOR = SL_BGCOLOR
-		}
 		if not (CheaporSimple = 2 or simple_port)
 			color MENU_TEXTCOLOR, MENU_BGCOLOR
 
@@ -429,31 +428,35 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 #endif
 #endif
 
-#ifset SHOW_NAVIGATE
-#ifset CHEAP
-		if not cheap
-		{
-#endif
-			color MENU_BGCOLOR, MENU_BGCOLOR
-			if not simple_port ! non-glk minimal port
-				MenuMessage(&MakeMenu,2,recurse,h.name) ! "[MENU NAME]"
-			color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-#ifset CHEAP
-		}
-		else
-		{
-			Font(PROP_OFF)
-			MenuMessage(&MakeMenu,2,0,h.name) ! "[MENU NAME]"
-			""
-		}
-#endif
-#endif ! SHOW_NAVIGATE
+!#ifset SHOW_NAVIGATE
+!#ifset CHEAP
+!		if not cheap
+!		{
+!#endif
+!			color MENU_BGCOLOR, MENU_BGCOLOR
+!			if not simple_port ! non-glk minimal port
+!			{
+!				MenuMessage(&MakeMenu,2,recurse,h.name) ! "[MENU NAME]"
+!			}
+!			color TEXTCOLOR, BGCOLOR, INPUTCOLOR
+!#ifset CHEAP
+!		}
+!		else
+!		{
+!			Font(PROP_OFF)
+!			MenuMessage(&MakeMenu,2,0,h.name) ! "[MENU NAME]"
+!			""
+!		}
+!#endif
+!#endif ! SHOW_NAVIGATE
 
 		if not (CheaporSimple = 2 or simple_port)
 		{
 			window 0
 			cls
 		}
+!		elseif CheaporSimple = 2
+!			""
 		menuitem[0] = h
 		category = Menu(count, 0, old_category,h.title_gap,h.options_gap)
 		old_category = category
@@ -463,6 +466,10 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 				MakeMenu(menuitem[category].menu_link,0,r)
 			else
 			{
+				if not CheapOrSimple
+					SetPageColors(menuitem[category])
+				if not (CheaporSimple = 2 or simple_port)
+					color MENU_TEXTCOLOR, MENU_BGCOLOR
 				do
 				{
 					if display.needs_repaint and CheaporSimple ~= 2
@@ -475,9 +482,11 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 					if not (CheaporSimple = 2 or simple_port)
 						color MENU_BGCOLOR, MENU_BGCOLOR
 					if CheaporSimple ~= 2
+					{
 						MenuMessage(&MakeMenu,3,menuitem[category].name)
+					}
 					color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-					if not simple_port
+					if not (CheapOrSimple = 2 or simple_port)! simple_port
 					{
 						if menuitem[category].alt_title
 							CenterTitle(menuitem[category].alt_title)
@@ -486,54 +495,53 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 					}
 					if not CheapOrSimple
 						locate 1,TopPageMargin
-
-					run menuitem[category].menu_text
-					if not (CheaporSimple = 2 or simple_port)
+					elseif CheapOrSimple = 2
 						""
+					run menuitem[category].menu_text
+					print newline
+					if not (CheapOrSimple = 2 and menuitem[category].type = hint_option)
+						""
+					if menuitem[category].type ~= hint_option
+					{
+						MenuPause(menuitem[category])
+					}
+!					if not (CheaporSimple = 2 or simple_port)
+!						""
 				}
 				while (display.needs_repaint = true  )
 
-				window 0 ! only to draw a line in simple interpreters
+!				window 0 ! only to draw a line in simple interpreters
 			}
 		}
 		else
 		{
 			if not recurse
 			{
-#ifset CHEAP
-				if not cheap
+				MENU_SELECTCOLOR = menu_select
+				MENU_BGCOLOR = menu_bg
+
+				if not (CheapOrSimple = 2 or simple_port)
 				{
-#endif
 					color BGCOLOR, BGCOLOR
 					MenuMessage(&MakeMenu,5) ! "[LEAVING MENU]"
+					""
 #ifset _ROODYLIB_H
-					if not simple_port
-						InitScreen
+					InitScreen
 #else
 					color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-					if not system(61)
+					if not CheapOrSimple ! system(61)
 						window 0
-					if not simple_port
-						cls
+					cls
 					if not system(61) ! glk or minimum port
 						locate 1, display.windowlines !(display.statusline_height + 1)
 #endif
-#ifset CHEAP
 				}
-#endif
 				if not end_o_game
 				{
+					if CheapOrSimple = 2
+						""
 					MenuMessage(&MakeMenu,6) ! "Returning to the game..."
-#ifset CHEAP
-					if cheap
-						Font(DEFAULT_FONT) ! just in case
-					else
-#endif
-						PrintStatusline
-					DescribePlace(location, true)
-#ifset NEW_FUSE
-					runevents
-#endif
+					AfterMenu
 				}
 			}
 			return
@@ -541,6 +549,18 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 	}
 }
 
+routine AfterMenu
+{
+#ifset CHEAP
+	if not cheap
+#endif
+		PrintStatusline
+	Font(DEFAULT_FONT) ! just in case
+	DescribePlace(location, true)
+#ifset NEW_FUSE
+	fake_runevents
+#endif
+}
 
 routine TopPageMargin
 {
@@ -557,7 +577,6 @@ routine MenuPriority(obj1,obj2)
 replace Menu(num, width, selection,titlegap,optionsgap)
 {
 	local i, column, oldselection
-	Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
 	local simple_port, glktest
 	simple_port = not (display.windowlines > (display.screenheight + 100)) and system(61)
 	if system(61)
@@ -592,26 +611,30 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 	( glktest and
 	( num + 5 + titlegap + optionsgap ) >= (display.screenheight/3*2))
 	{
+!		if simple_port
+!			window 0
 		while true
 		{
 			if glktest
 				cls
-			else
-				""
+	!		else
+	!			""
 			if not simple_port
 				CenterTitle(menuitem[0].name)
 			if display.needs_repaint
 				display.needs_repaint = false
 			print newline
-			Font(PROP_OFF|BOLD_OFF|ITALIC_OFF)
+!			Font(PROP_OFF|BOLD_OFF|ITALIC_OFF)
 			local sel = 1
+			if CheapOrSimple = 2
+				""
 			Indent
 			print "\_  ";
 			Font(BOLD_ON)
 			print menuitem[0].name
 			Font(BOLD_OFF)
 			""
-			while menuitem[sel]
+			while sel <= num ! menuitem[sel]
 			{
 				Indent
 				print number sel; ". ";
@@ -624,22 +647,31 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 			if word[0] = 'q','Q', '0', ESCAPE_KEY
 			{
 				printchar word[0]
-				"\n"
+				print newline
+	!			"\n"
 				return 0
 			}
 			else
 				numb = word[0] - 48
-			if numb and (numb > 0) and (numb < sel)
+			if numb>0 and (numb <= num) ! sel)
 			{
 				printchar word[0]
-				"\n"
+				print newline
+!				"\n"
+!				""
 				return numb
 			}
-			""
+			else
+			{
+				printchar word[0]
+				print newline
+				"\nNot a valid option."
+			}
 		}
 	}
 	else
 	{
+		Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
 		while true
 		{
 			if not system(61)
@@ -714,12 +746,13 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 				print ""
 			}
 !			Font(DEFAULT_FONT)
-			word[0] = PauseForKey
+			word[0] = PressKey
 			if not system(61)
 			{
 				if display.needs_repaint
 				{
-					window 0
+					if not CheapOrSimple = 2
+						window 0
 					display.needs_repaint = 0
 				}
 					color MENU_BGCOLOR, MENU_BGCOLOR
@@ -740,7 +773,7 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 				}
 				case 'Q', 'q', ESCAPE_KEY
 				{
-					if not system(61)
+					if not CheapOrSimple ! system(61)
 						window 0
 					if not simple_port
 						cls
@@ -748,7 +781,7 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 				}
 				case ENTER_KEY
 				{
-					if not system(61)
+					if not CheapOrSimple ! system(61)
 					{
 						color MENU_BGCOLOR, MENU_BGCOLOR
 	!					window 1, (3+ optionsgap + titlegap), display.screenwidth,
@@ -785,92 +818,23 @@ replace Menu(num, width, selection,titlegap,optionsgap)
 	}
 }
 
-#ifclear _ROODYLIB_H
-routine CoolPause(bottom,pausetext)
+routine MenuPause(page)
 {
-	local a, m
 	local simple_port
 	simple_port = not (display.windowlines > (display.screenheight + 100)) and system(61)
-	if pausetext
-	{
-		m = string(_temp_string, pausetext)
-		if display.screenwidth > m
-			a = pausetext
 
-	}
-
-#ifset CHEAP
-	if cheap
-		bottom = true
-#endif
-	if not bottom
-	{
-		Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
-		if not system(61)
-		{
-			window display.statusline_height
-			{
-				cls
-			}
-		}
-		window  1 ! display.statusline_height
-		{
-			local y
-			y = display.linelength
-			color SL_TEXTCOLOR, SL_BGCOLOR
-			cls			! make sure we've drawn the entire status bar in the
-							!  proper colors
-			locate 1,1
-			text to _temp_string
-			if a
-				print a;
-			else
-				MenuMessage(&CoolPause,1) ! "PRESS A KEY TO CONTINUE";
-			text to 0
-
-			local alength
-			alength = StringLength(_temp_string)
-			print to (display.linelength/2 - alength/2);
-			StringPrint(_temp_string)
-!			print to display.linelength;
-		}
-		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-		Font(DEFAULT_FONT)
-		PauseForKey
-		""
-	}
+	Indent
+	if (CheapOrSimple = 2 or simple_port)
+		MenuMessage(&MenuPause,1,page) ! "[PRESS A KEY TO CONTINUE]";
 	else
-	{
-		Font(DEFAULT_FONT)
-#ifset CHEAP
-		if cheap
-		{
-			Indent
-			if a
-				print a
-			else
-				MenuMessage(&CoolPause,2) ! "[PRESS A KEY TO CONTINUE]";
-			pause
-			""
-		}
-		else
-		{
-#endif
-			Indent
-			Font(ITALIC_ON)
-			if a
-				print a;
-			else
-				MenuMessage(&CoolPause,3) ! "press a key to continue";
-			Font(ITALIC_OFF)
-			PauseForKey
-#ifset CHEAP
-		}
-#endif
-	}
+		MenuMessage(&MenuPause,2,page) ! "\Ipress a key to continue\i";
+	PressKey
+
 	Font(DEFAULT_FONT)
+	print newline
+	if CheaporSimple ~= 2
+		""
 }
-#endif ! ifclear _ROODYLIB_H
 
 routine CheaporSimple
 {
@@ -885,75 +849,70 @@ if system(61)
 routine Help_Hints(obj)
 {
 	local i
-#ifset CHEAP
-	if not cheap
-#endif
-		""
+!#ifset CHEAP
+!	if not cheap
+!#endif
+!		""
 	for (; i<=obj.hints_revealed; i++)
 	{
+		if i
+			""
 		run obj.(hint1+i)
-		""
+		print newline
+!		""
 	}
+	""
 	while &obj.(hint1+i) ~= 0 ! i.e., no more topics
 	{
 		Font(BOLD_ON)
 		MenuMessage(&Help_Hints,1) ! "[Press 'H' for another hint, or 'Q' to
 										!	quit]";
 		Font(BOLD_OFF)
-		word[0] = PauseForKey
+		print newline
+		word[0] = PressKey
 !	""
 		if word[0] = 'Q', 'q', ESCAPE_KEY
 		{
-#ifset CHEAP
-			if cheap
-				""
-#endif
+!#ifset CHEAP
+!			if cheap
+!				""
+!#endif
 			return
 		}
+!		if word[0] = 'H', 'h'
+!		{
+!			obj.hints_revealed++
+!			print newline
+!		}
 		if word[0] = 'H', 'h'
 		{
 			obj.hints_revealed++
-			print newline
-		}
-		if word[0] = 'H', 'h'
-		{
-			""
+!			""
 			run obj.(hint1+i++)
+			print newline
 			""
 		}
 	}
-
 	Font(BOLD_ON)
 	MenuMessage(&Help_Hints,2) ! "[No more hints.  Press any
 										!  key...]";
 	Font(BOLD_OFF)
-	PauseForKey
-#ifset CHEAP
-	if cheap
-		""
-#endif
+	PressKey
+!#ifset CHEAP
+!	if cheap
+!		""
+!#endif
 	return
 }
 
-#ifclear _ROODYLIB_H
-routine PauseForKey(p)	! Where p is a prompt, if it ends up being used
+
+routine PressKey
 {
 	local key
 
 	key = system(11) ! READ_KEY
-	if system_status or system(61) ! MINIMAL_INTERFACE
+	if system_status or CheaporSimple ! system(61) ! MINIMAL_INTERFACE
 	{
-		! If READ_KEY isn't available, we have to use the
-		! regular pause-with-cursor (and maybe a prompt)
-		if p
-		{
-			if not system(61) ! MINIMAL_INTERFACE
-			! If we give a prompt, it always goes at the bottom
-				locate (display.screenwidth-20), display.screenheight
-			Font(PROP_ON | ITALIC_ON | BOLD_OFF)
-			print p;
-			Font(DEFAULT_FONT | ITALIC_OFF)
-		}
 		pause
 		key = word[0]
 	}
@@ -969,7 +928,7 @@ routine PauseForKey(p)	! Where p is a prompt, if it ends up being used
 
 	return key
 }
-#endif ! ifclear _ROODYLIB_H
+
 
 routine ShowPage(page,end_o_game)
 {
@@ -981,14 +940,15 @@ routine ShowPage(page,end_o_game)
 
 	if not glktest and system(61)
 		simple_port = true
-	color BGCOLOR, BGCOLOR
-	if not (CheaporSimple = 2 or system(61))
+	if not CheapOrSimple ! (CheaporSimple = 2 or system(61))
 	{
 		window 0
 	}
-	if not CheaporSimple = 2 or simple_port
+	if not (CheaporSimple = 2 or simple_port)
 	{
+		color BGCOLOR, BGCOLOR
 		MenuMessage(&ShowPage,1) ! "[OPENING PAGE]"
+		""
 		cls
 	}
 	do
@@ -998,9 +958,6 @@ routine ShowPage(page,end_o_game)
 			color BGCOLOR, BGCOLOR
 			MenuMessage(&MakeMenu,4) ! "[WINDOW RESIZED]"
 			color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-!			""
-!			cls
-!			locate 1,1
 		}
 		display.needs_repaint = false
 		if not (CheaporSimple = 2 or simple_port)
@@ -1008,7 +965,7 @@ routine ShowPage(page,end_o_game)
 		if CheaporSimple ~= 2
 			MenuMessage(&MakeMenu,3,page.name)
 		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-		if not simple_port
+		if not (CheapOrSimple = 2 or simple_port)
 		{
 			if page.alt_title
 			{
@@ -1017,57 +974,80 @@ routine ShowPage(page,end_o_game)
 			else
 				CenterTitle(page.name)
 		}
-#ifset CHEAP
-		if not cheap
-		{
-#endif
-			if not system(61) ! glk or minimum port
-				locate 1,TopPageMargin
-#ifset CHEAP
-		}
-#endif
-		run page.menu_text
-		if not (CheaporSimple = 2 or simple_port)
+		if not CheapOrSimple
+			locate 1,TopPageMargin
+		elseif CheapOrSimple = 2
 			""
+		run page.menu_text
+		print newline
+		if not (CheapOrSimple = 2 and page.type = hint_option)
+			""
+		if page.type ~= hint_option
+			MenuPause(page)
+
+!		if not (CheaporSimple = 2 or simple_port)
+!			""
 	}
 	while (display.needs_repaint = true  )
-	window 0 ! only to draw a line in simple interpreters
+!	window 0 ! only to draw a line in simple interpreters
 	if not (CheaporSimple = 2 or simple_port)
-		cls
-#ifset CHEAP
-	if not cheap
 	{
-#endif
 		color BGCOLOR, BGCOLOR
 		MenuMessage(&ShowPage,2) ! "[CLOSING PAGE]"
+		""
 #ifset _ROODYLIB_H
-		if not simple_port
-			InitScreen
+		InitScreen
 #else
 		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-		if not system(61)
+		if not CheapOrSimple ! system(61)
 			window 0
-		if not simple_port
-			cls
+		cls
 		if not system(61) ! glk or minimum port
 	!		locate 1, (display.statusline_height + 1)
 			locate 1, display.windowlines
 #endif
-#ifset CHEAP
 	}
-#endif
 	if not end_o_game
 	{
+		if CheapOrSimple = 2
+			""
 		MenuMessage(&ShowPage,3) ! "Returning to the game..."
-#ifset CHEAP
-		if not cheap
-#endif
-			PrintStatusline
-		Font(DEFAULT_FONT) ! just in case
-		DescribePlace(location, true)
-#ifset NEW_FUSE
-		fake_runevents
-#endif
+		AfterMenu
+	}
+}
+
+routine SetPageColors(page)
+{
+	if page.page_text_color or page.page_bg_color
+	{
+		MENU_TEXTCOLOR = page.page_text_color
+		MENU_BGCOLOR = page.page_bg_color
+	}
+	else
+	{
+		MENU_TEXTCOLOR = 0
+		MENU_BGCOLOR = 0
+	}
+	if page.title_color or page.title_bg
+	{
+		MENU_SELECTCOLOR = page.title_color
+		MENU_SELECTBGCOLOR = page.title_bg
+	}
+	else
+	{
+		MENU_SELECTCOLOR = 0
+		MENU_SELECTBGCOLOR = 0
+	}
+	if MENU_TEXTCOLOR=0 and MENU_BGCOLOR=0  ! must not have been set
+	{
+		MENU_TEXTCOLOR = TEXTCOLOR
+		MENU_BGCOLOR = BGCOLOR
+	}
+
+	if MENU_SELECTCOLOR= 0 AND MENU_SELECTBGCOLOR = 0
+	{
+		MENU_SELECTCOLOR = SL_TEXTCOLOR
+		MENU_SELECTBGCOLOR = SL_BGCOLOR
 	}
 }
 
@@ -1091,10 +1071,29 @@ routine MenuMessage(r, num, a, b)
 	!			case 3: print "[\""; menuitem[a];"\"]"
 				case 3
 				{
-					local l
+					local l,i
+!					Font(PROP_OFF)
 					l = string(_temp_string, a)
-					print to (40 - l/2);
-					print a
+					print to (40 - l/2-1);
+					print "+";
+					for (i=1;i<=l ;i++ )
+					{
+						print "-";
+					}
+					print "+"
+					print to (40 - l/2-1);
+					print "|";
+					print a;
+					print "|"
+					print to (40 - l/2 - 1);
+					print "+";
+					for (i=1;i<=l ;i++ )
+					{
+						print "-";
+					}
+					print "+"
+					""
+!					Font(DEFAULT_FONT)
 				}
 				case 4 : "[WINDOW RESIZED - REDRAWING]"
 				case 5 : "[LEAVING MENU]"
@@ -1121,28 +1120,23 @@ routine MenuMessage(r, num, a, b)
 					print "Select the number of your choice or \"Q\" to exit: ";
 				}
 		}
-#ifclear _ROODYLIB_H
-		case &CoolPause
+		case &MenuPause
 		{
 			select num
-				case 1  ! default top "press a key"
-	!				"\_ [PRESS A KEY TO CONTINUE]";
-					print "[PRESS A KEY TO CONTINUE]";
-				case 2  ! default cheapglk "press a key"
+				case 1  ! default cheapglk "press a key"
 !					"\_ [PRESS A KEY TO CONTINUE]";
 					"[PRESS A KEY TO CONTINUE]";
-				case 3  ! default normal "press a key"
+				case 2  ! default normal "press a key"
 !					"\_\B Press a key to continue...\b"
-					"press a key to continue";
+					"\Ipress a key to continue\i";
 		}
-#endif ! ifclear _ROODYLIB_H
 		case &Help_Hints
 		{
 			select num
 				case 1
-					"[Press 'H' for another hint, or 'Q' to quit]" !;
+					"[Press 'H' for another hint, or 'Q' to quit]"; !;
 				case 2
-					"[No more hints.  Press any key...]"
+					print "[No more hints.  Press any key...]";
 		}
 		case &ShowPage
 		{
@@ -1227,7 +1221,11 @@ option hugo_choice "About Hugo"
 		"\BThe joltcountry Hugo forum:\b"
 		Indent
 		"\Ihttp://www.joltcountry.com/phpBB2/viewforum.php?f=8\i\n"
-		CoolPause(1)
+		Indent
+		"Also! If you are a screenwriter or would like to support
+		Kent Tessman in his current endeavors, check out his fantastic
+		program, Fade In Professional Screenwriting Software ®
+		(\Bhttp://www.fadeinpro.com\b)!"
 	}
 }
 
@@ -1266,10 +1264,9 @@ option where_choice "Where To Get More IF"
 		Indent
 		"IF Reviews (\Ihttp://www.ifreviews.org/\i)"
 		Indent
-		"The IF Archive (\Ihttp://ifarchive.org/\i)\n"
+		"The IF Archive (\Ihttp://ifarchive.org/\i)"
 
 !		"\Ihttp://www.joltcountry.com/phpBB2/viewforum.php?f=8\i\n"
-		CoolPause(1)
 	}
 }
 
@@ -1284,29 +1281,31 @@ option special_choice "Special Commands"
 !					depending on your interpreter, include:\n"
 		"\BAdditional commands:\b\n"
 		SpecialCommands
-		CoolPause(1)
 	}
 }
 
 routine SpecialCommands
 {
 	local i, sum
-	for i in init_instructions
+	i = child(init_instructions)
+	while i
 	{
 		if &i.usage_desc
 		{
 			if i.usage_desc
 			{
-				""
+				if i ~= youngest(init_instructions)
+					""
 				sum++
 			}
 		}
+		i = younger(i)
 	}
 	if not sum
 	{
 		Indent
 		"Sorry, it appears that there are no special features supported by your
-		interpreter. Try the official Hugo interpreter or Hugor TODAY!\n"
+		interpreter. Try the official Hugo interpreter or Hugor TODAY!"
 	}
 }
 #endif
@@ -1334,8 +1333,6 @@ option what_is "What is \"interactive fiction\"?"
 		commands (read the other entries in this menu for examples of the kind
 		of commands that are accepted). Hopefully, you are rewarded for your
 		efforts with engaging puzzles and entertaining prose!"
-		""
-		CoolPause(1)
 	}
 }
 
@@ -1366,8 +1363,6 @@ option move_around "Moving around"
 		Later on, you may want to \BGET OFF\b, \BGET UP\b, or \BEXIT\b \Ithat
 		same object\i!"
 
-		""
-		CoolPause(1)
 	}
 }
 
@@ -1393,9 +1388,6 @@ option look_around "Looking around"
 		Indent
 		"Some things can be \BSEARCH\bed or \BLOOK\b \BIN\b, too. In tougher
 		games, you may even need to \BLOOK BEHIND\b or \BLOOK UNDER\b something."
-
-		""
-		CoolPause(1)
 	}
 }
 
@@ -1428,8 +1420,6 @@ option talk_chars "Talking to characters"
 		Indent
 		"In newer games, though, it is common that a simple \"\BTALK TO
 		<CHARACTER>\b\" will handle all of your character-interacting needs."
-		""
-		CoolPause(1)
 	}
 }
 
@@ -1478,8 +1468,6 @@ option manip_objects "Manipulating objects"
 #endif  ! VERBSTUB_G
 		Indent
 		"Hopefully, that gives you some ideas!"
-		""
-		CoolPause(1)
 	}
 }
 
@@ -1530,8 +1518,6 @@ option do_nothing "Doing nothing at all"
 		Indent
 		"Alternatively, you can type \BWAIT <some number>\b to wait a specified
 		number of turns. \BWAIT\b can be shortened to \"\BZ\b\"."
-		""
-		CoolPause(1)
 	}
 }
 
@@ -1586,8 +1572,7 @@ option saving_loading "Saving, restoring, and other \"meta\" commands"
 		"Looking good.\n"
 		Font(BOLD_OFF)
 		Indent
-		"So, how about that?\n"
-		CoolPause(1)
+		"So, how about that?"
 	}
 }
 #endif ! USE_DEFAULT_MENU

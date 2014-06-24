@@ -1645,10 +1645,13 @@ replace DoHugoFix
 		if object = 0 and words = 1
 		{
 			"[Specify a parent object to draw the tree from, or
-			'$ot 0' to draw the entire object tree.]"
-			Font(DEFAULT_FONT)
-			return
+			'$ot 0' to draw the entire object tree, including the children
+			of the \"object classes\" and \"settings\" objects.]\n"
+	!		Font(DEFAULT_FONT)
+	!		return
 		}
+		elseif word[2] = "0"
+			"[Skipped object numbers are replaced objects.]\n"
 
 		if word[2] = "$loc":  object = location
 		print "["; number object; "] ";
@@ -1670,13 +1673,19 @@ replace DoHugoFix
 		list_nest = (object ~= 0)
 		for (i=0; i<objects; i=i+1)
 		{
-			local a
+			local a,b,c
 #ifset _WINDOW_H
 			if i.type = window_class
 				a++
 #endif
+#ifclear NO_FUSES
+			if i.type = fuse and i ~= fuse
+				b++
+			elseif i.type = daemon and i ~= daemon
+				c++
+#endif
 			if i ~= object and parent(i) = object
-				DrawBranch(i,a)
+				DrawBranch(i,a,b,c)
 		}
 	}
 	case "$pc"
@@ -1767,28 +1776,39 @@ replace DoHugoFix
 
 ! Roody's note - added some code so windows and replaced objects
 ! get listed when printing the object tree
-replace DrawBranch(obj,win_count)
+replace DrawBranch(obj,win_count,fuse_count,daemon_count)
 {
 	local i, nextobj
 
+	if (not word[2] or word[2] = "0") and not obj.name and obj ~= 1
+	{
+#ifset _WINDOW_H
+		if obj.type ~= window_class
+#endif
+			return  ! skip replaced objects
+	}
 	for (i=1; i<=list_nest; i++)
 		print ". . ";
 	print "["; number obj; "] ";
 		if obj = 1
 			print "(display)"
+#ifclear NO_FUSES
+		elseif obj.name = "(fuse)" and obj ~= fuse and not list_nest
+			print "(fuse #"; number fuse_count;")"
+		elseif obj.name = "(daemon)" and obj ~= daemon and not list_nest
+			print "(daemon #"; number daemon_count;")"
+#endif
 		elseif obj.name
 			print obj.name
 #ifset _WINDOW_H
-		elseif obj.type = window_class
-			{
-			if obj = window_class
-				print "(window_class)"
-			else
-				print "(untitled window #"; number (win_count - 1) ; ")"
-			}
+		elseif obj.type =  window_class and obj ~= window_class
+			print "(untitled window #"; number win_count ; ")"
 #endif
 		else
 			print "<replaced object>"
+
+	if (not word[2] and (obj = settings, object_classes))
+		return
 
 	for nextobj in obj
 	{
@@ -2457,6 +2477,35 @@ routine PrintHugoFixOptions
 	}
 }
 
+! Roody's note: This next section is to organize the object tree when HugoFix
+! is on to better distinguish between Hugo "guts" and game objects like rooms
+! and their contents.
+
+object object_classes
+{}
+
+routine OrganizeTree
+{
+	local i
+	for (i=1;i<=objects ;i++ )
+	{
+		if parent(i) = nothing
+		{
+			local a
+#ifclear NO_OBJLIB
+				a = female_character
+#endif
+			if i.type = i or i = a
+			{
+				move i to object_classes
+			}
+			elseif i.type = settings
+				move i to settings
+		}
+
+	}
+}
+
 #endif  ! #ifset HUGOFIX
 
 
@@ -2546,14 +2595,14 @@ routine ProcessKey(entry,end_type)
 		}
 		case "restore", "e"
 		{
-		ClearWordArray
-		word[1] = "e"
-		SaveWordSetting("restore")
-		for i in init_instructions
-		{
-			if i.save_info
-				SaveWordSetting(i.name)
-		}
+			ClearWordArray
+			word[1] = "e"
+			SaveWordSetting("restore")
+			for i in init_instructions
+			{
+				if i.save_info
+					SaveWordSetting(i.name)
+			}
 #ifclear NO_XVERBS
 			if Perform(&DoRestore)
 				r = 1
@@ -2646,8 +2695,7 @@ else
 #endif  ! ifclear NO_VERBS
 
 routine SpecialKey(end_type)
-{
-}
+{}
 
 routine SpecialRoutine
 {}
@@ -2760,6 +2808,17 @@ replace FindObject(obj, objloc, recurse)
 		if obj is openable and obj is not open
 			this_parse_rank--
 	}
+!#ifset NEW_EMPTY
+!	case &DoEmpty
+!	{
+!!		if GrandParent(obj) ~= location
+!!			this_parse_rank--
+!		if not parent(obj) or not FindObject(parent(obj),location)
+!		{
+!			return false
+!		}
+!	}
+!#endif
 	case &DoSwitchOn
 	{
 		if obj is switchable and obj is switchedon
@@ -2871,6 +2930,19 @@ replace FindObject(obj, objloc, recurse)
 
 		if not recurse
 		{
+			if not AnythingTokenCheck(obj)
+			{
+#ifset DEBUG
+				if debug_flags & D_FINDOBJECT
+				{
+			print "[FindObject("; obj.name; " ["; number obj; "], "; \
+				objloc.name; " ["; number objloc; "]):  "; \
+				"false (AnythingTokenCheck returned false)]"
+				}
+#endif
+				return false
+			}
+
 			if parser_data[PARSE_RANK_TESTS]++ = 0
 			{
 #ifset DEBUG
@@ -3093,6 +3165,23 @@ replace FindObject(obj, objloc, recurse)
 	}
 #endif
 	return found_result
+}
+
+routine AnythingTokenCheck(obj)
+{
+	local ret = 1
+	select verbroutine
+#ifset NEW_EMPTY
+		case &DoEmpty
+		{
+			if not parent(obj) or not FindObject(parent(obj),location)
+			{
+				ret = 0
+			}
+		}
+#endif
+		case else: return ret
+	return ret
 }
 
 #ifset USE_CHECKHELD
@@ -4524,6 +4613,13 @@ constant NO_EMPTY_T 16 ! new grammar helper token for "no emptying" containers
 class unheld_to_player
 {
 	empty_type NOTHELD_T
+!	parse_rank
+!	{
+!		if GrandParent(self) = location
+!			return 2
+!		else
+!			return -1
+!	}
 	before
 	{
 		object DoEmpty
@@ -4541,7 +4637,10 @@ class unheld_to_player
 
 			if object is not container, platform
 			{
-				ParseError(12, object)
+!				ParseError(12, object)  ! so the message isn't printed twice
+                                    ! (even though this class should never
+                                    ! be applied to a
+                                    ! non-container/platform)
 				return false
 			}
 
@@ -4590,9 +4689,16 @@ class unheld_to_player
 	}
 }
 
-class held_to_player
+class held_to_player "(held_to_player)"
 {
 	empty_type HELD_T
+!	parse_rank
+!	{
+!		if GrandParent(self) = location
+!			return 2
+!		else
+!			return -1
+!	}
 	inherits unheld_to_player
 }
 
@@ -4758,6 +4864,8 @@ inclusion of extensions and what not. PrintStatusLine will call this directly).
 \!
 object printstatuslib
 {
+	in settings
+	type settings
 	find_height
 	{
 		local highest, i, a
@@ -5111,7 +5219,9 @@ routine Init_Calls
 }
 
 object init_instructions
-{}
+{
+	in settings
+}
 
 #ifset HUGOFIX
 ! Roody's note: Made a HugoFix object so that all monitor commands remain
@@ -5192,6 +5302,7 @@ object hugofixlib "hugofixlib"
 					a++
 				}
 #endif
+				OrganizeTree
 				HugoFixInit
 			}
 	}
@@ -5252,7 +5363,9 @@ routine Main_Calls
 }
 
 object main_instructions
-{}
+{
+	in settings
+}
 
 !\ Roody's note: The last_turn_true global used below here is an attempt to let the author know if the previous turn was successful (returned true) or not, as
 that can be useful knowledge in some scenarios.
@@ -5368,11 +5481,9 @@ routine CheapTitle
 routine LinesFromTop
 {
 	if not display.hasgraphics
-	{
 		return display.windowlines
-	}
 	else
-	return 2
+		return 2
 }
 
 !\ IsGlk
@@ -5401,7 +5512,9 @@ replace PreParse
 }
 
 object preparse_instructions
-{}
+{
+	in settings
+}
 
 object parse_redraw
 {
@@ -5441,7 +5554,7 @@ routine RedrawScreen
 			return
 		}
 #endif ! CHEAP
-		"[Detected screen size change; redrawing screen...]"
+		"[Detected screen size change; redrawing screen...]\n"
 		local get_key
 		get_key = system(11) ! READ_KEY
 		if not (system_status or system(61)) ! 61 = MINIMAL_PORT
@@ -6058,7 +6171,7 @@ other behavior (swinging doors, whatever), you might want to change this.
 type "character" (like a regular character), as you can always check for the
 female attribute if you are specifically looking for a female character\!
 
-replace female_character
+replace female_character "(female_character)"
 {
 	inherits character
 	pronouns "she", "her", "her", "herself"
@@ -6171,6 +6284,7 @@ as they all inherit from the self class we have replace about. \!
 
 replace himself "himself"
 {
+	in self_class
 	inherits self_class
 	noun "himself"
 	self_object:	return him_obj
@@ -6183,6 +6297,7 @@ replace himself "himself"
 
 replace herself "herself"
 {
+	in self_class
 	inherits self_class
 	noun "herself"
 	self_object:	return her_obj
@@ -6195,6 +6310,7 @@ replace herself "herself"
 
 replace itself "itself"
 {
+	in self_class
 	inherits self_class
 	noun "itself"
 	self_object:	return it_obj
@@ -6207,6 +6323,7 @@ replace itself "itself"
 
 replace themselves "themselves"
 {
+	in self_class
 	inherits self_class
 	noun "themselves"
 	self_object:	return them_obj
@@ -6921,7 +7038,7 @@ replace PictureinText(resfile, pic, width, height, preserve)
 {
 	local i
 
-	if not display.hasgraphics or system(61):  return false
+	if (not display.hasgraphics) or system(61):  return false
 
 	Font(PROP_OFF)
 
@@ -7359,6 +7476,21 @@ replace DoEmpty
 	run object.after
 	return true
 }
+
+#ifset NEW_EMPTY
+! Since the NEW_EMPTY system gives several new behaviors for emptying,
+! I changed the DoEmpty call to not use Perform so authors can do
+! specific checks for DoEmptyGround
+
+replace DoEmptyGround                   ! to override vehicles, etc.
+{
+	local val
+	xobject = 1
+	val = call &DoEmpty
+!	return Perform(&DoEmpty, object, xobject)
+	return val
+}
+#endif
 
 ! Roody's note: Mostly not changed. Just commented out the part where word[1]
 ! is cleared and made the for loop break earlier. Also tweaked one of the
@@ -8368,10 +8500,10 @@ replace DoRestore
 #ifclear NO_FANCY_STUFF
 	local i
 	for i in init_instructions
-		{
+	{
 		if i.save_info
 			SaveWordSetting(i.name)
-		}
+	}
 #endif
 	if restore
 	{
@@ -8456,8 +8588,8 @@ replace DoUndo
 				local a
 				while after_undo[a] ~= 0
 				{
-					call after_undo[a]
-					after_undo[a++] = 0
+					call after_undo[a++]
+!					after_undo[a++] = 0  ! don't know why I was clearing it
 				}
 			}
 #endif ! USE_AFTER_UNDO
@@ -9627,8 +9759,11 @@ routine NewDescribe(obj)
 !\ Roody's note - If you want your game to not allow verbosity changes, #set
 NO_MODE_CHANGE before Roodylib grammar is included. Then the grammar will call
 the following routine which fakes a "I don't understand that" message.
+
+You can use DoFakeRefuse for any other standard verb you want to fake a refusal,
+too.
 \!
-#ifset NO_MODE_CHANGE
+
 routine DoFakeRefuse
 {
 	print CThe(player); \
@@ -9642,7 +9777,6 @@ routine DoFakeRefuse
 		"\"."
 #endif
 }
-#endif
 
 ! Roody's note - Mike Snyder pointed out that it's not optimal that "kick", by
 ! default, points to DoHit.  Sending the command to its own verb routine makes
@@ -10241,16 +10375,21 @@ routine ClearPronoun(obj)
 
 ! Roody's note: CoolPause is a routine I wrote for newmenu.h, but I find it
 ! so useful that I have decided to add it to Roodylib. Anyhow, it's a routine
-! for doing "press a key" text. Put 0 for the bottom value if you'd like the
+! for doing "press a key" text. Put 1 for the top value if you'd like the
 ! text in the status bar.
 
-! CoolPause(1, "Press a key to continue...")
+! CoolPause("Press a key to continue...",1)
 
-routine CoolPause(bottom,pausetext)
+routine CoolPause(pausetext,top)
 {
-	local a
+	local a, save_title
 	local simple_port
 	simple_port = not (display.windowlines > (display.screenheight + 100)) and system(61)
+	if display.title_caption
+	{
+		save_title = display.title_caption
+		display.title_caption = RLibMessage(&CoolPause,1)
+	}
 	if pausetext
 	{
 		local m
@@ -10262,12 +10401,12 @@ routine CoolPause(bottom,pausetext)
 
 #ifset CHEAP
 	if cheap
-		bottom = true
+		top = false
 #endif
 #ifset NO_STRING_ARRAYS
-	bottom = true
+	top = false
 #endif
-	if not bottom
+	if top
 	{
 #ifclear NO_STRING_ARRAYS
 		Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
@@ -10290,19 +10429,18 @@ routine CoolPause(bottom,pausetext)
 			if a
 				print a;
 			else
-				RLibMessage(&CoolPause,1) ! "PRESS A KEY TO CONTINUE";
+				RLibMessage(&CoolPause,2) ! "PRESS A KEY TO CONTINUE";
 			text to 0
 
 			local alength
 			alength = StringLength(_temp_string)
 			print to (display.linelength/2 - alength/2);
 			StringPrint(_temp_string)
-!			print to display.linelength;
 		}
 		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 		Font(DEFAULT_FONT)
-		PauseForKey
-		""
+		HiddenPause ! PauseForKey
+!		""
 #endif ! ifclear NO_STRING_ARRAYS
 	}
 	else
@@ -10311,30 +10449,29 @@ routine CoolPause(bottom,pausetext)
 #ifset CHEAP
 		if cheap
 		{
-			Indent
-			if a
-				print a
-			else
-				RlibMessage(&CoolPause,2) ! "[PRESS A KEY TO CONTINUE]";
+!			if there is an a value, prints a. otherwise prints default.
+			RlibMessage(&CoolPause,3,a) ! "[PRESS A KEY TO CONTINUE]";
 			pause
-			""
 		}
 		else
 		{
 #endif
-			Indent
-			Font(ITALIC_ON)
-			if a
-				print a;
-			else
-				RlibMessage(&CoolPause,3) ! "press a key to continue";
-			Font(ITALIC_OFF)
-			PauseForKey
+!			if a exists, prints a. otherwise prints default. text is
+!        italicized
+			RlibMessage(&CoolPause,4,a) ! "press a key to continue";
+			HiddenPause
 #ifset CHEAP
 		}
 #endif
 	}
 	Font(DEFAULT_FONT)
+	print newline
+#ifset CHEAP
+	if not cheap
+#endif
+		""
+	if save_title
+		display.title_caption = save_title
 }
 
 !\ Roody's note: GrandParent is like Contains except it returns the
@@ -10473,41 +10610,15 @@ routine MakePlayer(player_object, playerperson)
 	}
 }
 
-! Roody's note: Another pause routine used by CoolPause
-! It allows for a prompt to be printed and returns the value of the keypress
+! Roody's note: This is based on Kent Tessman's PauseForKey routine where
+! it has the option of printing a prompt, but it doesn't have the built-in
+! cursor-locating and font adjustment of the original.
 
-routine PauseForKey(p)	! Where p is a prompt, if it ends up being used
+routine GetKeyPress(p)	! Where p is a prompt, if it ends up being used
 {
-	local key
-
-	key = system(11) ! READ_KEY
-	if system_status or system(61) ! MINIMAL_INTERFACE
-	{
-		! If READ_KEY isn't available, we have to use the
-		! regular pause-with-cursor (and maybe a prompt)
-		if p
-		{
-			if not system(61) ! MINIMAL_INTERFACE
-			! If we give a prompt, it always goes at the bottom
-				locate (display.screenwidth-20), display.screenheight
-			Font(PROP_ON | ITALIC_ON | BOLD_OFF)
-			print p;
-			Font(DEFAULT_FONT | ITALIC_OFF)
-		}
-		pause
-		key = word[0]
-	}
-	else
-	{
-		while true
-		{
-			key = system(11) ! READ_KEY
-			system(32) ! PAUSE_100TH_SECOND
-			if key:break
-		}
-	}
-
-	return key
+	if p
+		print p;
+	return HiddenPause
 }
 
 ! Roody's note: SpeakerCheck just replaces one of the common bits of code
@@ -11050,15 +11161,29 @@ routine RLibMessage(r, num, a, b)
 		case &CoolPause
 		{
 			select num
-				case 1  ! default top "press a key"
+				case 1  ! display.title_caption text
+					return "[PRESS A KEY TO CONTINUE]"
+				case 2  ! default top "press a key"
 	!				"\_ [PRESS A KEY TO CONTINUE]";
 					print "[PRESS A KEY TO CONTINUE]";
-				case 2  ! default cheapglk "press a key"
-!					"\_ [PRESS A KEY TO CONTINUE]";
-					"[PRESS A KEY TO CONTINUE]";
-				case 3  ! default normal "press a key"
-!					"\_\B Press a key to continue...\b"
-					"press a key to continue";
+				case 3  ! default cheapglk "press a key"
+				{
+					Indent
+					if a
+						print a;
+					else
+						print "[PRESS A KEY TO CONTINUE]";
+				}
+				case 4  ! default normal "press a key"
+				{
+					Indent
+					Font(ITALIC_ON)
+					if a
+						print a;
+					else
+						"press a key to continue";
+					Font(ITALIC_OFF)
+				}
 		}
 		case &DescribePlace
 		{

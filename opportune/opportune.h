@@ -69,7 +69,7 @@ global current_opp ! current opportunity
 
 ! A fuse so that each question is only answerable for one turn
 ! opp_window = short for "opportunity window"
-fuse opp_window
+fuse opp_window "(opp_window fuse)"
 {}
 
 event opp_window
@@ -79,25 +79,30 @@ event opp_window
 }
 
 class Question
-{}
+{
+	type question
+}
 
 routine NewQuestion(new_question)
 {
 	current_opp = new_question
-	run new_question.long_desc  ! Prints the question
+	if new_question.name ~= "(Question)"
+		print new_question.name
+	else
+		run new_question.long_desc  ! Prints the question
 	Activate (opp_window, 2) ! Starts the new timer
 }
 
 !\
 ! Optional Yes/No Question Section
 ! If you want to have some in-game Yes/No questions like those in
-! the Infocom games ("Are you sure you're mentally and otherwise prepared to meet up with an egress?"),
-! define questions like the following.
+! the Infocom games ("Are you sure you're mentally and otherwise prepared to
+! meet up with an egress?"), define questions like the following.
 
-! NOTE: >YES and >NO are not supported by verblib.h and verblib.g; they are in the
-! verbstub files. If you don't want to define those verbs yourself, uncomment
-! #set VERBSTUBS at the beginning of your game file (assuming you started out with
-! the Hugo shell).
+! NOTE: >YES and >NO are not supported by verblib.h and verblib.g; they are in
+! the verbstub files. If you don't want to define those verbs yourself,
+! uncomment #set VERBSTUBS at the beginning of your game file (assuming you
+! started out with the Hugo shell).
 
 question egress
 {
@@ -155,7 +160,7 @@ routine NewOpp(opportunity)
 	Activate (opp_window, 2)
 }
 
-class opp
-{}
+!class opp
+!{}
 
 #endif

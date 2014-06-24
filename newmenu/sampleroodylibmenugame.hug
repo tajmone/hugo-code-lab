@@ -7,7 +7,7 @@ constant GAME_TITLE "NEW MENU SAMPLE GAME"
 !#set BETA                ! Compile with the comments-in-transcripts library
                           !   addition (requires "beta.h")
 !#set CHEAP
-!#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
+#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
                           !   available (type $? in game)
 !#set PRECOMPILED_LIBRARY ! Use a precompiled header library (see manual)
 #set VERBSTUBS           ! Include the grammar and routines from verbstubs.g
@@ -34,8 +34,13 @@ constant GAME_TITLE "NEW MENU SAMPLE GAME"
 #set CHEAP
 
 !:: Grammar Library Inclusions (grammar must come first)
-verb "about"
+xverb "about"
 *								DoAbout
+verb "hints"
+	*							DoHints
+xverb "test"
+	*							DoTest
+
 #include "cheaplib.g"
 #include "roodylib.g"
 ! new grammar needs to be defined before the including verblib
@@ -127,13 +132,21 @@ player_character you "you"
 room STARTLOCATION "Start Location"
 {
 	long_desc
+	{
 		"This is the Start Location."
+!		CoolPause
+	}
 }
 
 routine DoAbout
 {
 	MakeMenu
 	return false
+}
+
+routine DoHints
+{
+	MakeMenu(hint_menu)
 }
 
 #ifclear USE_DEFAULT_MENU
@@ -150,9 +163,8 @@ option contact_choice "Contact"
 	in main_menu    ! which menu it is
 	menu_text
 	{
-		""
-		"\_ Feel free to send me your thoughts and suggestions at roody.yogurt@gmail.com! What an amazing discourse we will have!\n"
-		CoolPause(1)
+!		""
+		"\_ Feel free to send me your thoughts and suggestions at roody.yogurt@gmail.com! What an amazing discourse we will have!"
 	}
 	priority 3
 }
@@ -167,9 +179,9 @@ option submenu_choice "Choice Leading To Your Submenu"
 menu_category hint_menu "WHOA IT'S A HINT MENU"
 {
 	title_gap {return main_menu.title_gap}
-	page_text_color LIGHT_RED
-	page_bg_color GREEN
-	title_color LIGHT_BLUE
+	page_text_color BRIGHT_WHITE ! LIGHT_RED
+	page_bg_color BLACK ! GREEN
+	title_color YELLOW ! LIGHT_BLUE
 	title_bg DARK_GRAY
 }
 
@@ -193,3 +205,7 @@ hint_option studiopass_hints "How do I get on the studio lot?"
 	}
 }
 
+routine DoTest
+{
+	ShowPage(contact_choice)
+}

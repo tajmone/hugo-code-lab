@@ -182,8 +182,8 @@ option contact_choice "Contact"
 	menu_text
 	{
 			""
-		"\_ Feel free to send me your thoughts and suggestions at roody.yogurt@gmail.com! What an amazing discourse we will have!\n"
-		CoolPause(1)
+		"\_ Feel free to send me your thoughts and suggestions at roody.yogurt@gmail.com! What an amazing discourse we will have!"
+!		CoolPause(1)
 	}
 }
 
