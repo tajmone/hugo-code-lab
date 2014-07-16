@@ -103,7 +103,21 @@ verb "remove"
 #ifset USE_CHECKHELD
 	* multi                          DoTakeOff_Checkheld
 #else
-	* multi                      DoTakeOff
+	* object                      DoTakeOff
+#endif
+
+verb "take"
+	*                                                       DoVague
+	* "inventory"                                           DoInventory
+#ifset USE_CHECKHELD
+	* "off" multiheld                                       DoTakeOff_Checkheld
+	* multiheld "off"                                       DoTakeOff_Checkheld
+#elseif set AIF
+	* "off" multiheld                                       DoTakeOff
+	* multiheld "off"                                       DoTakeOff
+#else
+	* "off" held                                       DoTakeOff
+	* held "off"                                       DoTakeOff
 #endif
 
 ! Roody's note: Pre-defining "empty" before verblib.g. Alterred to not

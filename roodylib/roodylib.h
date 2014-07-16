@@ -5,11 +5,11 @@
 #ifclear _ROODYLIB_H
 #set _ROODYLIB_H
 
-constant ROODYBANNER "RoodyLib Version 3.7.1"
-constant ROODYVERSION "3.7.1"
+constant ROODYBANNER "RoodyLib Version 3.9"
+constant ROODYVERSION "3.9"
 
 #ifset VERSIONS
-#message "roodylib.h version 3.7.1"
+#message "roodylib.h version 3.9"
 #endif
 
 !----------------------------------------------------------------------------
@@ -401,6 +401,8 @@ replace CalculateHolding(obj)
 	}
 }
 
+! Roody's note: I forget why, but I thought CenterTitle should be available
+! even when menus aren't being used.
 #ifset NO_MENUS
 routine CenterTitle(a, lines,force)
 {
@@ -788,6 +790,25 @@ replace CheckReach(obj)
 	Message(&CheckReach, 3, obj)
 }
 
+! Roody's note: This routine had a mistake where multiple command lines
+! were concerned.
+replace CurrentCommandWords
+{
+	if words = 0
+		return 0
+
+	local i
+	for (i=1; i<words; i++)		! not <=, because of the i++
+	{
+		if word[i] = ""
+		{
+			i--
+			break
+		}
+	}
+	return i
+}
+
 #ifset USE_DARK_ROOM
 ! Roody's note: In games with dark rooms, I didn't like how they are treated
 ! as non-rooms. This code makes dark rooms look more "room-y" when the player
@@ -1058,12 +1079,21 @@ replace ListObjects(thisobj, conjunction)
 		}
 
 		i = 0
-
+		local char_count
 		for obj in thisobj
 		{
 			if children(obj) and obj is not hidden and
 				(obj is not already_listed or
-					thisobj ~= location)
+					thisobj ~= location) and not ClothingCheck(obj)
+			char_count++
+			if char_count = 2
+				break
+		}
+		for obj in thisobj
+		{
+			if children(obj) and obj is not hidden and
+				(obj is not already_listed or
+					thisobj ~= location) and not ClothingCheck(obj)
 			{
 				if FORMAT & TEMPLIST_F
 				{
@@ -1072,6 +1102,15 @@ replace ListObjects(thisobj, conjunction)
 					print newline
 				}
 
+				if count > 1 and obj.type = character
+				{
+					FORMAT = FORMAT | USECHARNAMES_F
+					if char_count = 2
+					{
+						print newline
+						override_indent = false
+					}
+				}
 				templist_count = list_count
 				WhatsIn(obj)
 				list_count = templist_count
@@ -1135,7 +1174,9 @@ replace ObjectIs(obj)
 
 	if not &obj.desc_detail
 	{
+#ifclear LIST_CLOTHES_FIRST
 		if obj is clothing:  n = TestObjectIs(obj, worn, "being worn", n)
+#endif
 		n = TestObjectIs(obj, light, "providing light", n)
 
 		if n:  print ")";
@@ -1209,8 +1250,8 @@ replace WhatsIn(obj)
 			return totallisted
 		}
 
-			if obj.list_contents
-				return totallisted
+		if obj.list_contents
+			return totallisted
 
 		initial_list_nest = list_nest
 
@@ -1334,13 +1375,30 @@ replace SpecialDesc(obj)
 			(a is platform or a is transparent or
 			(a is container and
 			(a is not openable or (a is openable and a is open)))) and
-			not a.list_contents
+			not a.list_contents and not ClothingCheck(a)
 			{
 				WhatsIn(a)
 				list_count = 0
 			}
 		}
 	}
+}
+
+! Roody's note: The following is a routine mainly used by the
+! LIST_CLOTHES_FIRST switch, so that containers and platforms that are
+! clothing don't have their contents listed twice. For that reason, it's
+! called "ClothingCheck" but this routine might be useful to replace
+! anytime you want to split parts of the inventory up different ways.
+
+routine ClothingCheck(a)
+{
+#ifset LIST_CLOTHES_FIRST
+	if (a is worn and a is clothing and verbroutine ~= &ListClothesFirst) or
+		(a is not worn and verbroutine = &ListClothesFirst)
+		return true
+	else
+#endif
+		return false
 }
 
 ! Roody's note: Changed it so word[1] is cleared when leaving the routine
@@ -2493,7 +2551,7 @@ routine OrganizeTree
 		{
 			local a
 #ifclear NO_OBJLIB
-				a = female_character
+				a = female_character ! since female_character is of type character
 #endif
 			if i.type = i or i = a
 			{
@@ -2534,17 +2592,44 @@ replace EndGame(end_type)
 	PrintEndGame(end_type)          ! print appropriate ending message
 
 #ifclear NO_VERBS
-	local r
+	local r,a,n
 
 	Message(&EndGame, 1,end_type)    ! ask to RESTART, RESTORE, (UNDO), or QUIT
 
 	r = -1
 	while r = -1
 	{
-	GetInput
-	r = ProcessKey(word[1], end_type)
-	if r = -1
-			Message(&EndGame, 2,end_type)    ! ask again (more succinctly)
+		GetInput
+		n++
+		r = ProcessKey(word[1], end_type)
+		if r = -1
+		{
+			if display.needs_repaint
+			{
+				"[Detected screen size change; redrawing screen...]\n"
+				local get_key
+				get_key = system(11) ! READ_KEY
+				if not (system_status or system(61)) ! 61 = MINIMAL_PORT
+				{
+					a = 0
+					while a <100
+					{
+						if system(11)
+							break
+						system(32) ! wait 1/100th second
+						a++
+					}
+				}
+				n = 0
+				InitScreen
+				PrintStatusLine
+				display.needs_repaint = false
+			}
+			if word[1] and word[1] = SpecialKey(end_type) or not n
+				Message(&EndGame, 1,end_type)    ! ask to RESTART, RESTORE, (UNDO), or QUIT
+			else
+				Message(&EndGame, 2,end_type)    ! ask again (more succinctly)
+		}
 	}
 
 	return r
@@ -2569,6 +2654,7 @@ routine ProcessKey(entry,end_type)
 	! and trigger SpecialKey (which sometimes equals false)
 		case SpecialKey(end_type)
 		{
+			SaveWordSetting("special")
 			SpecialRoutine
 		}
 #ifclear NO_XVERBS
@@ -2702,21 +2788,64 @@ routine SpecialRoutine
 
 ! Roody's note: Future Boy! replacement by Kent Tessman that omits objects
 ! held by NPCs unless specically mentioned ("GET ALL FROM FRED")
+! Also updated by me to ignore non-clothing items for clothing verbs
 replace ExcludeFromAll(obj)
 {
 	if obj is hidden
 		return true
 
 ! in most cases, disallow >WEAR ALL / REMOVE ALL
-#ifclear USE_CHECKHELD
-	if verbroutine = &DoTakeOff, &DoWear
+	local takeoff_check, wear_check,verb_check
+	if verbroutine =&DoGet and (word[1] = "remove" or
+	(word[1] = "take" and word[3] = "off")) and
+		xobject is living
+#ifclear AIF
+		return true
 #else
-	if verbroutine = &DoTakeOff_Checkheld, &DoWear_Checkheld
+	{
+		verb_check = true
+		if obj is worn
+			takeoff_check = true
+	}
+#endif
+	elseif verbroutine =&DoGet and (obj is clothing,worn)
+		return true
+	elseif verbroutine = &DoGet and parent(obj) = player
+		return true
+#ifclear USE_CHECKHELD
+	if verbroutine = &DoTakeOff
+	{
+		verb_check = true
+		if obj is worn
+			takeoff_check = true
+	}
+	elseif verbroutine = &DoWear
+	{
+		verb_check = true
+		if obj is not worn
+			wear_check = true
+	}
+	if verb_check
+#else
+	if verbroutine = &DoWear_Checkheld
+	{
+		verb_check = true
+		if obj is not worn
+			wear_check = true
+	}
+	elseif verbroutine = &DoTakeOff_Checkheld
+	{
+		verb_check = true
+		if obj is worn
+			takeoff_check = true
+	}
+	if verb_check
 #endif
 	{
 #ifset AIF
 ! Make >WEAR ALL and >REMOVE ALL only acknowledge clothes
-		if obj is not clothing
+		if obj is not clothing or (obj is clothing and
+		not (takeoff_check or wear_check))
 #endif
 			return true
 	}
@@ -2935,9 +3064,9 @@ replace FindObject(obj, objloc, recurse)
 #ifset DEBUG
 				if debug_flags & D_FINDOBJECT
 				{
-			print "[FindObject("; obj.name; " ["; number obj; "], "; \
-				objloc.name; " ["; number objloc; "]):  "; \
-				"false (AnythingTokenCheck returned false)]"
+					print "[FindObject("; obj.name; " ["; number obj; "], "; \
+					objloc.name; " ["; number objloc; "]):  "; \
+					"false (AnythingTokenCheck returned false)]"
 				}
 #endif
 				return false
@@ -3166,6 +3295,13 @@ replace FindObject(obj, objloc, recurse)
 #endif
 	return found_result
 }
+
+! Roody's note: When using things like the Routine Grammar Helper, if
+! your game has multiple items with similar names, disambiguation messages
+! can pop up for items not even in the room (since we're using the anything
+! grammar token). AnythingTokenCheck exists to make sure those objects aren't
+! even considered. You may need to replace and adapt this if you write any
+! code that uses the grammar helper.
 
 routine AnythingTokenCheck(obj)
 {
@@ -3714,6 +3850,21 @@ replace ParseError(errornumber, obj)
 					if word[2] ~= "~all"
 						b = word[2]
 				}
+				case "take"
+				{
+					if word[2] = "off" or word[3] = "off"
+					{
+						"Please specify which item you'd like to take off."
+						return true
+					}
+					else
+						a = word[1]
+				}
+				case "remove","wear"
+				{
+					print "Please specify which item you'd like to "; word[1];"."
+					return true
+				}
 				case "get", "step"
 				{
 					a = word[1]
@@ -3787,29 +3938,66 @@ replace ParseError(errornumber, obj)
 
 		case 9
 		{
-#ifclear AIF
-#ifclear USE_CHECKHELD
-			if verbroutine = &DoWear, &DoTakeOff
-#else
-			if verbroutine = &DoWear_Checkheld, &DoTakeOff_Checkheld
-#endif
+			local v
+!			x = CurrentCommandWords
+			if word[1] = "take" and (word[2] = "off" or word[3] = "off")
 			{
-				print "Be specific about what you'd like ";
-				if player_person ~= 2:  print The(player, true); " ";
-				print "to ";
-				if word[1] = "take"
+				v = " off"
+			}
+#ifclear AIF
+			local c
+			if verbroutine =&DoGet and (word[1] = "remove" or
+				(word[1] = "take" and word[3] = "off")) and
+				xobject is living
+			{
+				verbroutine = &DoTakeOff
+				c = true
+				if xobject = player
 				{
-					print "take off";
+					print "Try \"";parse$;
+					if v
+						print v;
+					" all\" instead."
 				}
 				else
-					print parse$;
+				{
+					print "Please specify which item you'd like to ";parse$;
+					if v
+						print v;
+					"."
+				}
+				return true
+			}
+#ifclear USE_CHECKHELD
+			if (verbroutine = &DoWear, &DoTakeOff) or c
+#else
+			if (verbroutine = &DoWear_Checkheld, &DoTakeOff_Checkheld) or c
+#endif
+			{
+				print "Please specify which item you'd like to ";parse$;
+!				if player_person ~= 2:  print The(player, true); " ";
+!				print "to ";
+				if v
+					print v;
 				"."
 				return true
 			}
 #endif
+			if verbroutine = &DoGet and xobject = player and
+			not (word[1] = "remove" or
+				(word[1] = "take" and word[3] = "off"))
+			{
+				ParseError(6) ! "That didn't make any sense"
+				return true
+			}
 			print "Nothing to ";
 			if verbroutine
-				print parse$; "."
+			{
+				print parse$;
+				if v
+					print v;
+				"."
+			}
 			else:  print "do."
 		}
 
@@ -3837,6 +4025,15 @@ replace ParseError(errornumber, obj)
 			if not ParseError_ObjectIsKnown(obj)
 			{
 				ParseError(10, obj)
+			}
+			elseif parent(obj) ~= 0 and FindObject(parent(obj), location) and
+				parent(obj) is openable and parent(obj) ~= parent(player)
+			{
+				if CheckReach(parent(obj))
+				{
+					print CThe(parent(obj)); \
+					IsOrAre(parent(obj), true); " closed."
+				}
 			}
 			elseif obj is living
 			{
@@ -4225,27 +4422,27 @@ replace ShortDescribe(obj)
 	}
 
 	if (not ListContents)
+	{
+		if verbosity = 1
+			return
+
+		if &obj.short_desc
+			Indent
+
+		local a
+		a = obj.short_desc
+		if a > 1
 		{
-			if verbosity = 1
-				return
-
-			if &obj.short_desc
-				Indent
-
-			local a
-			a = obj.short_desc
-			if a > 1
-			{
-				print a ;
-			}
-			elseif not a
-	!		if &obj.short_desc > 1
-	!		{
-	!			print obj.short_desc ;
-	!		}
-	!		elseif not obj.short_desc
-				return
+			print a ;
 		}
+		elseif not a
+!		if &obj.short_desc > 1
+!		{
+!			print obj.short_desc ;
+!		}
+!		elseif not obj.short_desc
+			return
+	}
 
 !  "ListContents" section
 	obj is already_listed
@@ -4488,7 +4685,7 @@ replace VerbHeldMode(w)
 		return -1			! explicitly notheld
 	}
 	elseif w = "drop", "put", "leave", "place", "throw", "insert",
-		"give", "offer"  , "remove", "wear"
+		"give", "offer" , "wear" ! , "remove"
 	{
 		return 1			! explicitly held
 	}
@@ -5516,6 +5713,32 @@ object preparse_instructions
 	in settings
 }
 
+! Roody's note: setting the AIF switch allows wearing and removing "all"
+! (haha not specifically promoting AIF just thought the switch name would
+!  be funny)
+
+! Anyhow, we use preparse stuff here because "remove"'s grammar is a little
+! unforgiving when it using "all" and held items, so we switch it to "take
+! off", which expects the item to be held.
+#ifset AIF
+object parse_remove
+{
+	in preparse_instructions
+	type settings
+	execute
+	{
+		if word[1] = "remove" and word[2] = "~all"
+		{
+			word[1] = "take"
+			InsertWord(2,1)
+			word[2] = "off"
+			return true
+		}
+		return false
+	}
+}
+#endif
+
 object parse_redraw
 {
 	in preparse_instructions
@@ -5560,7 +5783,7 @@ routine RedrawScreen
 		if not (system_status or system(61)) ! 61 = MINIMAL_PORT
 		{
 			local a
-			while a <200
+			while a <100
 			{
 				if system(11)
 					break
@@ -5568,9 +5791,11 @@ routine RedrawScreen
 				a++
 			}
 		}
-		cls
+!		cls
+!		PrintStatusLine
+!		locate 1, LinesFromTop
+		InitScreen
 		PrintStatusLine
-		locate 1, LinesFromTop
 		print prompt;
 		local i = 1, showfullstops
 		while word[i] ~= ""
@@ -6183,6 +6408,10 @@ replace female_character "(female_character)"
 can be of type "player_character", as I feel authors will often
 want to distinguish playable characters from NPC's \!
 
+#ifset AUTOMATIC_EXAMINE
+attribute examined
+#endif
+
 replace player_character
 {
 	! 'nouns' and 'pronouns' as defined below are the defaults
@@ -6196,6 +6425,10 @@ replace player_character
 	{
 		print "Looking good."
 	}
+#ifset LIST_CLOTHES_FIRST  ! list worn items before listing rest of inventory
+	list_contents
+		return ListClothesFirst(self)
+#endif
 	before
 	{
 		actor
@@ -6231,11 +6464,79 @@ replace player_character
 		}
 #endif
 	}
+#ifset AUTOMATIC_EXAMINE   ! objects are examined automatically when picked
+	react_after             !  up
+	{
+		if verbroutine = &DoLook and object and word[1] ~= "undo"
+		{
+			if object is not examined
+				object is examined
+		}
+		return false
+	}
+#endif
 	capacity 100
 	holding 0
 	is hidden, living, transparent, static
 	is plural       ! because player_person defaults to 2
 }
+
+#ifset LIST_CLOTHES_FIRST
+
+! Roody's note: If this switch is set, inventory listings begin with worn
+! items. To use, set the character's list_contents property to like it is
+! in the player_character object above.
+
+routine ListClothesFirst(char)
+{
+	local x,w,c, list_save, v
+	v = verbroutine
+	verbroutine = &ListClothesFirst
+	list_save = list_count
+	list_count = 0
+	for x in char
+	{
+		if x is worn and x is clothing
+		{
+			w++
+			list_count++
+		}
+		elseif x is not hidden
+		{
+			x is already_listed
+			c++
+		}
+	}
+	if w and c
+		list_nest = 1
+	if list_count
+	{
+		if v ~= &DoInventory
+			Indent
+		if v = &DoLook
+			FORMAT = FORMAT | USECHARNAMES_F
+		RLibMessage(&ListClothesFirst,1,char) ! "You are wearing"
+		ListObjects(char)
+		if FORMAT & USECHARNAMES_F
+			FORMAT = FORMAT & ~USECHARNAMES_F
+		else
+			FORMAT = FORMAT & ~USECHARNAMES_F
+		list_nest = 0
+	}
+	for x in char
+	{
+		if x is not worn or (x is not clothing and x is worn)
+			x is not already_listed
+		else
+		{
+			AddSpecialDesc(x) ! tags worn items as already_listed
+		}
+	}
+	verbroutine = v
+	list_count = list_save - w
+	return (not c and w)
+}
+#endif ! #ifset LIST_CLOTHES_FIRST
 
 ! Roody's note: Fixes a bug where talking to 2 NPCs (by Mike Snyder).
 replace self_class
@@ -7636,13 +7937,46 @@ replace DoExit
 ! the player ALSO is in. Added a quick fix but it's possible DoGet could
 ! be more efficient, as some of the instances will also be checked by
 ! CheckReach.
+! Changed up the order of things being checked, redirected some clothing
+! items to DoTakeOff, added a default "so-and-so is wearing that" message
+! for taking other clothes, added optional Anchorhead-style automatic
+! examining. Code could probably be cleaner but it should work.
 
 replace DoGet
 {
 	local b, p
 
+	if Contains(object, player)
+	{
+		if object is static
+			VMessage(&DoGet, 7)	! "You can't take that."
+		else
+			VMessage(&DoGet, 6)     ! "Not while you're in/on it..."
+		return false
+	}
+	if xobject
+	{
+		while true
+		{
+			if not CheckReach(xobject)
+				return false
+			elseif xobject = object and object ~= player
+			{
+				ParseError(6) ! That doesn't make any sense.
+			}
+			elseif object is clothing,worn ! assumes xobject is living because
+			                               ! both clothing and worn are used
+				return Perform(&DoTakeOff,object)
+			else
+				break
+			return false
+		}
+	}
 	if object in player
+	{
 		VMessage(&DoGet, 1)      ! "You already have that."
+		return true
+	}
 	elseif object = player
 	{
 		VMessage(&DoGet, 2)     ! player trying to get player
@@ -7653,68 +7987,87 @@ replace DoGet
 		VMessage(&DoGet, 3)     ! player trying to get character
 		return false
 	}
-	elseif parent(object) is living and parent(object) is unfriendly
-		VMessage(&DoGet, 4)      ! "X doesn't want to give it to you."
-	elseif (parent(object) is openable, not open) and
-		parent(object) is container and (parent(object) ~= parent(player)):
+
+	p = parent(object)
+
+	if p ~= location
 	{
-		VMessage(&DoGet, 5)     ! "X is closed."
-		return false
-	}
-	elseif Contains(object, player)
-	{
-		if object is static
-			VMessage(&DoGet, 7)	! "You can't take that."
-		else
-			VMessage(&DoGet, 6)     ! "Not while you're in/on it..."
-		return false
-	}
-	else
-	{
-		if not CheckReach(object)
+		if not CheckReach(p)
 			return false
-		elseif object is static
+		if (p is openable, not open) and p is container and p ~= parent(player)
 		{
-			VMessage(&DoGet, 7)      ! "You can't take that."
-			return true
+			VMessage(&DoGet, 5)     ! "X is closed."
+			return false
+		}
+		if p is living
+		{
+			if (object is clothing,worn)
+			{
+				RLibMessage(&DoGet,1,p) ! "so-and-so is wearing that."
+				return true
+			}
+			if p is unfriendly
+			{
+				VMessage(&DoGet, 4)      ! "X doesn't want to give it to you."
+				return true
+			}
+		}
+	}
+	if not CheckReach(object)
+		return false
+	elseif object is static
+	{
+		VMessage(&DoGet, 7)      ! "You can't take that."
+		return true
+	}
+
+	! Because the engine calls location.before
+	if (parent(object)~=location)
+		b = parent(object).before
+
+	if not b
+	{
+		xobject = parent(object)
+
+		if object not in location
+		{
+			CalculateHolding(xobject)
+			p = xobject
 		}
 
-		! Because the engine calls location.before
-		if (parent(object)~=location)
-			b = parent(object).before
-
-		if not b
+		if Acquire(player, object)
 		{
-			xobject = parent(object)
+			object is not hidden
 
-			if object not in location
+			if not object.after
 			{
-				CalculateHolding(xobject)
-				p = xobject
-			}
+				! Again, to avoid duplication or
+				! echoing:
+				!
+				b = 0
+				if xobject ~= location
+					b = xobject.after
 
-			if Acquire(player, object)
-			{
-				object is not hidden
-
-				if not object.after
+				if b = false
 				{
-					! Again, to avoid duplication or
-					! echoing:
-					!
-					b = 0
-					if xobject ~= location
-						b = xobject.after
-
-					if b = false
-						! "Taken."
+#ifset AUTOMATIC_EXAMINE ! unexamined objects are automatically examined
+					if object is not examined and &object.long_desc
+					{
+						! "You pick up the <object>.";
+						RLibMessage(&DoGet,2)
+						print AFTER_PERIOD;
+						Perform(&DoLook, object)
+					}
+					else
+#endif
+					! "Taken."
 						VMessage(&DoGet, 8)
 				}
 			}
-			else
-				! "You're carrying too much to take that."
-				VMessage(&DoGet, 9)
 		}
+		else
+			! "You're carrying too much to take that."
+			VMessage(&DoGet, 9)
 	}
 	return true
 }
@@ -8159,25 +8512,23 @@ replace DoLock
 game to not count LOOK moves (LOOK, EXAMINE <object>, LOOK THROUGH <object)
 as turns.
 
-Added children-listing to all transparent objects. \!
+Added children-listing to all transparent objects.
+
+Added code for smarter children listing. Added Zork-style default
+responses for containers with no long_desc. Added "object = -1" so
+pronouns are set.\!
 
 replace DoLook
 {
-	local i
+	local i,skip_ahead, no_fullstop
 
 	if not light_source
 		VMessage(&DoLook, 1)     ! "It's too dark to see anything."
 	else
 	{
-		if not object.long_desc
-			! "Looks just like you'd expect..."
-			VMessage(&DoLook, 2)
-
-!		if object is living, transparent, not quiet
-		if ( object is transparent or
-		    !(object is living, transparent) or
-			object is platform or
-			(object is container and (object is open or object is not openable))) and
+		if ( object is transparent or !(object is living, transparent) or
+			object is platform or (object is container and
+			(object is open or object is not openable))) and
 			object is not quiet ! and object is not already_listed
 		{
 			for i in object
@@ -8185,16 +8536,45 @@ replace DoLook
 				if i is not hidden
 					break
 			}
-			if i and object ~= player
+		}
+
+		if not object.long_desc
+		{
+#ifclear FORCE_DEFAULT_MESSAGE
+!			if (object is container or object is platform) and
+			if object is container and
+			object is not quiet and object is not living
 			{
-				local tempformat
-				tempformat = FORMAT
-				FORMAT = FORMAT | NOINDENT_F
-				list_nest = 0
-				print ""
-				WhatsIn(object)
-				FORMAT = tempformat
+				if (object is openable,open)
+				{
+					print "It's open.";
+					if not i
+						Indent
+				}
+				Perform(&DoLookIn,object) ! so we get "it is closed." if closed
+				object = -1   ! so pronouns are set to any contents
+				skip_ahead = true
 			}
+			elseif i
+				no_fullstop = true
+			else
+#endif
+				! "Looks just like you'd expect..."
+				VMessage(&DoLook, 2)
+		}
+
+		if i and object ~= player and not skip_ahead
+		{
+			parser_data[PARSER_STATUS] &= ~PRONOUNS_SET
+			local tempformat
+			tempformat = FORMAT
+			FORMAT = FORMAT | NOINDENT_F
+			list_nest = 0
+			if not no_fullstop
+				print ""
+			WhatsIn(object)
+			object = -1
+			FORMAT = tempformat
 		}
 
 		run object.after
@@ -8258,8 +8638,11 @@ replace DoLookIn
 				FORMAT = FORMAT | NOINDENT_F
 				list_nest = 0
 
+				parser_data[PARSER_STATUS] &= ~PRONOUNS_SET
 				if WhatsIn(object) = 0
 					VMessage(&DoLookIn, 2)   ! "It's empty."
+				else
+					object = -1  ! locks in the last listed item pronoun
 
 				FORMAT = tempformat
 			}
@@ -8353,9 +8736,13 @@ replace DoMove
 the only thing in the object being opened, an extra line is printed. This has a
 fix for it although I haven't decided if it's an optimal solution.
 \!
+! Added Zork-style content listing to objects without object.after's
+! and added "object = -1" so new pronoun settings stick
+! and smarter content-listing
+
 replace DoOpen
 {
-	local tempformat
+	local tempformat, light_check, skip_ahead
 
 	if not CheckReach(object):  return false
 
@@ -8372,23 +8759,63 @@ replace DoOpen
 	{
 		object is open
 		object is moved
-		if not object.after
+		local i
+		if not Contains(object,player) and object is not transparent
 		{
-			VMessage(&DoOpen, 4)     ! "Opened."
-
-			FindLight(location)     ! in case the light source
-						! has been revealed
-			if children(object) and object is not quiet and
-			not (children(object) = 1 and child(object) = player)
+			for i in object
 			{
-				print ""
-				tempformat = FORMAT
-				FORMAT = FORMAT | NOINDENT_F
-				list_nest = 0
-				WhatsIn(object)
-				FORMAT = tempformat
+				if i is not hidden
+					break
 			}
 		}
+		if i
+		{
+			if not light_source
+				light_check = FindLight(location)  ! in case the light source
+                                               ! has been revealed
+		}
+		if not object.after
+		{
+			if not i or object is quiet
+			{
+				VMessage(&DoOpen, 4)     ! "Opened."
+			}
+			else
+			{
+				local x
+				list_count = 0
+				for x in object
+				{
+					if x is not hidden
+						list_count++
+				}
+				parser_data[PARSER_STATUS] &= ~PRONOUNS_SET
+				RLibMessage(&DoOpen,1) ! "opening the <blank> reveals"
+				ListObjects(object)
+				object = -1    ! so the last pronoun assigned stays
+				skip_ahead = true
+			}
+		}
+		else
+			skip_ahead = true ! object.after has to list the contents
+			                  ! if it exists
+
+		if i and object is not quiet and
+			not skip_ahead
+		{
+			print ""
+			parser_data[PARSER_STATUS] &= ~PRONOUNS_SET
+			tempformat = FORMAT
+			FORMAT = FORMAT | NOINDENT_F
+			list_nest = 0
+			WhatsIn(object)
+			FORMAT = tempformat
+			object = -1    ! so the last pronoun assigned stays
+		}
+	}
+	if light_check
+	{
+		Perform(&DoLookAround)
 	}
 	return true
 }
@@ -8403,6 +8830,8 @@ replace DoPutIn
 		RlibMessage(&DoPutIn, 1)    ! "Put it in what?"
 	elseif object is clothing and object is worn
 		VMessage(&DoDrop, 1)     ! "Have to take it off first..."
+	elseif xobject = location
+		return Perform(&DoDrop,object)
 	elseif xobject is container, openable, not open
 		VMessage(&DoPutIn, 2)    ! "It's closed."
 	elseif object = xobject
@@ -8558,7 +8987,7 @@ replace DoUndo
 			if i.save_info
 				SaveWordSetting(i.name)
 		}
-		if display.statusline_height > 2
+		if display.statusline_height > 2 and not system(61)
 		{
 			c = SaveWordSetting("statusheight")
 			word[(c+1)] = display.statusline_height
@@ -8573,9 +9002,12 @@ replace DoUndo
 				if CheckWordSetting(i.name)
 					run i.execute
 			}
-			c = CheckWordSetting("statusheight")
-			if c
-				display.statusline_height = word[(c+1)]
+			if not system(61)
+			{
+				c = CheckWordSetting("statusheight")
+				if c
+					display.statusline_height = word[(c+1)]
+			}
 #endif
 			PrintStatusline
 			DescribePlace(location)
@@ -8594,19 +9026,18 @@ replace DoUndo
 			}
 #endif ! USE_AFTER_UNDO
 			last_turn_true = true  ! should also be unnecessary but we'll leave it
-#ifclear NO_FANCY_STUFF
-			ClearWordArray
-#endif
 		!	verbroutine = &DoUndo  ! should be unnecessary?
 		!	return true
-			return
 		}
 		else
 			VMessage(&DoUndo)
+#ifclear NO_FANCY_STUFF
+		ClearWordArray
+#endif
+		return
 	}
 	else
 		VMessage(&DoUndo)
-	ClearWordArray
 }
 
 #endif ! NO_XVERBS
@@ -8636,9 +9067,22 @@ replace DoTakeOff
 		VMessage(&DoTakeOff, 2)          ! "You're not wearing that."
 	else
 	{
-		object is not worn
-		if not object.after
-			VMessage(&DoTakeOff, 3)  ! "You take it off."
+		if parent(object) ~= player
+		{
+			xobject = parent(object)
+			if not CheckReach(xobject)
+				return false
+		}
+		if xobject and not xobject.after
+		{
+			RLibMessage(&DoTakeOff, 1) ! "So-and-so doesn't let you."
+		}
+		else
+		{
+			object is not worn
+			if not object.after
+				VMessage(&DoTakeOff, 3)  ! "You take it off."
+		}
 	}
 	return true
 }
@@ -8967,7 +9411,8 @@ replace Describeplace(place, long)
 		{
 			tempformat = FORMAT
 			FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
-			FORMAT = FORMAT | USECHARNAMES_F
+			if list_count > 1
+				FORMAT = FORMAT | USECHARNAMES_F
 			if FORMAT & LIST_F
 			{
 				FORMAT = FORMAT & ~LIST_F       ! clear it
@@ -9405,7 +9850,8 @@ routine CharsWithoutDescs(place,for_reals)
 			list_count = count
 			tempformat = FORMAT
 			FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
-			FORMAT = FORMAT | USECHARNAMES_F
+			if list_count > 1
+				FORMAT = FORMAT | USECHARNAMES_F
 			if (FORMAT & LIST_F)
 			{
 				FORMAT = FORMAT & ~LIST_F       ! clear it
@@ -9914,6 +10360,11 @@ routine DoTakeOff_CheckHeld		! See above re: ImplicitTakeForDrop
 	{
 		! So >REMOVE LOCK will >TAKE LOCK, etc.
 		return Perform(&DoGet, object)
+	}
+	if (word[1] = "remove" and word[2] ~= "~all") or
+	(word[1] = "take" and not (word[2] = "~all" or word[3] = "~all"))
+	{
+		return Perform(&DoTakeOff, object)
 	}
 	return CallVerbCheckHeld(&DoTakeOff, location)
 }
@@ -11318,6 +11769,21 @@ routine RLibMessage(r, num, a, b)
 		}
 #endif
 #endif
+		case &DoGet
+		{
+			select num
+				case 1
+				{
+					print CThe(a); IsorAre(a,1); " wearing"; \
+					MatchPlural(object,"that","those");"."
+				}
+				case 2 ! called with the AUTOMATIC_EXAMINE switch
+				{
+					print capital player.name; " pick";
+					MatchSubject(player)
+					print " up "; The(object);".";
+				}
+		}
 		case &DoGo
 		{
 			select num
@@ -11381,6 +11847,11 @@ routine RLibMessage(r, num, a, b)
 					print player.pronoun #4; "."
 				}
 		}
+		case &DoOpen
+		{
+			select num
+				case 1: print "Opening "; The(object);" reveals";
+		}
 		case &DoPushDirTo
 		{
         ! Let's set default DoPushDirTo messages
@@ -11430,6 +11901,12 @@ routine RLibMessage(r, num, a, b)
 				}
 				case 2 : "Why do that?"
 		}
+		case &DoTakeOff
+		{
+			select num
+				case 1
+					print CThe(xobject); " doesn't let "; player.pronoun #2;"."
+		}
 		case &DoUnlock
 		{
 			select num
@@ -11462,6 +11939,21 @@ routine RLibMessage(r, num, a, b)
 		! text suggested by Rob O'Hara. Approved by Ben Parrish.
 			print CThe(player); " mumble"; MatchSubject(player);
 			" an ancient reference to an archaic game. Nothing happens."
+		}
+#endif
+#ifset LIST_CLOTHES_FIRST
+		case &ListClothesFirst
+		{
+			select num
+				case 1
+				{  ! "You are wearing";
+					if FORMAT & USECHARNAMES_F
+						print capital a.name;
+					else
+						print capital a.pronoun;
+						IsOrAre(a,1)
+						print " wearing";
+				}
 		}
 #endif
 		case &ListObjects

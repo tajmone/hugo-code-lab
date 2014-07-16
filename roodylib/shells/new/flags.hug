@@ -71,13 +71,26 @@
 !* Roodylib flags
 !----------------------------------------------------------------------------
 
+#ifset USE_ROODYLIB
+!#set AIF                      ! allow >REMOVE ALL and >WEAR ALL ("aif" is a
+                               ! joke, I swear!)
 !#set AMERICAN_ENGLISH         ! Use American English quotation mark rules
+!#set AUTOMATIC_EXAMINE        ! un-examined items are examined when picked up
+!#set FORCE_DEFAULT_MESSAGE    ! Containers with no long_desc get old descs
+!#set LIST_CLOTHES_FIRST       ! List worn items first in inventories and
+                               ! examining characters (see documentation)
+!#set NEW_DESC                 ! like short_desc but doesn't demand a new line
+                               ! after being printed (experimental)
 !#set NEW_EMPTY                ! Use more robust DoEmpty behavior (see roodylib)
 !#set NEW_FUSE                 ! Experimental new fuse definition
 !#set NEW_STYLE_PRONOUNS       ! Use New Style Pronouns (see roodylib comments)
 !#set NO_AUTOMATIC_DOOR_UNLOCK ! Don't allow automatic door-unlocking
+!#set NO_FANCY_STUFF           ! Don't use word-array game-state saving or
+                               ! new preparse system, or new PrintStatusLine
+!#set NO_LOOK_TURNS            ! commands like "look" and "examine" don't take
+                               ! up a turn
 !#set NO_MODE_CHANGE           ! Disallow >BRIEF, SUPERBRIEF, and VERBOSE
-!#set NO_SORTING               ! Don't use sorting routines
+!#set NO_SORTING               ! Don't use array and property sorting routines
 !#set NO_VERSION               ! Don't use Roodylib's DoVersion routine
 !#set NO_XYZZY                 ! Don't use >XYZZY response code
 !#set OBJECT_SORTING           ! Use object-sorting system
@@ -99,3 +112,4 @@
 !#set USE_STRING_MANIPULATION  ! Include string manipulation routines
 !#set USE_SUPERCONTAINER       ! Use supercontainer object class
 !#set USE_TIME_SYSTEM          ! Enable time-tracking routines
+#endif ! ifset USE_ROODYLIB

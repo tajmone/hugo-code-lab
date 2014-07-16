@@ -527,13 +527,15 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 					""
 #ifset _ROODYLIB_H
 					InitScreen
+					if CheckWordSetting("special")
+						end_o_game = true
 #else
 					color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 					if not CheapOrSimple ! system(61)
 						window 0
 					cls
-					if not system(61) ! glk or minimum port
-						locate 1, display.windowlines !(display.statusline_height + 1)
+!					if not system(61) ! glk or minimum port
+!						locate 1, display.windowlines !(display.statusline_height + 1)
 #endif
 				}
 				if not end_o_game
@@ -543,6 +545,8 @@ routine MakeMenu(menu_title,end_o_game, recurse)
 					MenuMessage(&MakeMenu,6) ! "Returning to the game..."
 					AfterMenu
 				}
+				else
+					PrintStatusLine
 			}
 			return
 		}
@@ -997,14 +1001,15 @@ routine ShowPage(page,end_o_game)
 		""
 #ifset _ROODYLIB_H
 		InitScreen
+		if CheckWordSetting("special")
+			end_o_game = true
 #else
 		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 		if not CheapOrSimple ! system(61)
 			window 0
 		cls
-		if not system(61) ! glk or minimum port
-	!		locate 1, (display.statusline_height + 1)
-			locate 1, display.windowlines
+!		if not system(61) ! glk or minimum port
+!			locate 1, display.windowlines
 #endif
 	}
 	if not end_o_game
@@ -1014,6 +1019,8 @@ routine ShowPage(page,end_o_game)
 		MenuMessage(&ShowPage,3) ! "Returning to the game..."
 		AfterMenu
 	}
+	else
+		PrintStatusLine
 }
 
 routine SetPageColors(page)

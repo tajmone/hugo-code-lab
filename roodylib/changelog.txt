@@ -1,8 +1,46 @@
 Ok, I've started a changelog!
+
+IMPORTANT - Changed behavior from hugolib! Here is a list of things that may possibly break old game source
+* vehicles have new code for leaving and trying to move (check out roodylibdocs.odt)
+* more reach checking for interactions with objects that have parents
+
+
 v 3.9 - * updated ObjectIs and TestObjectIs
 	* small fix to CheapTitle
 	* updated CenterTitle to work with the NO_MENUS flag
 	* changed "skip" local variable in DoGo to "skip_ahead" since newcango.h already uses a SKIP constant
+	* added AUTOMATIC_EXAMINE and LIST_CLOTHES_FIRST switches
+	* updated code so characters have holding properties automatically and a substitute global is used for containers without them so authors aren't punished for not remembering to supply them
+	* added extra supercontainer code to CheckReach, FindObject, DoExit, and DescribePlace
+	* fixed mistake in CurrentCommandWords
+	* moved ListObject's constant printing (IS_WORD, etc) to RLibMessage for easy replacing
+	* better character name listing if there are multiple characters in the room
+	* changed HugoFix's object tree listing (now skips replaced objects by default)
+	* added "HugoFixInit" menu for setting debugging flags before the game has begun
+	* added screen-size-change code to EndGame
+	* various changes to grammar, ExcludeFromAll, verbheldmode, ParseError, and DoGet for better handling with clothes
+	* added AnythingTokenCheck to FindObject for more control when using anything token grammar
+	* changed "rank" local variable in PrintScore to "temp_rank"
+	* defined settings objects as type "settings"
+	* moved some PrintStatusLine printed text to RLibMessage for easier changing
+	* HugoFix, when on, tries to organize the object tree at the start of the game for easier reading
+	* lowered the time it takes to redraw the screen in ReDrawScreen and now uses InitScreen for consistancy
+	* Changed some of the supercontainer object code itself
+	* updated PrepWord to accept multiple words
+	* gave names to replaced class objects
+	* isolated DoEmptyGround from DoEmpty so authors can write before routines specific to it
+	* changed order of checks in DoGet, more parent(object) code and clothing stuff
+	* created an AssignPronounsToRoom (defaults to returning true) that allows you to disallow pronouns being set to that room (when it returns false). also created an exit_type global that keeps track of the type of exit used to get to the room (direction, door, non_door_portal). I think my thinking was that if the player types >GO RED DOOR, it'd be jarring when they see the pronoun set to something else. maybe this idea sucks. I don't know!
+	* cleaned up children listing for certain instances in DoLook
+	* added "object = -1" to things like DoLookIn, DoLook, and DoOpen so pronouns get set nicely
+	* added an Infocom-esque "Continuing on." message to canceled DoQuits, DoRestarts, and such.
+	* added a default response for trying to remove clothes from other characters. "so-and-so doesn't let you."
+	* CoolPause now defaults to bottom-oriented text. put a value in the second routine argument to put it in the statuse line.
+	* changed "PauseForKey" to "GetKeyPress". basically just prints and optional prompt and uses HiddenPause to get a keypress value.
+	* created a SpeakerCheck routine so you don't have to put too much speaker-checking code in your main routine. if your game needs to do speaker-checking beyond "speaker in location", you can replace SpeakerCheck to fit your needs.
+	* Added Kent Tessman's Future Boy! "time.hug" routines to Roodylib. set #USE_TIME_SYSTEM to use.
+	* added #FORCE_DEFAULT_MESSAGES flag to keep old DoLook behavior
+	* added a default auto-generated DoVersion routine for quick set-up. set #NO_VERSION to turn off.
 v 3.8 - * Added an "elevated" attribute for vehicles enterable platforms (such as ladders)
           where "down" is an accepted exit direction
 	* Changed the vehicle class again (check out roodylibdocs.odt)
