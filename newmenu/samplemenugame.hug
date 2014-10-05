@@ -72,9 +72,6 @@ routine init
 #ifclear _ROODYLIB_H
 	CenterTitle("Hugo Interactive Fiction")
 	cls
-#ifset USE_DEFAULT_MENU
-		  MenuInit
-#endif
 #else
 	SimpleIntro
 	InitScreen

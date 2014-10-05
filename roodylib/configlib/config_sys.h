@@ -22,7 +22,7 @@
 #endif
 
 #ifset VERSIONS
-#message "Config_sys.h Version 1.1"
+#message "Config_sys.h Version 1.2"
 #endif
 
 #ifclear _ROODYLIB_H
@@ -30,7 +30,7 @@
 #endif
 
 #ifset USE_EXTENSION_CREDITING
-version_obj config_sys_version "Config_Sys.h Version 1.1"
+version_obj config_sys_version "Config_Sys.h Version 1.2"
 {
 	in included_extensions
 	desc_detail
@@ -74,7 +74,7 @@ object configlib
 		{
 !			if not system(61)  ! useless check, some minimum ports support
 !			{                  ! configuration file saving/reading
-				LoadSettings
+				LoadConfigSettings
 				if not CheckWordSetting("restore")
 				{
 					for i in config_instructions
@@ -82,7 +82,7 @@ object configlib
 						if i.setup
 							InitScreen
 					}
-					if not SaveSettings
+					if not SaveConfigSettings
 						Config_Error
 				}
 !			}
@@ -99,7 +99,7 @@ objects \!
 object config_instructions
 {}
 
-routine LoadSettings
+routine LoadConfigSettings
 {
 	readfile DATA_FILE
 	{
@@ -133,7 +133,7 @@ routine LoadSettings
 	}
 }
 
-routine SaveSettings
+routine SaveConfigSettings
 {
 	if not child(config_instructions)
 		return

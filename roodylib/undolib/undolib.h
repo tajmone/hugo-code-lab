@@ -48,14 +48,14 @@
 \!
 
 #ifset VERSIONS
-#message "UNDOlib.h Version .5"
+#message "UNDOlib.h Version .6"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj undolib_version "UNDOlib Version .5"
+version_obj undolib_version "UNDOlib Version .6"
 {
 	in included_extensions
 	desc_detail
@@ -71,167 +71,13 @@ version_obj undolib_version "UNDOlib Version .5"
 first."
 #endif
 
-#if undefined UNDO_WORDS
-constant UNDO_WORDS 1
-#endif
-
-
-array undocommands[UNDO_WORDS]
-
+#ifset CONTINUE_UNDO
 global continue_undo
-global show_commands
-
-property enough_elements alias e_to
-
-object undolib "undolib"
-{
-	in init_instructions
-	enough_elements 0
-	save_info
-	{
-		local a
-		if show_commands and self.enough_elements and
-			undocommands[0] ~= 1 and not continue_undo and
-			undocommands[0] ~= "" and word[1] = "undo"
-		{
-				Font(ITALIC_ON)
-				print "[ undoing ";
-					Font(BOLD_ON|ITALIC_OFF)
-					print ">";
-					while undocommands[a] ~= ""
-					{
-						if undocommands[a] = "~and"
-							print ",";
-						else
-							print undocommands[a];
-						if undocommands[] = a + 1
-							break
-						elseif undocommands[++a] ~= "~and"
-							print " ";
-					}
-					Font(BOLD_OFF|ITALIC_ON)
-	!			}
-				print "]"
-				Font(DEFAULT_FONT|ITALIC_OFF)
-		}
-		if continue_undo
-			return true
-		else
-			return false
-	}
-	execute
-	{
-		if not CheckWordSetting("undo") or continue_undo
-			return false
-		ContinueUndoSuccess ! "UNDOing several turns..."
-	}
-}
-
 
 event
 {
-	if not show_commands
-		return
-	if undocommands[] >= words
-		SaveCommand
-	else
-		undolib.enough_elements = 0
-}
-
-routine SaveCommand
-{
-	local a, b
-	a = 1
-	while word[a] ~= "" and a <= undocommands[]
-	{
-		undocommands[b++] = word[a++]
-	}
-	if a < undocommands[]
-		undocommands[b] = ""
-	undolib.enough_elements = true
-}
-
-object undo_preparse
-{
-	in preparse_instructions
-	execute
-	{
-		if not last_turn_true
-		{
-			ClearArray(undocommands)
-		}
-	}
-}
-
-
-replace DoUndo
-{
-	if not UNDO_OFF
-	{
-		if display.statusline_height > 2
-		{
-			local c
-			c = display.statusline_height
-			while word[c] ~= ""
-			{
-				c++
-			}
-			word[c] = "statusheight"
-		}
-		SaveWordSetting("undo")
-		local i
-		for i in init_instructions
-		{
-			if i.save_info
-				SaveWordSetting(i.name)
-		}
-		if undo
-		{
-			while continue_undo
-			{
-				if not undo
-				{
-					ContinueUndoFailure ! "Unable to UNDO enough."
-					break
-				}
-			}
-			for i in init_instructions
-			{
-				if CheckWordSetting(i.name)
-					run i.execute
-			}
-			c = 1
-			while c < 11
-			{
-				if word[c] = "statusheight"
-					break
-				c++
-			}
-			if c ~= 11
-				display.statusline_height = c
-			PrintStatusline
-			DescribePlace(location)
-#ifset USE_AFTER_UNDO
-			if after_undo[0]
-			{
-				local a
-				while after_undo[a] ~= 0
-				{
-					call after_undo[a]
-					after_undo[a++] = 0
-				}
-			}
-#endif ! USE_AFTER_UNDO
-			last_turn_true = true
-			ClearWordArray
-			return true
-		}
-		else
-			CannotUndo ! "Unable to undo."
-	}
-	else
-		CannotUndo ! "Unable to undo."
-	ClearWordArray
+	if continue_undo
+		continue_undo++
 }
 
 routine ContinueUndoSuccess
@@ -243,40 +89,161 @@ routine ContinueUndoFailure
 {
 	"Unable to UNDO enough."
 }
+#endif  ! CONTINUE_UNDO
 
-routine CannotUndo
+#ifset SHOW_COMMANDS
+
+#if undefined UNDO_WORDS
+constant UNDO_WORDS 10
+#endif
+
+array undocommands[UNDO_WORDS]
+
+property enough_elements alias e_to
+
+routine CopyArray(arr1,arr2,p,s)
 {
-	"Unable to undo."
+	local i = 1, n
+	if p
+		i = p
+	if s
+		n = s
+	while array arr1[i] ~= ""
+	{
+		if array arr1[i] = -1
+			return false
+		array arr2[n++] = array arr1[i++]
+	}
+	array arr2[n] = ""
+	return true
 }
 
-replace ProcessKey(entry,end_type)
+routine SaveCommand(arr)
 {
-	local r
+	local a, b
+	a = 1
+	if array arr[] < CurrentCommandWords or verbroutine = &SpeakTo
+	{
+		undolib.enough_elements = false
+		return
+	}
+	while word[a] ~= "" and a <= undocommands[]
+	{
+		if word[a] = -1
+		{
+			undolib.enough_elements = false
+			return
+		}
+		undocommands[b++] = word[a++]
+	}
+	if a < undocommands[]
+		undocommands[b] = ""
+	undolib.enough_elements = true
+}
 
-	if not entry
-		return -1
+routine PrintCommand(arr,n)
+{
+	while array arr[n] ~= "" and n < array arr[]
+	{
+		select array arr[n]
+			case "~and"
+			{
+				if array arr[(n-1)] = "~and"
+					print " and";
+				else
+					print ",";
+			}
+			case "~all"
+				print "all";
+			case "~except" : print "except";
+			case "~oops" : print "oops";  ! hopefully never called
+			case "~any" : print "any";
+			case else
+				print array arr[n];
+		if array arr[n+1] ~= "~and", ""
+			print " ";
+		n++
+	}
+}
+#endif ! SHOW_COMMANDS
 
-	select entry
-		case "restart", "r" : r = &DoRestart
-		case "restore", "e" : r = &DoRestore
-#ifclear NO_UNDO
-		case "undo", "u" : r = &DoUndo
+object undolib "undolib"
+{
+	in init_instructions
+#ifset SHOW_COMMANDS
+	enough_elements 0
 #endif
-		case SpecialKey(end_type) : r = &SpecialRoutine
-		case "quit", "q"! : r = &DoQuit
+	save_info
+	{
+		if ContinueUndoCheck
+			return true
+#ifset SHOW_COMMANDS
+		if self.enough_elements and
+			undocommands[0] ~= 1 and
+			undocommands[0] ~= "" and word[1] = "undo"
+		{
+			Font(ITALIC_ON)
+			print "[ undoing ";
+			Font(BOLD_ON|ITALIC_OFF)
+			print ">";
+			PrintCommand(undocommands)
+			Font(BOLD_OFF|ITALIC_ON)
+			print "]"
+			Font(DEFAULT_FONT|ITALIC_OFF)
+			return true
+		}
+#endif
+			return false
+	}
+	execute
+	{
+		if word[LAST_TURN] ~= "undo" ! or continue_undo
+			return false
+#ifset CONTINUE_UNDO
+		if continue_undo
+			ContinueUndoSuccess ! "UNDOing several turns..."
+#endif
+		SaveWordSetting("continue")
+	}
+}
+
+routine ContinueUndoCheck
+{
+#ifset CONTINUE_UNDO
+	if continue_undo > 2
+		return true
+#endif
+	return false
+}
+
+replace UndoResponse
+{
+	local fail
+#ifset CONTINUE_UNDO
+	while continue_undo
+	{
+		if not undo
 		{
 			""
-			RLibMessage(&DoQuit,1,end_type) ! "Thanks for playing!"
-			""
-			display.title_caption = PRESS_ANY_KEY
-			if not system(61) ! if not simple port simple port
-			{
-				print PRESS_ANY_KEY;
-				HiddenPause
-			}
-			quit
+			ContinueUndoFailure ! "Unable to UNDO enough."
+			fail = true
+			break
 		}
-	if not (call r) : return -1 : else : return true
+	}
+#endif
+	PrintStatusLine
+	if not fail
+	{
+		local a
+		a = CheckWordSetting("continue")
+		if not a
+			RlibMessage(&UndoResponse,1) ! "Undone."
+		else
+			word[a] = ""
+	}
+	if FORMAT & DESCFORM_I
+		""
+	DescribePlace
 }
 
 #endif

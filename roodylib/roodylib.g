@@ -3,13 +3,17 @@
 !::
 
 #ifset VERSIONS
-#message "roodylib.g Grammar Version 2.4"
+#message "roodylib.g Grammar Version 3.9"
 #endif
 
 #ifclear _ROODYLIB_G
 #set _ROODYLIB_G
 
 #ifclear NO_VERBS
+! just used by CHARACTER, AGAIN
+verb "g" "again"
+	*             DoAgain
+
 !\ Roody's note: Redefined "go" so that the somewhat ingrammatical phrase
 "go off of <object>" can be supported. We'll see if this causes any problems.
 Also, "go to" now directs to DoGo, not DoEnter.   \!
@@ -197,6 +201,19 @@ of the multi-line ones into single lines. \!
 xverb "brief", "normal","superbrief", "short","verbose","long"
 	*                                                 	DoFakeRefuse
 #endif  ! NO_MODE_CHANGE
+
+#ifset CHEAP
+xverb "cheap", "cheapmode"
+	*								DoCheapToggle
+xverb "cheap", "cheapmode"
+	* "help"						DoCheapHelp
+xverb "cheap", "cheapmode"
+	* "on"/"off"				DoCheapOnOff
+xverb "cheap", "cheapmode"
+	* "mode" "on"/"off"		DoCheapOnOff
+xverb "cheap","simple"
+	* "menu"/"menus"		DoCheapOnOff
+#endif ! ifset CHEAP
 
 xverb "restore", "resume"
 	*                                                       DoRestore

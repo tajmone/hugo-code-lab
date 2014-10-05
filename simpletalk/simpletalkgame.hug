@@ -14,7 +14,7 @@
                           !   and verbstubs.h, respectively
 !#set USE_ATTACHABLES     ! Use attachable items
 !#set USE_PLURAL_OBJECTS  ! Use plural objects
-!#set USE_ROODYLIB
+#set USE_ROODYLIB
 !#set USE_VEHICLES        ! Use vehicle objects
 !#set VERSIONS            ! Print library versions at compile time
 
@@ -33,13 +33,14 @@ constant RELEASE "1.3"         ! Game release number
 constant AFTER_PERIOD " "     ! include one space after full stops (as opposed to two)
 
 !:: Grammar Library Inclusions (grammar must come first)
+
+verb "phototalk","t"
+	* xobject                           DoTalk
+	* "to" xobject					 DoTalk
+
 #ifset USE_ROODYLIB
 #include "roodylib.g"
 #endif
-
-verb "phototalk"
-	* xobject                           DoTalk
-	* "to" xobject					 DoTalk
 
 ! new grammar needs to be defined before the including verblib
 #include "verblib.g"        ! Verb Library

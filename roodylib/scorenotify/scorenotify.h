@@ -25,18 +25,19 @@ version_obj scorenotify_version "ScoreNotify Version 1.2"
 }
 #endif
 
-property score_notify alias d_to
+attribute notify_on alias special
+!property score_notify alias d_to
 
 property points alias e_to
 
 object scorenotifylib "scorenotify"
 {
-	score_notify true
 	points 0
+	is notify_on
 #ifset _ROODYLIB_H
 	save_info
 	{
-		select self.score_notify
+		select self is notify_on
 			case 0 : SaveWordSetting("score_off")
 			case 1 : SaveWordSetting("score_on")
 		return true
@@ -50,8 +51,8 @@ object scorenotifylib "scorenotify"
 		if a
 		{
 			select word[(a-1)]
-				case "score_off": self.score_notify = 0
-				case "score_on": self.score_notify = 1
+				case "score_off": self is not notify_on
+				case "score_on": self is notify_on
 		}
 	}
 #endif
@@ -87,7 +88,7 @@ global NOTIFY_FONT = BOLD_ON
 
 routine ScoreNotify
 {
-	if scorenotifylib.points and scorenotifylib.score_notify
+	if scorenotifylib.points and scorenotifylib is notify_on
 	{
 		""
 		Font(NOTIFY_FONT)
@@ -101,9 +102,8 @@ routine ScoreNotify
 	}
 	if scorenotifylib.points
 	{
-		score += scorenotifylib.points   ! add the points to the score
 		scorenotifylib.points = 0    ! reset the point counter
-		PrintStatusLine  ! update status bar with new score
+!		PrintStatusLine  ! update status bar with new score
 	}
 
 }
@@ -119,16 +119,18 @@ routine LastScore(a)
 routine AddScore(a)
 {
 	scorenotifylib.points += a
+	score += scorenotifylib.points   ! add the points to the score
 }
 
 routine SubtractScore(a)
 {
 	scorenotifylib.points -= a
+	score += scorenotifylib.points   ! add the points to the score
 }
 
 routine DoScoreNotifyOnOff
 {
-	if scorenotifylib.score_notify
+	if scorenotifylib is notify_on
 		Perform(&DoScoreNotifyOff)
 	else
 		Perform(&DoScoreNotifyOn)
@@ -136,27 +138,27 @@ routine DoScoreNotifyOnOff
 
 routine DoScoreNotifyOn
 {
-	if scorenotifylib.score_notify
+	if scorenotifylib is notify_on
 		ScoreNotificationMessage(&DoScoreNotifyOn, 1 )
 		! "[Score notification already on.]"
 	else
 	{
 		ScoreNotificationMessage(&DoScoreNotifyOn, 2 )
 		! "[Score notification on.]"
-		scorenotifylib.score_notify = 1
+		scorenotifylib is notify_on
 	}
 }
 
 routine DoScoreNotifyOff
 {
-	if not scorenotifylib.score_notify
+	if scorenotifylib is not notify_on
 		ScoreNotificationMessage(&DoScoreNotifyOff, 1 )
 		! "[Score notification already off.]"
 	else
 	{
 		ScoreNotificationMessage(&DoScoreNotifyOff, 2 )
 		! "[Score notification off.]"
-		scorenotifylib.score_notify = 0
+		scorenotifylib is not notify_on
 	}
 }
 

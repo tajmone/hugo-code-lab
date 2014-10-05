@@ -28,9 +28,9 @@ Also, add the following:
 
 !----------------------------------------------------------------------------
 ! Set up the quip declarations
-array qflag[100]  			! where 100 = total number of quips in the game
-array quips[5] = 20, 20, 20, 20, 20 	! 5 = number of characters, the 20s are
-													! how many quips are alloted to each
+array qflag[100]          ! where 100 = total number of quips in the game
+array quips[5] = 20, 20, 20, 20, 20 ! 5 = number of characters, the 20s are
+                                    ! how many quips are alloted to each
 
 Change that as needed to fit your code.
 
@@ -111,7 +111,7 @@ routine SetUpQuips
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj simpletalk_version "SimpleTalk Version 2.3"
+version_obj simpletalk_version "SimpleTalk Version 2.4"
 {
 	in included_extensions
 	desc_detail
@@ -176,9 +176,6 @@ replace DoTalk
 						}
 							case 2: break
 				}
-!				if not loop_talk or (loop_talk and ((not MoreTalk or not b) or
-!				event_flag))
-!					break
 				""
 			}
 #ifclear NO_SCRIPTS
@@ -406,8 +403,6 @@ routine PhotoMessage(r, num, a, b)
 					else
 						"Select a choice>> ";
 				}
-!\ If you want a custom prompt, make sure &GetDial case 1 is
-	{ return "prompt text" } , not just "prompt text"     \!
 		}
 		case &DoTalk
 		{
@@ -419,7 +414,6 @@ routine PhotoMessage(r, num, a, b)
 					if player_person ~= 2:  print The(player, true); " ";
 					print "to keep talking (YES or NO)? ";
 				}
-	!			"\nDo you want to keep talking? ";
 				case 3: 	print "Just talking to "; art(object); " will suffice."
 		}
 }

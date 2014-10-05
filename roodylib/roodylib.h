@@ -13,6 +13,17 @@ constant ROODYVERSION "3.9"
 #endif
 
 !----------------------------------------------------------------------------
+!* SOME RANDOM CONSTANTS
+!----------------------------------------------------------------------------
+
+constant LAST_TURN 31 ! used by SaveSettings/LoadSettings to keep track of
+                      ! what xverb is being used
+#ifset CHEAP
+constant CHEAP_ON 1
+constant CHEAP_MENUS 2
+#endif
+
+!----------------------------------------------------------------------------
 !* LIBRARY EXTENSION CREDITING SYSTEM
 !----------------------------------------------------------------------------
 routine Roodylib_Credits
@@ -78,9 +89,32 @@ routine ListExtensions
 	FORMAT = saveformat
 }
 #endif ! USE_EXTENSION_CREDITING
+
 !----------------------------------------------------------------------------
 !* REPLACED HUGOLIB.H ROUTINES
 !----------------------------------------------------------------------------
+
+! Roody's note: Replaced AnyVerb because the player's PreParse check can
+! confuse it. Also added an argument for disallowing SpeakTo since that has
+! been coming up a lot for me.
+!
+! Also made it ignore MovePlayer since AnyVerb exists mainly for the handling
+! of commands.
+
+replace AnyVerb(obj,disallow_speakto)
+{
+#ifclear NO_XVERBS
+	if parser_data[VERB_IS_XVERB]
+		return false
+#endif
+	if (verbroutine = &PreParse,&MovePlayer) or
+	(verbroutine = &SpeakTo and disallow_speakto)
+		return false
+	elseif obj
+		return obj
+	else
+		return true
+}
 
 #ifclear NO_FUSES
 #ifset NEW_FUSE
@@ -154,10 +188,7 @@ routine fake_runevents
 	local i
 	for i in fuse_bucket
 	{
-!		if i.type = fuse
-!		{
-			run i.fake_event
-!		}
+		run i.fake_event
 	}
 }
 #endif  ! NEW_FUSE
@@ -404,70 +435,36 @@ replace CalculateHolding(obj)
 ! Roody's note: I forget why, but I thought CenterTitle should be available
 ! even when menus aren't being used.
 #ifset NO_MENUS
+! if CenterTitle doesn't exist, I declare it here just to be replaced
 routine CenterTitle(a, lines,force)
-{
-#ifset CHEAP
-	if cheap and not force
-		return
-#endif !ifset CHEAP
-	local l, g, s ! (simple port)
-	g = IsGlk
-	s = (not g and system(61))
-	if not lines:  lines = 1
+{}
+#endif
 
-	Font(BOLD_OFF|ITALIC_OFF|UNDERLINE_OFF|PROP_OFF)
-	l = string(_temp_string, a)
-	if not system(61)
-		window 0                        ! remove previous window
-
-	if g
-	{
-		window 1  ! draw an empty window so glk terps determine screenwidth properly
-		{}
-	}
-
-	while (l + 1) > (display.linelength * lines)
-	{
-		lines++
-	}
-
-	window lines
-	{
-		if not s ! not non-glk simple port
-		{
-			color SL_TEXTCOLOR, SL_BGCOLOR
-			cls
-			locate 1,1
-		}
-		print "\_";
-		if (l+1) < display.linelength
-			print to (display.linelength/2 - l/2);
-
-		print a;
-	}
-	color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-	FONT(DEFAULT_FONT)
-	if not s and not force ! non-glk simple port
-		cls
-	if not system(61) and not force
-		locate 1, LinesFromTop
-}
-#else
 replace CenterTitle(a, lines,force)
 {
 #ifset CHEAP
 	if cheap and not force
 		return
 #endif !ifset CHEAP
-	local l, g, s ! (simple port)
+	local l, g, b, c, s ! (simple port)
 	g = IsGlk
 	s = (not g and system(61))
 	if not lines:  lines = 1
 
-	if MENU_SELECTCOLOR = 0 and MENU_SELECTBGCOLOR = 0  ! not set yet
+	if not (SL_TEXTCOLOR or SL_BGCOLOR)
 	{
-		MENU_SELECTCOLOR = SL_TEXTCOLOR
-		MENU_SELECTBGCOLOR = SL_BGCOLOR
+		b = DEF_SL_BACKGROUND
+		c = DEF_SL_FOREGROUND
+	}
+	elseif (MENU_SELECTCOLOR or MENU_SELECTBGCOLOR)
+	{
+		b = MENU_SELECTBGCOLOR
+		c = MENU_SELECTCOLOR
+	}
+	else
+	{
+		b = SL_BGCOLOR
+		c = SL_TEXTCOLOR
 	}
 
 	Font(BOLD_OFF|ITALIC_OFF|UNDERLINE_OFF|PROP_OFF)
@@ -490,7 +487,7 @@ replace CenterTitle(a, lines,force)
 	{
 		if not s ! not non-glk simple port
 		{
-			color MENU_SELECTCOLOR, MENU_SELECTBGCOLOR
+			color c,b
 			cls
 			locate 1,1
 		}
@@ -507,7 +504,6 @@ replace CenterTitle(a, lines,force)
 	if not system(61) and not force
 		locate 1, LinesFromTop
 }
-#endif
 
 #ifclear NO_SCRIPTS
 
@@ -792,22 +788,24 @@ replace CheckReach(obj)
 
 ! Roody's note: This routine had a mistake where multiple command lines
 ! were concerned.
-replace CurrentCommandWords
-{
-	if words = 0
-		return 0
-
-	local i
-	for (i=1; i<words; i++)		! not <=, because of the i++
-	{
-		if word[i] = ""
-		{
-			i--
-			break
-		}
-	}
-	return i
-}
+!replace CurrentCommandWords
+!{
+!	if words = 0
+!		return 0
+!
+!	local i
+!	for (i=1; i<words; i++)		! not <=, because of the i++
+!	{
+!		if word[i] = "","then" ! "then" in case this is called during Parse
+!		{
+!			if word[(i-1)] = "~and"
+!				i--
+!			i--
+!			break
+!		}
+!	}
+!	return i
+!}
 
 #ifset USE_DARK_ROOM
 ! Roody's note: In games with dark rooms, I didn't like how they are treated
@@ -1414,6 +1412,8 @@ replace YesorNo
 			case "no", "n": ret = true
 			case else
 			{
+!				if FORMAT & DESCFORM_I and not count
+!					""
 				if ++count < 10
 					RlibMessage(&YesorNo, 1)	! ask "yes" or "no"
 				else
@@ -2381,9 +2381,7 @@ routine DoVerbTest
 		if c
 		{
 			if d
-			{
 				""
-			}
 			print t
 			Perform(c, object)
 			d = c
@@ -2407,7 +2405,7 @@ routine HugoFixInit
 		simple_port = true
 
 !	Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
-
+!	color TEXTCOLOR, BGCOLOR, INPUTCOLOR
    while true
 	{
 		local ret
@@ -2422,7 +2420,6 @@ routine HugoFixInit
 			if display.needs_repaint
 				display.needs_repaint = false
 			print newline
-!			Font(PROP_OFF|BOLD_OFF|ITALIC_OFF)
 			Indent
 			print "\_  ";
 			Font(BOLD_ON)
@@ -2434,11 +2431,8 @@ routine HugoFixInit
 			"Select the number of your choice (or ESCAPE to begin the game)"
 			key = HiddenPause
 			local numb
-	!		pause
 			if key = 'q','Q', '0', ESCAPE_KEY, ' ', ENTER_KEY
 			{
-!				printchar key
-!				"\n"
 				ret = 0
 				break
 			}
@@ -2446,8 +2440,6 @@ routine HugoFixInit
 				numb = key - 48
 			if numb and (numb > 0) and (numb < 6)
 			{
-!				printchar key ! word[0]
-!				"\n"
 				ret = numb
 				break
 			}
@@ -2472,9 +2464,7 @@ routine HugoFixInit
 				cls
 		}
 		else
-		{
 			break
-		}
 	}
 }
 
@@ -2575,26 +2565,27 @@ routine OrganizeTree
   As such, I added SpecialKey and SpecialRoutine routines, so people can do
   this:
 
-  replace SpecialKey(end_type)
+replace SpecialKey(end_type)
 {
    if (end_type = 3) and (word[1] = "s","special")
-      {
-      return word[1]
-      }
+	{
+		return word[1]
+	}
    else
-      return false
+		return false
 }
  \!
+
 replace EndGame(end_type)
 {
-
+	verbroutine = &EndGame     ! something for newmenu and such to check for
 	PrintStatusLine                 ! update one last time
 	PrintEndGame(end_type)          ! print appropriate ending message
 
 #ifclear NO_VERBS
-	local r,a,n
+	local r,n
 
-	Message(&EndGame, 1,end_type)    ! ask to RESTART, RESTORE, (UNDO), or QUIT
+	RlibMessage(&EndGame, 1,end_type)    ! ask to RESTART, RESTORE, (UNDO), or QUIT
 
 	r = -1
 	while r = -1
@@ -2606,41 +2597,23 @@ replace EndGame(end_type)
 		{
 			if display.needs_repaint
 			{
-				"[Detected screen size change; redrawing screen...]\n"
-				local get_key
-				get_key = system(11) ! READ_KEY
-				if not (system_status or system(61)) ! 61 = MINIMAL_PORT
-				{
-					a = 0
-					while a <100
-					{
-						if system(11)
-							break
-						system(32) ! wait 1/100th second
-						a++
-					}
-				}
+				RepaintScreen
 				n = 0
-				InitScreen
-				PrintStatusLine
-				display.needs_repaint = false
 			}
 			if word[1] and word[1] = SpecialKey(end_type) or not n
-				Message(&EndGame, 1,end_type)    ! ask to RESTART, RESTORE, (UNDO), or QUIT
+				RlibMessage(&EndGame, 1,end_type)    ! ask to RESTART, RESTORE, (UNDO), or QUIT
 			else
-				Message(&EndGame, 2,end_type)    ! ask again (more succinctly)
+				RlibMessage(&EndGame, 2,end_type)    ! ask again (more succinctly)
 		}
 	}
-
 	return r
-
 #else   ! i.e., #elseif set NO_VERBS
-
+	QuitGameText
 	return 0;
 #endif
 }
 
-#ifclear NO_VERBS
+!#ifclear NO_VERBS
 ! Roody's note: Companion routine to EndGame
 routine ProcessKey(entry,end_type)
 {
@@ -2653,138 +2626,86 @@ routine ProcessKey(entry,end_type)
 	! we do SpecialKey first since options like RESTART can clear word[1]
 	! and trigger SpecialKey (which sometimes equals false)
 		case SpecialKey(end_type)
-		{
-			SaveWordSetting("special")
 			SpecialRoutine
-		}
-#ifclear NO_XVERBS
 		case "restart", "r"
 		{
-			ClearWordArray
-			word[1] = "r"
-			SaveWordSetting("restart")
-			for i in init_instructions
-			{
-				if i.save_info
-					SaveWordSetting(i.name)
-			}
-			if restart
-			{
-				r = 1
-				PrintStatusline
-			}
 #ifclear NO_XVERBS
-			else
-				Message(&DoRestart, 2)   ! failed
-#endif
-
-		}
-		case "restore", "e"
-		{
-			ClearWordArray
-			word[1] = "e"
-			SaveWordSetting("restore")
-			for i in init_instructions
-			{
-				if i.save_info
-					SaveWordSetting(i.name)
-			}
-#ifclear NO_XVERBS
-			if Perform(&DoRestore)
+			word[1] = "yes"
+			if (call &DoRestart)
 				r = 1
 #else
-			if restore
-			{
+			if restart
 				r = 1
-				for i in init_instructions
-				{
-					if CheckWordSetting(i.name)
-						run i.execute
-				}
-				VMessage(&DoRestore, 1)         ! "Restored."
-				PrintStatusline
-				DescribePlace(location,true)
-#ifset NEW_FUSE
-				fake_runevents
-#endif
-			}
-			else:  VMessage(&DoRestore, 2)           ! "Unable to restore."
 #endif
 		}
+! "restore" is not possible in a game without xverbs as the player
+! shouldn't have been able to save
+#ifclear NO_XVERBS
+		case "restore", "e"
+		{
+			word[1] = "e"
+			if (call &DoRestore)
+				r = 1
+		}
+#endif
 #ifclear NO_UNDO
 		case "undo", "u"
 		{
-			if not UNDO_OFF
-			{
-				SaveWordSetting("undo")
-				for i in init_instructions
-				{
-					if i.save_info
-						SaveWordSetting(i.name)
-				}
-
-				if undo
-				{
-					r = true
-					for i in init_instructions
-					{
-						if CheckWordSetting(i.name)
-							run i.execute
-					}
-					PrintStatusLine
-					DescribePlace(location)
-#ifset NEW_FUSE
-					fake_runevents
-#endif
-#ifset USE_AFTER_UNDO
-					if after_undo[0]
-					{
-						local a
-						while after_undo[a] ~= 0
-						{
-							call after_undo[a]
-							after_undo[a++] = 0
-						}
-					}
-#endif
-					last_turn_true = true
-				}
 #ifclear NO_XVERBS
-				else
-					Message(&DoUndo, 1)  ! failed
-			}
-			else
-				Message(&DoUndo, 1)
+			if (call &DoUndo)
+				r = 1
 #else
-			}
-else
-	VMessage(&DoUndo)
+				""
+				if not UNDO_OFF
+				{
+					if undo
+					{
+						r = true
+						UndoResponse
+					}
+					else
+						RLibMessage(&UndoResponse,2)  ! "Unable to UNDO."
+				}
+				else
+					RLibMessage(&UndoResponse,2) ! "UNDO is not currently allowed."
 #endif
 		}
 #endif
 		case "quit", "q"
 		{
-			""
-			RLibMessage(&DoQuit,1) ! "Thanks for playing!"
-			""
-			display.title_caption = PRESS_ANY_KEY
-			if not system(61) ! if not simple port simple port
-			{
-				print PRESS_ANY_KEY;
-				HiddenPause
-			}
+			QuitGameText
 			r = 0
 		}
-#endif ! ifclear NO_XVERBS
    return r
 }
-#endif  ! ifclear NO_VERBS
+!#endif  ! ifclear NO_VERBS
 
-routine SpecialKey(end_type)
-{}
+routine SpecialKey(end_type)   ! this routine exists to be replaced
+{
+	! example SpecialKey code
+!	if (word[1] = "amusing","a") and end_type = 1
+!		return word[1] ! so it matches the select word[1] text
+!	return 0
+}
 
-routine SpecialRoutine
-{}
+routine SpecialRoutine  ! also exists to be replace
+{
+!	ShowPage(amusing_list) ! example of using newmenu's ShowPage routine
+}
+
+! Roody's note: A routine for text to be used both by Endgame and DoQuit.
+routine QuitGameText
+{
+	""
+	RLibMessage(&QuitGameText) ! "Thanks for playing!"
+	""
+	display.title_caption = PRESS_ANY_KEY
+	if not system(61) ! if not simple port simple port
+	{
+		print PRESS_ANY_KEY;
+		HiddenPause
+	}
+}
 
 ! Roody's note: Future Boy! replacement by Kent Tessman that omits objects
 ! held by NPCs unless specically mentioned ("GET ALL FROM FRED")
@@ -3305,19 +3226,17 @@ replace FindObject(obj, objloc, recurse)
 
 routine AnythingTokenCheck(obj)
 {
-	local ret = 1
+	local failed_check
 	select verbroutine
 #ifset NEW_EMPTY
 		case &DoEmpty
 		{
 			if not parent(obj) or not FindObject(parent(obj),location)
-			{
-				ret = 0
-			}
+				failed_check = true
 		}
 #endif
-		case else: return ret
-	return ret
+		case else: failed_check = false
+	return (not failed_check) ! return false if it failed
 }
 
 #ifset USE_CHECKHELD
@@ -3447,14 +3366,16 @@ replace MovePlayer(loc, silent, ignore)
 
 	if not ret
 	{
-		if not FindLight(location)
+		local lig
+		lig = FindLight(location)
+		if not lig
 			DarkWarning
 		elseif not silent
 		{
 			DescribePlace(location)
 			if not event_flag
 				event_flag = true
-			location is visited
+!			location is visited
 		}
 
 	! Check if there's an after routine for MovePlayer in the new
@@ -3466,6 +3387,8 @@ replace MovePlayer(loc, silent, ignore)
 			if not ret
 				ret = location.after
 		}
+		if lig and not silent
+			location is visited
 	}
 	verbroutine = v
 	object = obj
@@ -3483,6 +3406,24 @@ replace NewParseError(errornumber,obj)
 	select errornumber
 		case else : return false
 	return true
+}
+
+global NEW_PARSE
+global last_actor
+global last_verbroutine
+global previous_object
+global previous_xobject
+
+enumerate start = 1, step *2
+{
+	NEWPARSE_F                  ! just something to check for to make sure
+	                            ! the author hasn't replaced the
+                               ! the player character object and broken code
+	WORDSSAVED_F             ! locks in the first actor, object, etc. called
+	MULTISPEAKTOAGAIN_F     ! continued speakto commands *not* in a multicommand
+	PARSE$_F                ! was there a parse$ string in last command?
+	MULTICOMMAND_F          ! is a multiple-command line being interpreted?
+	LAST_TURN_TRUE_F
 }
 
 ! Roody's note: Took out Parse's HugoFix code, as it tries to print parse$
@@ -3528,6 +3469,10 @@ replace Parse
 	if word[1] = "~oops"
 		return
 
+	previous_object = object
+	previous_xobject = xobject
+	last_verbroutine = verbroutine
+
 	! Allow the player object to override the parsing cycle completely
 	temp_verb = verbroutine
 	temp_obj = object
@@ -3548,31 +3493,72 @@ replace Parse
 	object = temp_obj
 	xobject = temp_xobj
 
+	if PreParseInstructions: reparse = true
+	if PreParse:  reparse = true            ! easily replaceable routine
+
 ! The following, devised by Jim Newland, checks to see if the player
 ! input refers to an unnecessary item of scenery (for example) which is
 ! nonetheless mentioned in the location description.
 
-	for (a=2; a<=words and word[a]~="" and word[a]~="then"; a++)
+	local command_words
+	command_words = CurrentCommandWords
+	for (a=2; a<=command_words; a++)
 	{
-		if Inlist(player, extra_scenery, word[a])
+		local error
+		if word[a] = "then"	! Allow for "then..." and "and then..."
+		{
+			! end of this command
+			word[a] = "."
+			command_words = a - 1
+			if word[(a-1)] = "~and"
+			{
+				DeleteWord(a-1)
+				command_words--
+			}
+			reparse = true
+			break
+		}
+		elseif Inlist(player, extra_scenery, word[a])
 		{
 			Message(&Parse, 1)
-			word[1] = ""            ! force ParseError(0)
-			words = 0
-			customerror_flag = true
-			return true
+			error = true
 		}
 		elseif Inlist(location, extra_scenery, word[a])
 		{
 			Message(&Parse, 1)
+			error = true
+		}
+		elseif word[a] = "~and"
+		{
+			if XVerbCheck(word[a+1])
+			{
+				local safe
+				if last_actor and last_actor ~= player and
+					(word[(a+1)] = "g" or word[a+1] = "again")
+				{
+					if ObjWord(word[(a-1)], last_actor) = noun
+						safe = true
+				}
+				if not safe
+				{
+					ParseError(6) ! "That doesn't make any sense."
+					error = true
+				}
+			}
+			elseif word[a+1] ~= "then"
+			{
+				if OrdersPreParse((a+1),command_words)
+					reparse = true
+			}
+		}
+		if error
+		{
 			word[1] = ""            ! force ParseError(0)
 			words = 0
 			customerror_flag = true
 			return true
 		}
 	}
-
-	if PreParse:  reparse = true            ! easily replaceable routine
 
 	! Last player-specified object
 	if object > 0 and object < objects and last_object ~= -1
@@ -3590,27 +3576,64 @@ replace Parse
 	move them_object to parent(them_obj)
 #endif
 
+!  MultiCommandInstructions returns false if a character is given an xverb
+!  command
+	local x
+	x = MultiCommandInstructions(command_words)
+	if not x
+	{
+		ParseError(6) ! "That doesn't make any sense."
+		word[1] = ""            ! force ParseError(0)
+		words = 0
+		customerror_flag = true
+		return true
+	}
+	elseif x = 2
+		reparse = true
+
 	! To repeat last command
 	if (word[1] = "again" or word[1] = "g") and word[2] = ""
 	{
-		for (a=1; a<=oldword[0]; a++)
-			word[a] = oldword[a]
-		words = oldword[0]
+		if (NEW_PARSE & PARSE$_F)
+		{
+			NEW_PARSE = NEW_PARSE & ~PARSE$_F
+			RLibMessage(&Parse,1) ! "You will need to type that in again."
+			word[1] = ""            ! force ParseError(0)
+			words = 0
+			customerror_flag = true
+			return true
+		}
+		RestoreFromOldWord
+		if (NEW_PARSE & MULTISPEAKTOAGAIN_F) ! speakto_again
+		{
+			if word[1]
+			{
+				InsertWord(1,2)
+				word[2] = "~and"
+			}
+			word[1] = last_actor.noun
+			NEW_PARSE = NEW_PARSE & ~MULTISPEAKTOAGAIN_F ! clear it
+		}
+		elseif not oldword[0]
+			words = 0
+
 		reparse = true
 		JumpToEnd = true
 	}
-	if  not JumpToEnd
+#ifclear NO_UNDO
+	if not (word[1] = "undo" and word[2] = "")
+#endif
+		NEW_PARSE = (NEW_PARSE & ~WORDSSAVED_F) & ~PARSE$_F
+	if not JumpToEnd
 	{
-		local count
 #ifclear NEW_STYLE_PRONOUNS
-		local n, number_pronouns
+		local count,n, number_pronouns
 #endif
 
-		for (count=2; count<=words and word[count]~=""; count++)
+#ifclear NEW_STYLE_PRONOUNS
+		for (count=2; count<=command_words and word[count]~=""; count++)
 		{
 			select word[count]
-
-#ifclear NEW_STYLE_PRONOUNS
 				! Rename pronouns to appropriate objects
 				case "it", "them", "him", "her"
 				{
@@ -3647,21 +3670,9 @@ replace Parse
 						}
 					}
 				}
-#endif
 
-				! Allow for "then..." and "and then..."
-				case "then"
-				{
-					! end of this command
-					word[count] = "."
-					if word[count-1] = "~and"
-						DeleteWord(count-1)
-					reparse = true
-					break
-				}
 		}
 
-#ifclear NEW_STYLE_PRONOUNS
 		if number_pronouns = 2 and replace_pronoun[0] = replace_pronoun[1]
 			number_pronouns--
 
@@ -3670,24 +3681,6 @@ replace Parse
 			PrintReplacedPronouns(number_pronouns)
 		}
 #endif
-
-	! Reword imperatives given as "Tell Bob to do something" as "Bob, do
-	! something" so that the engine automatically reroutes them to SpeakTo
-
-		if word[1] = "tell", "order", "instruct", "ask", "command"
-		{
-			for (a=1; a<=words and word[a]~=""; a++)
-			{
-				if word[a] = "to"
-				{
-					!DeleteWord(a)   ! "to"
-					word[a] = "~and"
-					DeleteWord(1)   ! "tell", "order", etc.
-					reparse = true
-					break
-				}
-			}
-		}
 
 #ifset USE_PLURAL_OBJECTS
 		if ParsePluralObjects:  reparse = true
@@ -3698,20 +3691,16 @@ replace Parse
 #endif
 
 		! Store current command for future reference
-		local ow
-		for (a=1; a<=words and a<MAX_WORDS; a++)
-		{
-			if word[a] = "g", "again"
-			{
-				if word[a+1] = ""
-					a++
-			}
-			else
-				oldword[++ow] = word[a]
-		}
-		oldword[a] = ""
-		oldword[0] = ow
-
+		! old word storage code. now replaced in Perform
+!		if not (NEW_PARSE & NEWPARSE_F) and not XVerbCheck(word[1])
+!		{
+! 			local ow = 1 ! oldword variable
+!			a = 1
+!			while word[a] ~= ""
+!				oldword[ow++] = word[a++]
+!			oldword[ow--] = ""
+!			oldword[0] = ow
+!		}
 	}
 	! old "LeaveParse area
 
@@ -3734,6 +3723,127 @@ replace Parse
 	}
 #endif
 	return reparse
+}
+
+! Roody's note: Since commands to characters get sent straight to SpeakTo
+! when parsed, XverbCheck exists to try to stop xverb commands from
+! successfully being passed on. A game with additional xverbs may need to
+! replace this and add more.
+
+routine XverbCheck(a)
+{
+	local r
+	select a
+		case "load","restore","resume","save","suspend","script", \
+		"transcript","transcription","quit","q","restart","brief", \
+		"normal","superbrief","verbose","short","record","playback", \
+		"long","display","wide","tall","score","undo", "g", "again", \
+		"version", "about", "hints", "hint"
+			r=1
+
+	return r
+}
+
+routine MultiCommandInstructions(n) ! n is CurrentCommandWords
+{
+	if not NEW_PARSE = NEW_PARSE & LAST_TURN_TRUE_F ! last_turn_true
+		NEW_PARSE = NEW_PARSE & ~MULTICOMMAND_F !multicommand = false
+	NEW_PARSE = NEW_PARSE & ~LAST_TURN_TRUE_F
+	if not (NEW_PARSE & MULTICOMMAND_F) ! multicommand
+	{
+		if n < words
+			NEW_PARSE = NEW_PARSE | MULTICOMMAND_F ! multicommand = true
+		if last_actor and last_actor ~= player and (word[1] = "g","again") and
+			not (NEW_PARSE & MULTICOMMAND_F) ! multicommand
+			NEW_PARSE = NEW_PARSE | MULTISPEAKTOAGAIN_F
+	}
+	else
+	{
+#ifset SHOW_COMMANDS
+		FONT(ITALIC_ON)
+		PrintCurrentCommand(true)
+		FONT(ITALIC_OFF)
+		""
+#endif
+		if n = words
+			NEW_PARSE = NEW_PARSE & ~MULTICOMMAND_F ! multicommand = false
+		if last_actor and last_actor ~= player
+		{
+			if XverbCheck(word[1]) and not (word[1] = "g","again")
+			{
+				NEW_PARSE = NEW_PARSE & ~MULTICOMMAND_F ! multicommand = false
+				return false
+			}
+			elseif OrdersPreparse(1,n)
+				return 2
+		}
+	}
+	return true
+}
+
+! Roody's note: OrdersPreParse is a PreParse routine for orders given to
+! characters.  Since the beginning of the relevant command often won't be
+! word[1], b and e are the numbers of the word array where the command
+! begins and ends, respectively.
+
+routine OrdersPreParse(b,e)
+{}
+
+routine PrintCurrentCommand(print_prompt)
+{
+	if print_prompt
+		print prompt;
+	if last_actor and last_actor ~= player and (word[1] ~= "g","again")
+		print last_actor.name;", ";
+	local a = 1
+	while not (word[a] = "" or word[a] = "then")
+	{
+		select word[a]
+			case -1 : print "\"";parse$;"\"";
+			case "~all" : print "all";
+			case "~any" : print "any";
+			case "~and"
+			{
+				if word[a-1] = "~and"
+					print " and";
+				else
+					print ",";
+			}
+			case "~except" : print "except";
+			case "~oops" : print "oops";  ! hopefully never called
+			case else : print word[a];
+		if word[a+1] ~= "","~and"
+			print " ";
+		a++
+	}
+}
+
+routine SaveOldWord
+{
+	local ow = 1, a
+	a = 1
+	if word[1] = "g", "again"
+		return
+	while word[a] ~= ""
+	{
+		if word[a] = -1
+			NEW_PARSE = NEW_PARSE | PARSE$_F
+		oldword[ow++] = word[a++]
+	}
+	oldword[(ow+1)]= ""
+	oldword[ow--] = ""
+	oldword[0] = ow
+}
+
+routine RestoreFromOldWord
+{
+	local ow = 1,a
+	while oldword[ow+1] ~= ""
+		ow++
+	if ow>1
+		InsertWord(1,(ow-1))
+	for (a=1; a<=ow; a++)
+		word[a] = oldword[a]
 }
 
 ! Roody's note: Now prints parse$ if parser monitoring is on
@@ -3765,9 +3875,7 @@ replace ParseError(errornumber, obj)
 			}
 			print newline
 			if (p>1)
-			{
 				"(* Not an \Iactual\i referable token.)"
-			}
 		}
 		! this section so we print parse$ only once
 		if string(_temp_string,parse$) and
@@ -3784,17 +3892,7 @@ replace ParseError(errornumber, obj)
 	local r
 	r = PreParseError(errornumber,obj)
 	if r
-	{
-		parser_data[PARSER_STATUS] = PARSER_RESET
-		return r
-	}
-
-	r = NewParseError(errornumber, obj)
-	if r
-	{
-		parser_data[PARSER_STATUS] = PARSER_RESET
-		return r
-	}
+		customerror_flag = true
 
 	if errornumber >= 100
 	{
@@ -3810,6 +3908,13 @@ replace ParseError(errornumber, obj)
 		customerror_flag = 0    ! CustomError already printed error
 		parser_data[PARSER_STATUS] = PARSER_RESET
 		return true
+	}
+
+	r = NewParseError(errornumber, obj)
+	if r
+	{
+		parser_data[PARSER_STATUS] = PARSER_RESET
+		return r
 	}
 
 	select errornumber
@@ -4191,6 +4296,17 @@ replace Perform(action, obj, xobj, queue, isxverb)
 
 	parser_data[VERB_IS_XVERB] = isxverb
 
+	if not (NEW_PARSE & WORDSSAVED_F) and not isxverb
+	{
+		last_actor = actor
+		NEW_PARSE = NEW_PARSE | WORDSSAVED_F
+		SaveOldWord
+#ifset CONTINUE_UNDO
+		if continue_undo
+			continue_undo++
+#endif
+	}
+
 	objtemp = object
 	xobjtemp = xobject
 	verbtemp = verbroutine
@@ -4276,7 +4392,6 @@ replace Perform(action, obj, xobj, queue, isxverb)
 	if queue = -1
 		last_object = -1
 	parser_data[PARSER_STATUS] = PARSER_RESET
-
 	return r
 }
 
@@ -4312,7 +4427,8 @@ to give the highest ranking. \!
 }
 
 !\ Roody's note: This version of RunScripts allows scripts to be run with a
-true/false argument. \!
+true/false argument (mainly so LoopScripts can be called with a true
+value). \!
 replace RunScripts
 {
 
@@ -4498,6 +4614,15 @@ replace SpeakTo(char)
 #ifset USE_CHECKHELD
 	ResetCheckHeld
 #endif
+	if verbroutine = &DoAgain
+	{
+		verbroutine = last_verbroutine
+		object = previous_object
+		xobject = previous_xobject
+		RestoreFromOldWord
+	}
+	else
+		SaveOldWord
 
 #ifset DEBUG
 	if debug_flags & D_PARSE
@@ -4517,42 +4642,34 @@ replace SpeakTo(char)
 #endif
 
 	v = verbroutine
-	a = actor
-	actor = player
 	verbroutine = &SpeakTo
 	retval = player.before
-	actor = a
+	if retval
+		a = player
+	else
+	{
+		retval = location.before
+		if retval
+			a = location
+	}
+	verbroutine = v
+
+	if not retval
+		retval = actor.before
 
 	if retval
 	{
 #ifset DEBUG
 		if debug_flags & D_PARSE
 		{
-			print "\B["; player.name;
+			print "\B["; a.name;
 			if debug_flags & D_OBJNUM
-				print " ["; number player; "]";
+				print " ["; number a; "]";
 			print ".before returned "; number retval; "]\b"
 		}
 #endif
 		return retval
 	}
-
-	retval = location.before
-	if retval
-	{
-#ifset DEBUG
-		if debug_flags & D_PARSE
-		{
-			print "\B["; location.name;
-			if debug_flags & D_OBJNUM
-				print " ["; number location; "]";
-			print "before returned "; number retval; "]\b"
-		}
-#endif
-		return retval
-	}
-
-	verbroutine = v
 
 	if char is not living
 	{
@@ -4575,6 +4692,8 @@ replace SpeakTo(char)
 	   speaking = 0
 	   return
 	}
+
+	last_actor = actor
 
 	if char is unfriendly
 		IgnoreResponse = true
@@ -4605,15 +4724,13 @@ replace SpeakTo(char)
 				if not char.order_response
 				{
 					if char is not unfriendly
-						{
+					{
 						! "X nods hello."
 						Message(&Speakto, 3, char)
 						retval = true
-						}
-					else
-					{
-						IgnoreResponse = true
 					}
+					else
+						IgnoreResponse = true
 				}
 				else
 					retval = true
@@ -4691,8 +4808,33 @@ replace VerbHeldMode(w)
 	}
 	return 0
 }
-#endif
+#endif  ! ifset USE_CHECKHELD
 
+!----------------------------------------------------------------------------
+!* "SHOW_COMMANDS"
+!----------------------------------------------------------------------------
+!\
+Roody's note: With the SHOW_COMMANDS flag on, lines with multiple commands get
+the current command printed at each step.  Also, >UNDO prints the action being
+undone.  Now, since Hugo's parser uses a combination of synonyms and removals,
+printing the command is an imperfect science.  Any author who turns this on has
+to be okay with the fact that the output will look pretty dumb from time to
+time.  Here are some examples of things that wouldn't print right:
+
+"get apple and orange" will become "get apple, orange"
+"get all from box but rat" will become "get all from box except rat"
+
+Well, I'm sure there are plenty of other examples but that's all I can think
+of right now.
+
+Anyhow, the following commands are called by the player_character object
+in the "replace objlib.h code" section.
+\!
+
+#ifset SHOW_COMMANDS
+
+
+#endif ! ifset SHOW_COMMANDS
 !----------------------------------------------------------------------------
 !* "NEW_STYLE_PRONOUNS"
 !----------------------------------------------------------------------------
@@ -4915,9 +5057,7 @@ routine CheckEmpty(obj)
 	{
 		TOKEN = obj.empty_type
 		if not CheckObject(obj)
-		{
 			return false
-		}
 		elseif obj.empty_type = NO_EMPTY_T
 		{
 			ParseError(12, obj)
@@ -4994,9 +5134,7 @@ routine CheckObject(obj,goal_obj, att1, att2, att3)
 	{
 		if (att1 and obj is not att1) or (att2 and obj is not att2) or
 		(att3 and obj is not att3)
-		{
 			ParseError(12, obj) ! "you can't do that with that."
-		}
 		else
 			ret = true
 	}
@@ -5105,6 +5243,36 @@ object printstatuslib
 	status_top 0
 }
 
+! Roody's note: This object checks for a big change in the status line size
+! that'd require the window to be cleared.
+object statuslinelib "statuslinelib"
+{
+	in init_instructions
+	type settings
+#ifclear NO_FANCY_STUFF
+	save_info
+	{
+		if display.statusline_height > 2 and not system(61)
+		{
+			SaveWordSetting(display.statusline_height)
+			return true
+		}
+		return false
+	}
+#endif
+	execute
+	{
+		if word[LAST_TURN] = "undo","restore"
+		{
+#ifclear NO_FANCY_STUFF
+			local a
+			a = CheckWordSetting(self.name)
+			display.statusline_height = word[(a+1)]
+#endif
+		}
+	}
+}
+
 replace PrintStatusline
 {
 	local newstatusheight, window_top
@@ -5120,18 +5288,13 @@ replace PrintStatusline
 	local cheap
 #endif
 
-	if cheap and printstatuslib.terp_type ~= SIMPLE_TERP
+	if cheap = 1 and printstatuslib.terp_type ~= SIMPLE_TERP
 	{
-#if defined GAME_TITLE
-		CenterTitle(GAME_TITLE,0,1)
-#endif
-#if undefined GAME_TITLE
 		CenterTitle(CheapTitle,0,1)
-#endif
 		display.needs_repaint = false
 		return
 	}
-	elseif cheap
+	elseif cheap = 1
 		return
 
 	! figure out the size our window will be
@@ -5204,12 +5367,7 @@ routine FindStatusHeight
 	text to 0
 	a = StringLength(_temp_string)
 	text to _temp_string
-	select STATUSTYPE
-		case 1 : print number score; " / "; number counter;
-		case 2 : print HoursMinutes(counter);
-		case 3 : print "Score: "; number score; "\_ "; "Moves: "; number counter;
-	! STATUSTYPE case 3 is the "Infocom"-style status
-		case 4 : StatusType4 ! routine for configurable statusline
+	PrintStatusType
 	!if (FORMAT & DESCFORM_F) and (printstatuslib.terp_type ~= GLK_TERP)
 	!	print "\_";
 	text to 0
@@ -5235,7 +5393,6 @@ routine FindStatusHeight
 	{
 		text to _temp_string
 		print "S: "; number score; "\_ "; "M: "; number counter;
-	!   if (FORMAT & DESCFORM_F) and (printstatuslib.terp_type ~= GLK_TERP)
 		if (printstatuslib.terp_type ~= GLK_TERP)
 			print "\_";
 		text to 0
@@ -5243,6 +5400,16 @@ routine FindStatusHeight
 	}
 	else
 		return 2
+}
+
+routine PrintStatusType
+{
+	select STATUSTYPE
+		case 1 : print number score; " / "; number counter;
+		case 2 : print HoursMinutes(counter);
+		case 3 : print "Score: "; number score; "\_ "; "Moves: "; number counter;
+	! STATUSTYPE case 3 is the "Infocom"-style status
+		case 4 : StatusType4 ! routine for configurable statusline
 }
 
 ! Roody's note: Replace this if you want to use the top right area
@@ -5278,7 +5445,10 @@ routine WriteStatus
 			( statuswindow.counter_length + \
 			(printstatuslib.terp_type = SIMPLE_TERP)* 2 - \
 			(printstatuslib.terp_type = GLK_TERP)));
-		StringPrint(_temp_string)
+		if STATUSTYPE = 4
+			STATUSTYPE4
+		else
+			StringPrint(_temp_string)
 	}
 	elseif STATUSTYPE and statuswindow.find_height = 2
 	{
@@ -5288,7 +5458,10 @@ routine WriteStatus
 			""
 	!			if (FORMAT & DESCFORM_F) or (printstatuslib.terp_type = GLK_TERP)
 		print "\_";
-		StringPrint(_temp_string)
+		if STATUSTYPE = 4
+			STATUSTYPE4
+		else
+			StringPrint(_temp_string)
 	}
 }
 #endif  !ifclear NO_FANCY_STUFF
@@ -5320,13 +5493,7 @@ replace PrintStatusline
 	! _temp_string (_temp_string is an array declared by the library)
 
 		text to _temp_string
-		select STATUSTYPE
-			case 1 : print number score; " / "; number counter;
-			case 2 : print HoursMinutes(counter);
-			case 3 : print "Score: "; number score; "\_ "; "Moves: "; \
-				number counter;
-	! STATUSTYPE case 3 is the "Infocom"-style status
-			case 4 : StatusType4 ! routine for configurable statusline
+		PrintStatusType
 		text to 0
 	! Ok, we've closed off the string array
 
@@ -5342,7 +5509,12 @@ replace PrintStatusline
 
 	! Now let's print it!
 		if STATUSTYPE
-			StringPrint(_temp_string)
+		{
+			if STATUSTYPE = 4
+				STATUSTYPE4
+			else
+				StringPrint(_temp_string)
+		}
 	}
 	color TEXTCOLOR, BGCOLOR
 	Font(DEFAULT_FONT)
@@ -5371,10 +5543,28 @@ property save_info
 !\ A couple routines used by routines like DoRestore and DoRestart
 to save certain game state things. \!
 
-routine SaveWordSetting(w)
+routine SaveSettings(w)
+{
+	local i,n = 30
+	word[LAST_TURN] = w
+#ifclear NO_FANCY_STUFF
+	for i in init_instructions
+	{
+		if i.save_info
+		{
+			n = SaveWordSetting(i.name, n)
+			n--
+		}
+	}
+#endif
+}
+
+routine SaveWordSetting(w,start_val)
 {
 	local i
-	for (i=20 ; i<30 ; i++ )
+	if not start_val
+		start_val = 30
+	for (i=start_val ; i>0 ; i-- )
 	{
 		if word[i] = "" ! found an open slot
 			word[i] = w  ! add word to word array
@@ -5382,12 +5572,37 @@ routine SaveWordSetting(w)
 			return i
 	}
 	return false ! didn't find anything
+
 }
 
-routine CheckWordSetting(w)
+routine LoadSettings
+{
+	local i, n, v
+	for i in init_instructions
+	{
+		v = CheckWordSetting(i.name, (30 - n))
+		if v
+		{
+			run i.execute
+			while (30 - v) ~= n
+			{
+				n++
+				word[(30 - n)] = ""
+			}
+			n++
+			word[v] = ""
+		}
+	}
+	if word[LAST_TURN]
+		word[LAST_TURN] = ""
+}
+
+routine CheckWordSetting(w,start_val)
 {
 	local i
-	for (i=20 ; i<30 ; i++ )
+	if not start_val
+		start_val = 30
+	for (i=start_val ; i>0 ; i-- )
 	{
 		if word[i] = ""
 			return false
@@ -5413,6 +5628,7 @@ routine Init_Calls
 		if i.did_print
 			InitScreen
 	}
+	ClearWordArray
 }
 
 object init_instructions
@@ -5431,60 +5647,34 @@ object hugofixlib "hugofixlib"
 #ifclear NO_FANCY_STUFF
 	save_info
 	{
-		if debug_flags ~= 0
-		{
-			SaveWordsetting("hugofix")
-		}
+		if debug_flags = 0 ! if absolutely no debug flags are turn on,
+			return          !  just return right away
+		local b
+		if debug_flags & D_FUSES
+			b = SaveWordSetting("fuses",b)
+		if debug_flags & D_OBJNUM
+			b = SaveWordSetting("objnum",b)
+		if debug_flags & D_PARSE
+			b = SaveWordSetting("parse",b)
+		if debug_flags & D_SCRIPTS
+			b = SaveWordSetting("scripts",b)
+		if debug_flags & D_FINDOBJECT
+			b = SaveWordSetting("findobject",b)
+		if debug_flags & D_PARSE_RANK
+			b = SaveWordSetting("parserank",b)
+		if b
+			return true
 		else
-			return
-		local a
-		while a < 6
-		{
-			select a
-				case 0
-				{
-					if debug_flags & D_FUSES
-						SaveWordSetting("fuses")
-				}
-				case 1
-				{
-					if debug_flags & D_OBJNUM
-						SaveWordSetting("objnum")
-				}
-				case 2
-				{
-					if debug_flags & D_PARSE
-						SaveWordSetting("parse")
-				}
-				case 3
-				{
-					if debug_flags & D_SCRIPTS
-						SaveWordSetting("scripts")
-				}
-				case 4
-				{
-					if debug_flags & D_FINDOBJECT
-						SaveWordSetting("findobject")
-				}
-				case 5
-				{
-					if debug_flags & D_PARSE_RANK
-						SaveWordSetting("parserank")
-				}
-			a++
-		}
-		return true
+			return false
 	}
 #endif
 	execute
 	{
-		if not CheckWordSetting("undo")
+		if word[LAST_TURN] ~= "undo","restore"
 		{
-			if not CheckWordSetting("restore")
-			{
 #ifclear NO_FANCY_STUFF
 				local a,b
-				a = CheckWordSetting("hugofix")
+				a = CheckWordSetting(self.name)
 				while true
 				{
 					select word[(a+1)]
@@ -5501,9 +5691,8 @@ object hugofixlib "hugofixlib"
 #endif
 				OrganizeTree
 				HugoFixInit
-			}
+		}
 	}
-}
 }
 #endif
 
@@ -5523,9 +5712,9 @@ object roodylib "roodylib"
 #endif
 	execute
 	{
-		if not CheckWordSetting("undo")
+		if word[LAST_TURN] ~= "undo"
 		{
-			if not CheckWordSetting("restore")
+			if word[LAST_TURN] ~= "restore" ! new game
 			{
 				CalculateHolding(player)
 #ifset USE_PLURAL_OBJECTS
@@ -5535,7 +5724,7 @@ object roodylib "roodylib"
 #ifclear NO_FANCY_STUFF
 			local a
 			a = CheckWordSetting("roodylib")
-			select word[(a-1)]
+			select word[(a+1)]
 				case "brief" : verbosity = 0
 				case "superbrief" : verbosity = 1
 				case "verbose" : verbosity = 2
@@ -5544,39 +5733,28 @@ object roodylib "roodylib"
 	}
 }
 
-!\ Roody's note: the last_turn_true global uses the player's before property
-and an event to keep track of when turns are 'true' (are successful and take
-up a turn and when they aren't) \!
-
-global last_turn_true = true
+!\ Roody's note: Main_Calls is called last in Roodylib's shell's main
+routines. This is nice for game system messages, like score notifications or
+footnotes or what have you.\!
 
 routine Main_Calls
 {
 	local i
-	for i in main_instructions
+	i = child(main_instructions)
+	while i
 	{
 		run i.execute
+		i = younger(i)
 	}
+!	for i in main_instructions
+!	{
+!		run i.execute
+!	}
 }
 
 object main_instructions
 {
 	in settings
-}
-
-!\ Roody's note: The last_turn_true global used below here is an attempt to let the author know if the previous turn was successful (returned true) or not, as
-that can be useful knowledge in some scenarios.
-
-Check the value of last_turn_true during the PreParse stage
-\!
-
-object success_detector
-{
-	in main_instructions
-	execute
-	{
-		last_turn_true = true
-	}
 }
 
 !----------------------------------------------------------------------------
@@ -5630,29 +5808,33 @@ routine InitScreen
 	Font(DEFAULT_FONT)
 	simple_port = (not IsGlk and system(61)) ! non-glk simple port
 	if not system(61)
-	{
 		window 0
-	}
 #ifset CHEAP
 	if not cheap
 	{
-		if CheckWordSetting("cheap")
-			cheap = true
+		local a
+		a = CheckWordSetting("cheap")
+		select word[(a+1)]
+			case "off" : cheap = 0
+			case "on" : cheap = 1
+			case "menus" : cheap = 2
+!		if CheckWordSetting("cheap")
+!			cheap = true
 	}
-	if not simple_port and not cheap
+	if not simple_port and cheap ~= 1
 		cls
 #else
 	if not simple_port ! not non-glk simple port
 		cls
 #endif
-	if not system(61) and not cheap ! CheckWordSetting("cheap")
+	if not system(61) and cheap ~= 1 ! CheckWordSetting("cheap")
 		CenterTitle("",0,1) ! Draw an empty window
 	else
 		CenterTitle(CheapTitle,0,1) ! See CheapTitle routine
 #ifset CHEAP
-	if not system(61) and not cheap
+	if not system(61) and not (cheap & CHEAP_ON)
 		locate 1, LinesFromTop
-	elseif cheap or simple_port ! non-glk simple port
+	elseif (cheap & CHEAP_ON) or simple_port ! non-glk simple port
 		""
 #else
 	if not system(61)
@@ -5661,17 +5843,13 @@ routine InitScreen
 		""
 #endif ! CHEAP
 	if display.needs_repaint
-	{
-		display.needs_repaint = 0
-	}
+		display.needs_repaint = false
 }
 
 routine CheapTitle
 {
 	if display.title_caption
-	{
 		return display.title_caption
-	}
 	return "Hugo Interactive Fiction"
 }
 
@@ -5692,12 +5870,164 @@ routine IsGlk
 	return ((display.screenheight + 100) < display.windowlines)
 }
 
+routine ClearWindow
+{
+	local a
+#ifset CHEAP
+	a = cheap
+#endif
+	if not a
+	{
+		cls
+		locate 1, LinesFromTop
+	}
+}
+
+!----------------------------------------------------------------------------
+!* "CHEAPLIB"
+!----------------------------------------------------------------------------
+
+! Roody's note: Turning on the cheap system in a game forces a limited display.
+! The intention is that this would be useful for games playing with crappy
+! displays, like the DOS simple port or the Floyd bot on ifMUD.
+! "cheap on" stops the statusline from print altogether, while "cheap menus"
+! forces only newmenu's simple menu printing system.
+
+#ifset CHEAP
+global cheap
+
+object cheaplib "cheap"
+{
+	type settings
+	in init_instructions
+	save_info
+	{
+		select cheap
+			case 0 : SaveWordsetting("off")
+			case 1 : SaveWordSetting("on")
+			case 2 : SaveWordSetting("menus")
+		return true
+	}
+	execute
+	{
+		if word[LAST_TURN] ~= "undo","restart"
+		{
+			local a,b
+			b = cheap
+			a = CheckWordSetting("cheap")
+			select word[(a+1)]
+				case "off" : cheap = 0
+				case "on" : cheap = 1
+				case "menus" : cheap = 2
+		}
+		if (cheap & CHEAP_ON) and not b and word[LAST_TURN] ~= "restart"
+			DrawCheap
+	}
+#ifset _NEWMENU_H
+#ifset USE_DEFAULT_MENU
+	usage_desc
+	{
+		Indent
+		"\BCHEAP/CHEAPMODE ON\b- Turns \"cheap mode\" on. \"Cheap mode\" is a
+		no-frills layout meant for interpreters with limited display
+		capabilities."
+		Indent
+		"\BCHEAP/CHEAPMODE OFF\b- Turns \"cheap mode\" off."
+	}
+#endif ! USE_DEFAULT_MENU
+#endif ! _NEWMENU_H
+}
+
+
+routine DoCheapOnOff
+{
+	local a = 2
+	local b
+	b = cheap
+	while a < 4
+	{
+		select word[a]
+			case "on"
+			{
+				if not (cheap & CHEAP_ON)
+				{
+					cheap = true
+					RLibMessage(&DoCheapOnOff, 1) ! "Cheap mode on."
+					DrawCheap
+				}
+				else
+					RLibMessage(&DoCheapOnOff, 2) ! "Cheap mode already on."
+			}
+			case "off"
+			{
+				if cheap
+				{
+					cheap = false
+					RLibMessage(&DoCheapOnOff, 3) ! "Cheap mode off."
+					if (b & CHEAP_ON)
+						PrintStatusLine
+				}
+				else
+					RLibMessage(&DoCheapOnOff, 4) ! "Cheap mode already off."
+			}
+			case "menu","menus"
+			{
+				if cheap ~= CHEAP_MENUS
+				{
+					cheap = CHEAP_MENUS
+					"Cheap menus on."
+					if b
+						PrintStatusLine
+				}
+				else
+					"Cheap menus already on."
+			}
+		a++
+	}
+}
+
+routine DoCheapHelp
+{
+	RLibMessage(&DoCheapHelp,1) ! "'Cheap' help spiel."
+}
+
+routine DoCheapToggle
+{
+	local b
+	b = cheap
+	if cheap
+	{
+		cheap = 0
+		RLibMessage(&DoCheapToggle,1) ! "'Cheap' mode toggled off."
+		if (b & CHEAP_ON)
+			PrintStatusLine
+	}
+	else
+	{
+		cheap = true
+		RLibMessage(&DoCheapToggle,2) ! "'Cheap' mode toggled on."
+		DrawCheap(true)
+	}
+}
+
+routine DrawCheap ! this is basically InitScreen, slightly modified
+{
+	if not system(61)
+	{
+		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
+		Font(DEFAULT_FONT)
+		window 0
+	}
+	CenterTitle(CheapTitle,0,1) ! See RoodyLib's CheapTitle routine
+}
+
+#endif
 !----------------------------------------------------------------------------
 !* PREPARSE CODE
 !----------------------------------------------------------------------------
 
 #ifclear NO_FANCY_STUFF
-replace PreParse
+routine PreParseInstructions
 {
 	local i , p, r
 	for i in preparse_instructions
@@ -5739,6 +6069,32 @@ object parse_remove
 }
 #endif
 
+object parse_orders
+{
+	in preparse_instructions
+	type settings
+	execute
+	{
+		local a
+		if word[1] = "tell", "order", "instruct", "ask", "command"
+		{
+			for (a=3; a<=words; a++)
+			{
+				if word[a] = "to"
+				{
+					word[a] = "~and"
+					DeleteWord(1)   ! "tell", "order", etc.
+!					OrdersPreParse(a,command_words)
+					return true
+				}\
+				if word[a] = "", "then"
+					break
+			}
+		}
+		return false
+	}
+}
+
 object parse_redraw
 {
 	in preparse_instructions
@@ -5754,7 +6110,7 @@ object parse_redraw
 after a screen-size change. Ideally, it should be called in PreParse.
 \!
 
-global oldwidth
+!global oldwidth
 
 routine RedrawScreen
 {
@@ -5764,71 +6120,72 @@ routine RedrawScreen
 
 	if display.needs_repaint
 	{
-#ifset CHEAP
-		if cheap
-		{
-#if defined GAME_TITLE
-			CenterTitle(GAME_TITLE,0,1)
-#endif
-#if undefined GAME_TITLE
-			CenterTitle(CheapTitle,0,1)
-#endif
-			display.needs_repaint = false
-			return
-		}
-#endif ! CHEAP
-		"[Detected screen size change; redrawing screen...]\n"
-		local get_key
-		get_key = system(11) ! READ_KEY
-		if not (system_status or system(61)) ! 61 = MINIMAL_PORT
-		{
-			local a
-			while a <100
-			{
-				if system(11)
-					break
-				system(32) ! wait 1/100th second
-				a++
-			}
-		}
-!		cls
-!		PrintStatusLine
-!		locate 1, LinesFromTop
-		InitScreen
-		PrintStatusLine
-		print prompt;
-		local i = 1, showfullstops
-		while word[i] ~= ""
-		{
-			print word[i];
-			if word[++i] ~= ""
-				print " ";
-			elseif word[++i] ~= ""
-			{
-				showfullstops = true
-				print ". ";
-			}
-			if word[i] = "" and showfullstops
-			{
-				print ".";
-			}
-		}
-		print ""
-		display.needs_repaint = false
-	}
-	if system(61) ! simple port
-	{
-		if not oldwidth
-			oldwidth = display.screenwidth
-
-		if IsGlk and oldwidth ~= display.screenwidth
-		{
-			PrintStatusLine
-		}
-
-		oldwidth = display.screenwidth
+		RepaintScreen
+		ShowCommand
 	}
 }
+
+!\ Roody's note: Split the screen-clearing stuff into another routine
+   so EndGame and such could use it, too.   \!
+
+routine RepaintScreen
+{
+#ifset CHEAP
+!\ This little section is a little useless since it really only applies to
+	non-simple interpreters with cheap mode turned on for testing purposes. \!
+	if (cheap & CHEAP_ON)
+	{
+		CenterTitle(CheapTitle,0,1)
+		display.needs_repaint = false
+		return
+	}
+#endif ! CHEAP
+	RLibMessage(&RepaintScreen) ! "[Detected screen size change;
+	                            !  redrawing screen...]"
+	""
+	local get_key, a
+	get_key = system(11) ! READ_KEY
+	if not (system_status or system(61)) ! 61 = MINIMAL_PORT
+	{
+		while a <30 ! 100
+		{
+			if system(11)
+				break
+			system(32) ! wait 1/100th second
+			a++
+		}
+	}
+	InitScreen
+	PrintStatusLine
+	display.needs_repaint = false
+}
+
+!\ Roody's note: ShowCommand retypes the typed (valid)  command after the
+ screen has been cleared during a screen size.  \!
+
+routine ShowCommand
+{
+	print prompt;
+	local i = 1, showfullstops
+	if INPUTCOLOR ~= MATCH_FOREGROUND
+		color INPUTCOLOR
+	while word[i] ~= ""
+	{
+		print word[i];
+		if word[++i] ~= ""
+			print " ";
+		elseif word[++i] ~= ""
+		{
+			showfullstops = true
+			print ". ";
+		}
+		if word[i] = "" and showfullstops
+			print ".";
+		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
+	}
+	print ""
+}
+
 
 !----------------------------------------------------------------------------
 !* SUPERCONTAINER CLASS
@@ -6198,6 +6555,21 @@ routine PrepWord(str1,str2,str3)
 #endif ! USE_SUPERCONTAINER
 
 !----------------------------------------------------------------------------
+!* LAST TURN SUCCESS GLOBAL
+!----------------------------------------------------------------------------
+! Roody's note: Some code occasionally needs to know if the last turn was
+! successful (for example: the #SHOW_COMMANDS code used for printing commands
+! from multi-command lines.  The following makes it possible.
+
+!global last_turn_true
+
+event
+{
+	NEW_PARSE = NEW_PARSE | LAST_TURN_TRUE_F
+!	last_turn_true = true
+}
+
+!----------------------------------------------------------------------------
 !* REPLACED OBJLIB.H CODE
 !----------------------------------------------------------------------------
 
@@ -6422,40 +6794,13 @@ replace player_character
 	pronouns "you", "you", "your", "yourself"
 	type player_character
 	long_desc
-	{
 		print "Looking good."
-	}
 #ifset LIST_CLOTHES_FIRST  ! list worn items before listing rest of inventory
 	list_contents
 		return ListClothesFirst(self)
 #endif
 	before
 	{
-		actor
-		{
-			if verbroutine = &PreParse
-				return false
-			if AnyVerb(location)
-				last_turn_true = false
-			return false
-		}
-#ifset USE_SUPERCONTAINER
-		actor
-		{
-			if parent(object).type = SuperContainer
-			{
-				if Inlist(parent(object), contents_in, object) and
-					parent(object) is not open and parent(object) is not transparent
-				{
-					print capital player.pronoun #1;
-					MatchPlural(player, "doesn't", "don't")
-					" see that."
-					return true
-				}
-			}
-			return false
-		}
-#endif  ! USE_SUPERCONTAINER
 #ifset HUGOFIX
 		actor DoVerbTest
 		{
@@ -6464,17 +6809,6 @@ replace player_character
 		}
 #endif
 	}
-#ifset AUTOMATIC_EXAMINE   ! objects are examined automatically when picked
-	react_after             !  up
-	{
-		if verbroutine = &DoLook and object and word[1] ~= "undo"
-		{
-			if object is not examined
-				object is examined
-		}
-		return false
-	}
-#endif
 	capacity 100
 	holding 0
 	is hidden, living, transparent, static
@@ -8266,14 +8600,12 @@ if not JumpToEnd
 			moveto = moveto.door_to
 			exit_type = door
 		}
-		elseif moveto.door_to
+		elseif moveto.type ~= room and moveto.door_to
 		{
 			moveto = moveto.door_to
 			exit_type = non_door_portal
 		}
-		elseif moveto is enterable ! or
-	!	(((moveto is platform) or (moveto is container)) and
-	!	player in location)
+		elseif moveto is enterable and moveto.type ~= room
 			return Perform(&DoEnter, moveto)
 	}
 #else   ! ifset NO_OBJLIB
@@ -8541,7 +8873,6 @@ replace DoLook
 		if not object.long_desc
 		{
 #ifclear FORCE_DEFAULT_MESSAGE
-!			if (object is container or object is platform) and
 			if object is container and
 			object is not quiet and object is not living
 			{
@@ -8578,6 +8909,10 @@ replace DoLook
 		}
 
 		run object.after
+#ifset AUTOMATIC_EXAMINE   ! objects are examined automatically when picked up
+		if object is not examined
+			object is examined
+#endif
 #ifclear NO_LOOK_TURNS
 		return true
 #endif
@@ -8864,6 +9199,10 @@ replace DoPutIn
 }
 
 !----------------------------------------------------------------------------
+!\ Note about xverbs- I cleaned up the code to a bunch of these and tweaked
+them so they can be called by EndGame/ProcessKey for more consistent
+behavior. \!
+
 ! Roody's note: Changed DoQuit to give one final ending message
 
 #if undefined PRESS_ANY_KEY
@@ -8878,82 +9217,73 @@ replace DoQuit
 	GetInput
 	if YesorNo = true
 	{
-		""
-		RLibMessage(&DoQuit,1) ! "Thanks for playing!"
-		""
-		display.title_caption = PRESS_ANY_KEY
-		if not system(61) ! if not simple port simple port
-		{
-			print PRESS_ANY_KEY;
-			HiddenPause
-		}
+		QuitGameText
 		quit
 	}
 	else
-		RLibMessage(&DoQuit,2) ! "Continuing on."
+		RLibMessage(&DoQuit,1) ! "Continuing on."
 }
 
 replace DoRestart
 {
-	if MAX_SCORE
-		PrintScore
-	VMessage(&DoRestart, 1)                  ! "Are you sure?"
-	GetInput
+	if word[1] ~= "yes"
+	{
+		if MAX_SCORE
+			PrintScore
+		VMessage(&DoRestart, 1)                  ! "Are you sure?"
+		GetInput
+	}
 	if YesorNo = true
 	{
-#ifclear NO_FANCY_STUFF
-		ClearWordArray
-		SaveWordSetting("restart")
-		local i
-		for i in init_instructions
-		{
-			if i.save_info
-				SaveWordSetting(i.name)
-		}
-#else
-		SaveWordSetting("restart")
-#endif
+		SaveSettings("restart")
 		if not restart
 			VMessage(&DoRestart, 2)  ! "Unable to restart."
 		else
 			return true
 	}
 	else
-		RlibMessage(&DoRestart, 1) ! "Continuing on."
+	{
+		RlibMessage(&DoRestart, 1) ! "\nContinuing on."
+		if FORMAT & DESCFORM_I
+			""
+		DescribePlace
+#ifset NEW_FUSE
+		fake_runevents
+#endif
+	}
 }
 
 !----------------------------------------------------------------------------
 replace DoRestore
 {
-	SaveWordSetting("restore")
-#ifclear NO_FANCY_STUFF
-	local i
-	for i in init_instructions
-	{
-		if i.save_info
-			SaveWordSetting(i.name)
-	}
-#endif
+	SaveSettings("restore")
+	if verbroutine = &EndGame
+		""
 	if restore
 	{
-#ifclear NO_FANCY_STUFF
-		for i in init_instructions
-		{
-			if CheckWordSetting(i.name)
-				run i.execute
-		}
-#endif
-		VMessage(&DoRestore, 1)         ! "Restored."
-		PrintStatusline
-		DescribePlace(location, true)
+		LoadSettings
+		RestoreResponse
 #ifset NEW_FUSE
 		fake_runevents
 #endif
-		ClearWordArray
-		last_turn_true = true
 		return true
 	}
 	else:  VMessage(&DoRestore, 2)           ! "Unable to restore."
+}
+
+!\ Roody's note: Mainly to match the new DoUndo behavior, I added a similar
+ response routine for restore. I also added a screen clear since I figure
+ it's sort of like jumping to another part of the book. \!
+
+routine RestoreResponse
+{
+	if not system(61)
+		InitScreen
+	PrintStatusLine
+	VMessage(&DoRestore, 1)         ! "Restored."
+	if FORMAT & DESCFORM_I
+		""
+	DescribePlace(location, true)
 }
 
 !----------------------------------------------------------------------------
@@ -8966,81 +9296,166 @@ replace DoScore
 		PrintScore
 }
 
-!\ Roody's note: The after_undo array is a way to execute code after a
-successful undo. It must be filled with routine addresses, though.
-  "after_undo[0]= &CheckDaemon"
-\!
-#ifset USE_AFTER_UNDO
-array after_undo[5]
-#endif
-
 replace DoUndo
 {
+	if verbroutine = &EndGame
+		""
 	if not UNDO_OFF
 	{
-		local c
-		SaveWordSetting("undo")
-#ifclear NO_FANCY_STUFF
-		local i
-		for i in init_instructions
-		{
-			if i.save_info
-				SaveWordSetting(i.name)
-		}
-		if display.statusline_height > 2 and not system(61)
-		{
-			c = SaveWordSetting("statusheight")
-			word[(c+1)] = display.statusline_height
-		}
-#endif
+		SaveSettings("undo")
+		NEW_PARSE = NEW_PARSE & ~PARSE$_F
 		if undo
 		{
-#ifclear NO_FANCY_STUFF
-			i = 0
-			for i in init_instructions
-			{
-				if CheckWordSetting(i.name)
-					run i.execute
-			}
-			if not system(61)
-			{
-				c = CheckWordSetting("statusheight")
-				if c
-					display.statusline_height = word[(c+1)]
-			}
-#endif
-			PrintStatusline
-			DescribePlace(location)
-#ifset NEW_FUSE
-			fake_runevents
-#endif
-#ifset USE_AFTER_UNDO
-			if after_undo[0]
-			{
-				local a
-				while after_undo[a] ~= 0
-				{
-					call after_undo[a++]
-!					after_undo[a++] = 0  ! don't know why I was clearing it
-				}
-			}
-#endif ! USE_AFTER_UNDO
-			last_turn_true = true  ! should also be unnecessary but we'll leave it
-		!	verbroutine = &DoUndo  ! should be unnecessary?
-		!	return true
+			LoadSettings
+			UndoResponse
+			return true
 		}
 		else
-			VMessage(&DoUndo)
-#ifclear NO_FANCY_STUFF
-		ClearWordArray
-#endif
+			RLibMessage(&UndoResponse,2)  ! "Unable to UNDO."
 		return
 	}
 	else
-		VMessage(&DoUndo)
+		RLibMessage(&UndoResponse,2) ! "UNDO is not currently allowed."
 }
 
-#endif ! NO_XVERBS
+#ifset CONTINUE_UNDO
+global continue_undo
+
+routine ContinueUndoSuccess
+{
+	"UNDOing several turns..."
+}
+
+routine ContinueUndoFailure
+{
+	"Unable to UNDO enough."
+}
+#endif  ! CONTINUE_UNDO
+
+#ifset SHOW_COMMANDS
+
+routine PrintCommand(arr,n)
+{
+	while array arr[n] ~= "" and n < array arr[]
+	{
+		select array arr[n]
+			case "~and"
+			{
+				if array arr[(n-1)] = "~and"
+					print " and";
+				else
+					print ",";
+			}
+			case "~all"
+				print "all";
+			case "~except" : print "except";
+			case "~oops" : print "oops";  ! hopefully never called
+			case "~any" : print "any";
+			case else
+				print array arr[n];
+		if array arr[n+1] ~= "~and", ""
+			print " ";
+		n++
+	}
+}
+
+#endif ! SHOW_COMMANDS
+#endif ! ifclear NO_XVERBS
+
+object undolib "undolib"
+{
+	in init_instructions
+	save_info
+	{
+		if word[LAST_TURN] ~= "undo"
+			return false
+		if ContinueUndoCheck
+			return true
+		if NEW_PARSE & PARSE$_F
+			return false
+#ifset SHOW_COMMANDS
+		if oldword[1] or (last_actor and last_actor ~= player)
+		{
+			Font(ITALIC_ON)
+			print "[ undoing ";
+			Font(BOLD_ON|ITALIC_OFF)
+			print ">";
+			if last_actor and last_actor ~= player
+			{
+				print last_actor.name;
+				if oldword[1] ~= ""
+					print ", ";
+			}
+			PrintCommand(oldword,1)
+			print " ";
+			Font(BOLD_OFF|ITALIC_ON)
+			print "]"
+			Font(DEFAULT_FONT|ITALIC_OFF)
+			return true
+		}
+#endif
+			return false
+	}
+	execute
+	{
+!		if word[LAST_TURN] ~= "undo" ! or continue_undo
+!			return false
+#ifset CONTINUE_UNDO
+		if continue_undo
+			ContinueUndoSuccess ! "UNDOing several turns..."
+#endif
+		SaveWordSetting("continue")
+	}
+}
+
+routine ContinueUndoCheck
+{
+#ifset CONTINUE_UNDO
+	if continue_undo > 2
+		return true
+#endif
+	return false
+}
+
+!\ Roody's note: I thought it'd be better if there were a separate routine
+  for what gets printed after a successful routine, so authors can easily
+  configure the response without replacing the whole routine. Since this
+  new replaceable routine should cover the same uses as the USE_AFTER_UNDO
+  routine address array system, I have gotten rid of that. \!
+
+routine UndoResponse
+{
+	local fail
+	PrintStatusLine
+#ifset CONTINUE_UNDO
+	while continue_undo
+	{
+		if not undo
+		{
+			""
+			ContinueUndoFailure ! "Unable to UNDO enough."
+			fail = true
+			break
+		}
+	}
+#endif
+	if not fail
+	{
+		local a
+		a = CheckWordSetting("continue")
+		if not a
+			RlibMessage(&UndoResponse,1) ! "Undone."
+		else
+			word[a] = ""
+	}
+	if FORMAT & DESCFORM_I
+		""
+	DescribePlace
+#ifset NEW_FUSE
+	fake_runevents
+#endif
+}
+
 
 ! Roody's note: Added some other situations where >GET could be called.
 replace DoTakeOff
@@ -9529,36 +9944,36 @@ replace Describeplace(place, long)
 	}
 }
 #else
-! A DescribePlaceArray-setting object just so most authors don't have to worry
-! about setting DescribePlace order themselves
-object describe_order "DescribePlace order"
-{
-	in init_instructions
-	type settings
-	execute
-	{
-		if not CheckWordSetting("undo")
-		{
-			if not CheckWordSetting("restore")
-			{
-				if not DescribePlaceArray[0]
-				{
-#ifclear NEW_DESC
-					DescribePlaceArray[0] = &ParentofPlayer, &CharsWithDescs,
-					&CharsWithoutDescs, &ObjsWithDescs,&ObjsWithoutDescs,
-					&AttachablesScenery
-#else
-					DescribePlaceArray[0] = &ParentofPlayer, &CharsWithDescs,
-					&CharsWithNewDescs,
-					&CharsWithoutDescs, &ObjsWithDescs,
-					&objsWithNewDescs, &ObjsWithoutDescs,
-					&AttachablesScenery
-#endif
-				}
-			}
-		}
-	}
-}
+!! A DescribePlaceArray-setting object just so most authors don't have to worry
+!! about setting DescribePlace order themselves
+!object describe_order "DescribePlace order"
+!{
+!	in init_instructions
+!	type settings
+!	execute
+!	{
+!		if not CheckWordSetting("undo")
+!		{
+!			if not CheckWordSetting("restore")
+!			{
+!				if not DescribePlaceArray[0]
+!				{
+!#ifclear NEW_DESC
+!					DescribePlaceArray[0] = &ParentofPlayer, &CharsWithDescs,
+!					&CharsWithoutDescs, &ObjsWithDescs,&ObjsWithoutDescs,
+!					&AttachablesScenery
+!#else
+!					DescribePlaceArray[0] = &ParentofPlayer, &CharsWithDescs,
+!					&CharsWithNewDescs,
+!					&CharsWithoutDescs, &ObjsWithDescs,
+!					&objsWithNewDescs, &ObjsWithoutDescs,
+!					&AttachablesScenery
+!#endif
+!				}
+!			}
+!		}
+!	}
+!}
 
 ! This constant needs to be declared with something higher if you are
 ! adding additional elements into the mix
@@ -9571,7 +9986,7 @@ object describe_order "DescribePlace order"
 #endif
 
 attribute already_printed
-array DescribePlaceArray[DESCRIBEPLACE_ELEMENTS]
+!array DescribePlaceArray[DESCRIBEPLACE_ELEMENTS]
 
 replace Describeplace(place, long)
 {
@@ -10158,6 +10573,18 @@ routine AttachablesScenery(place, for_reals)
 #endif  ! ifclear NO_OBJLIB
 	}
 }
+
+#ifclear NEW_DESC
+array DescribePlaceArray[DESCRIBEPLACE_ELEMENTS] = &ParentofPlayer, \
+	&CharsWithDescs, &CharsWithoutDescs, &ObjsWithDescs, \
+	&ObjsWithoutDescs, &AttachablesScenery
+#else
+array DescribePlaceArray[DESCRIBEPLACE_ELEMENTS] = &ParentofPlayer, \
+	&CharsWithDescs,	&CharsWithNewDescs,	&CharsWithoutDescs, \
+	&ObjsWithDescs, &objsWithNewDescs, &ObjsWithoutDescs, \
+	&AttachablesScenery
+#endif
+
 #endif
 
 #ifset NEW_DESC
@@ -10201,6 +10628,10 @@ routine NewDescribe(obj)
 !----------------------------------------------------------------------------
 !* NEW VERB ROUTINES
 !----------------------------------------------------------------------------
+
+! Roody's note: This only exists for CHARACTER, G. Never actually called.
+routine DoAgain
+{}
 
 !\ Roody's note - If you want your game to not allow verbosity changes, #set
 NO_MODE_CHANGE before Roodylib grammar is included. Then the grammar will call
@@ -10397,7 +10828,7 @@ written by Christopher Tate \!
 ! comp_routine = the address of the comparison routine to use
 ! beginn = beginning element to start with (for arrays not starting with 0 )
 
-routine SortArray(data, num, comp_routine,beginn)
+routine SortArray(data_arr, num, comp_routine,beginn)
 {
 	local i
 	local did_swap
@@ -10409,13 +10840,13 @@ routine SortArray(data, num, comp_routine,beginn)
 		for (j = (num + beginn - 1); j > i; j = j - 1)
 		{
 			local swap
-			swap = call comp_routine(array data[j-1], array data[j])
+			swap = call comp_routine(array data_arr[j-1], array data_arr[j])
 			if swap
 			{
 				local tmp
-				tmp = array data[j]
-				array data[j] = array data[j-1]
-				array data[j-1] = tmp
+				tmp = array data_arr[j]
+				array data_arr[j] = array data_arr[j-1]
+				array data_arr[j-1] = tmp
 				did_swap = true
 			}
 		}
@@ -10460,9 +10891,9 @@ routine SortProp(obj, prp, comp_routine)
 ! These simple comparison routines are provided to handle the
 ! common cases of sorting a numeric array in ascending or
 ! descending order.  For example, to sort an entire numeric array
-! called "data" in ascending order, just do this:
+! called "data_arr" in ascending order, just do this:
 !
-! SortArray(data, data[], &SORT_ASCENDING)
+! SortArray(data_arr, data_arr[], &SORT_ASCENDING)
 
 routine SORT_ASCENDING(obj1, obj2)
 {
@@ -10801,8 +11232,8 @@ routine ClearArray(array_to_be_cleared)
 !  here is a word-array-specific one
 routine ClearWordArray
 {
-	local n ! ,t
-	for (n=20;n< 30 ; n++ )
+	local n
+	for (n=LAST_TURN;n> 0 ; n-- )
 	{
 		if word[n] = ""
 			break
@@ -10831,7 +11262,7 @@ routine ClearPronoun(obj)
 
 ! CoolPause("Press a key to continue...",1)
 
-routine CoolPause(pausetext,top)
+routine CoolPause(pausetext,top_text)
 {
 	local a, save_title
 	local simple_port
@@ -10851,13 +11282,13 @@ routine CoolPause(pausetext,top)
 	}
 
 #ifset CHEAP
-	if cheap
-		top = false
+	if (cheap & CHEAP_ON)
+		top_text = false
 #endif
 #ifset NO_STRING_ARRAYS
-	top = false
+	top_text = false
 #endif
-	if top
+	if top_text
 	{
 #ifclear NO_STRING_ARRAYS
 		Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
@@ -10898,7 +11329,7 @@ routine CoolPause(pausetext,top)
 	{
 		Font(DEFAULT_FONT)
 #ifset CHEAP
-		if cheap
+		if (cheap & CHEAP_ON)
 		{
 !			if there is an a value, prints a. otherwise prints default.
 			RlibMessage(&CoolPause,3,a) ! "[PRESS A KEY TO CONTINUE]";
@@ -10918,7 +11349,7 @@ routine CoolPause(pausetext,top)
 	Font(DEFAULT_FONT)
 	print newline
 #ifset CHEAP
-	if not cheap
+	if not (cheap & CHEAP_ON)
 #endif
 		""
 	if save_title
@@ -11430,29 +11861,28 @@ object versionlib "versionlib"
 	type settings
 	execute
 	{
-		if not CheckWordSetting("undo")
+!\  This automatically generates the current year at build time, stored in the
+    global build_year    \!
+		if word[LAST_TURN] ~= "undo","restore"
 		{
-			if not CheckWordSetting("restore")
+			string(_temp_string, serial$, 8)
+			local i,n, factor = 1
+			for (i=7; i>5; i--)
 			{
-				string(_temp_string, serial$, 8)
-				local i,n, factor = 1
-				for (i=7; i>5; i--)
+				n = _temp_string[i]
+				if n >= '0' and n <= '9'
 				{
-					n = _temp_string[i]
-					if n >= '0' and n <= '9'
-					{
-						n -= '0'
-						build_year += (n*factor)
-					}
-					elseif i = 0 and n = '-'
-						build_year = -build_year
-					else
-						build_year = 0
-
-					factor *= 10
+					n -= '0'
+					build_year += (n*factor)
 				}
-				build_year = build_year + 2000
+				elseif i = 0 and n = '-'
+					build_year = -build_year
+				else
+					build_year = 0
+
+				factor *= 10
 			}
+			build_year = build_year + 2000
 		}
 	}
 }
@@ -11641,17 +12071,19 @@ routine RLibMessage(r, num, a, b)
 			select num
 				case 1
 				{
-					if not (FORMAT & DESCFORM_I) or (verbroutine ~= &MovePlayer and
-					verbroutine ~= &DoLookAround and a = location)
-						print "\n";
+					if not (FORMAT & DESCFORM_I) !and ! or (verbroutine ~= &MovePlayer and
+!					verbroutine ~= &DoLookAround and a = location)
+!					(verbroutine = &MovePlayer and a = location)
+						print ""
 					else
 					{
-						local col
-						col = display.cursor_column
-						if system(61) or not display.hasgraphics
-							--col
-						if col
-							"\n";
+!						local col
+!						col = display.cursor_column
+!						if system(61) or not display.hasgraphics
+!							--col
+!						if col
+!							"\n";
+						print newline
 					}
 					Font(BOLD_ON)
 					print capital a.name;
@@ -11686,6 +12118,36 @@ routine RLibMessage(r, num, a, b)
 !			select num
 !			case 1:  print CThe(player); " can't close "; player.pronoun #4; "."
 !		}
+#ifset CHEAP
+		case &DoCheapHelp
+		{
+			select num
+				case 1
+				{
+					"To turn on \"cheap mode\", type \BCHEAP ON\b or
+					\BCHEAPMODE ON\b. This is the default behavior. To turn cheap
+					mode off, type \BCHEAP OFF\b or \BCHEAPMODE OFF\b."
+				}
+		}
+		case &DoCheapOnOff
+		{
+			select num
+				case 1
+					"\"Cheap\" mode on."
+				case 2
+					"\Cheap\" mode already on."
+				case 3
+					"\"Cheap\" mode off."
+				case 4
+					"\"Cheap\" mode already off."
+		}
+		case &DoCheapToggle
+		{
+			select num
+				case 1: "\"Cheap\" mode toggled off."
+				case 2: "\"Cheap\" mode toggled on."
+		}
+#endif
 		case &DoDrink
 		{
 			print CThe(player); " can't ";
@@ -11880,14 +12342,13 @@ routine RLibMessage(r, num, a, b)
 		case &DoQuit
 		{
 			select num
-				case 1 : "\IThanks for playing!\i"
-				case 2
+				case 1
 					"Continuing on."
 		}
 		case &DoRestart
 		{
 			select num
-				case 1 : "Continuing on."
+				case 1 : print "\nOk, continuing on."
 		}
 #endif
 		case &DoSmell
@@ -11941,6 +12402,40 @@ routine RLibMessage(r, num, a, b)
 			" an ancient reference to an archaic game. Nothing happens."
 		}
 #endif
+	case &EndGame
+	{
+		select num
+		case 1
+		{
+			print "\nThe game has ended.  Do you want to (R)ESTART";
+#ifclear NO_XVERBS
+			print ", R(E)STORE a saved game";
+#ifset NO_UNDO
+			print ",";
+#endif
+#endif
+#ifclear NO_UNDO
+			if not UNDO_OFF         ! if not otherwise overridden
+				print ", (U)NDO your last turn,";
+#endif
+			print " or (Q)UIT? ";
+		}
+		case 2
+		{
+			print "Enter (R)ESTART";
+#ifclear NO_XVERBS
+			print ", R(E)STORE";
+#ifset NO_UNDO
+			print ",";
+#endif
+#endif
+#ifclear NO_UNDO
+			if not UNDO_OFF
+				print ", (U)NDO,";
+#endif
+			print " or (Q)UIT: ";
+		}
+	}
 #ifset LIST_CLOTHES_FIRST
 		case &ListClothesFirst
 		{
@@ -11962,6 +12457,11 @@ routine RLibMessage(r, num, a, b)
 				case 1: print " "; a;
 				case 2: print ":"
 		}
+		case &Parse
+		{
+			select num
+				case 1: "You will need to type that in again."
+		}
 #ifset NO_FANCY_STUFF
 		case &PrintStatusLine
 		{
@@ -11976,6 +12476,26 @@ routine RLibMessage(r, num, a, b)
 			}
 		}
 #endif
+		case &QuitGameText
+		{
+			"\IThanks for playing!\i"
+		}
+		case &RepaintScreen
+		{
+			"[Detected screen size change; redrawing screen...]"
+		}
+		case &UndoResponse
+		{
+			select num
+				case 1:	"Undone."
+				case 2
+				{
+					if UNDO_OFF
+						"UNDO is not currently allowed."
+					else
+						print "Unable to undo."
+				}
+		}
 		case &WhatsIn
 		{
 			select num
@@ -12020,11 +12540,11 @@ routine RLibMessage(r, num, a, b)
 #endif
 		case &YesorNo
 		{
-			if FORMAT & DESCFORM_I
-				""
 			select num
 			case 1
+			{
 				print "Please answer YES or NO: ";
+			}
 			case 2
 				print "YES or NO: ";
 		}

@@ -1,4 +1,4 @@
 Usage is described in the comments of simpletalk.h. simpletalkgame.hug is the original "phototalk" example, updated to use the simpletalk extension.
  
 
-             roody yogurt 2012
+             roody yogurt 2014

@@ -6,7 +6,7 @@ constant GAME_TITLE "NEW MENU SAMPLE GAME"
 !:: Flags
 !#set BETA                ! Compile with the comments-in-transcripts library
                           !   addition (requires "beta.h")
-!#set CHEAP
+#set CHEAP
 #set HUGOFIX             ! Compile with HugoFix Debugging Library commands
                           !   available (type $? in game)
 !#set PRECOMPILED_LIBRARY ! Use a precompiled header library (see manual)
@@ -31,17 +31,22 @@ constant GAME_TITLE "NEW MENU SAMPLE GAME"
                                !   to two)
 !constant INDENT_SIZE 0        ! no indentation in room descriptions and room
                                !   content listings
-#set CHEAP
 
 !:: Grammar Library Inclusions (grammar must come first)
 xverb "about"
 *								DoAbout
-verb "hints"
+xverb "hints"
 	*							DoHints
 xverb "test"
 	*							DoTest
 
-#include "cheaplib.g"
+xverb "test2"
+	*                    DoTest2
+
+!#ifset CHEAP
+!#include "cheaplib.g"
+!#endif
+
 #include "roodylib.g"
 ! new grammar needs to be defined before the including verblib
 #include "verblib.g"        ! Verb Library
@@ -49,7 +54,7 @@ xverb "test"
 #include "hugolib.h"        ! Standard  Hugo Library
 
 #include "roodylib.h"         ! Hugo  Library Updates
-!#include "cheaplib.h"
+
 #include "newmenu.h"
 
 !::	Other Library Inclusions
@@ -57,9 +62,9 @@ xverb "test"
 #include "beta.h"
 #endif
 
-#ifset CHEAP
-#include "cheaplib.h"
-#endif
+!#ifset CHEAP
+!#include "cheaplib.h"
+!#endif
 
 !:: Other constants and global variables
 !constant IFID "put-IFID here"
@@ -133,9 +138,35 @@ room STARTLOCATION "Start Location"
 {
 	long_desc
 	{
+!		color BGCOLOR, BGCOLOR
 		"This is the Start Location."
+!		color TEXTCOLOR, BGCOLOR
 !		CoolPause
 	}
+	e_to eastroom
+}
+
+room eastroom "East Room"
+{
+	w_to STARTLOCATION
+	long_desc
+	{
+		"Yay, you win!"
+		endflag = 1
+	}
+}
+
+replace SpecialKey(end_type)
+{
+	if end_type = 1 and word[1] = "a"
+		return word[1]
+	else
+		return 0
+}
+
+replace SpecialRoutine
+{
+	ShowPage(studiopass_hints)
 }
 
 routine DoAbout
@@ -164,7 +195,8 @@ option contact_choice "Contact"
 	menu_text
 	{
 !		""
-		"\_ Feel free to send me your thoughts and suggestions at roody.yogurt@gmail.com! What an amazing discourse we will have!"
+		Indent
+		"Feel free to send me your thoughts and suggestions at roody.yogurt@gmail.com! What an amazing discourse we will have!"
 	}
 	priority 3
 }
@@ -208,4 +240,10 @@ hint_option studiopass_hints "How do I get on the studio lot?"
 routine DoTest
 {
 	ShowPage(contact_choice)
+}
+
+
+routine DoTest2
+{
+	ShowPage(studiopass_hints)
 }
