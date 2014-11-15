@@ -67,12 +67,12 @@ version_obj beta_version "Beta Version 2.7"
 }
 #endif
 
-property transcript_is_on alias long_desc
+!property transcript_is_on alias long_desc
 
 
 object betalib "beta"
 {
-	transcript_is_on false
+!	transcript_is_on false
 ! if roodylib.h has been included before beta.h, nothing needs to be
 ! added to the init routine
 #ifset _ROODYLIB_H
@@ -99,7 +99,7 @@ object betalib "beta"
 #endif
 	save_info
 	{
-		if self.transcript_is_on
+		if self is special
 			return true
 		else
 			return false
@@ -116,11 +116,11 @@ routine BetaInit
 {
 #ifclear _ROODYLIB_H
 	if word[10] = "beta"
-		betalib.transcript_is_on = true
+		betalib is special
 	else
 #else
 	if CheckWordSetting("beta")
-		betalib.transcript_is_on = true
+		betalib is special
 	elseif not CheckWordSetting("restore") and not CheckWordSetting("undo")
 #endif
 	{
@@ -147,7 +147,7 @@ routine BetaInit
 			if (not scripton)
 			{
 				""
-				BetaMessage(&DoScriptOnOff, 1, betalib.transcript_is_on)
+				BetaMessage(&DoScriptOnOff, 1, (betalib is special))
 			}
 		!\
 			"Transcription is already on."
@@ -156,7 +156,7 @@ routine BetaInit
 			else
 			{
 				""
-				betalib.transcript_is_on = true
+				betalib is special
 				BetaMessage(&DoScriptOnOff, 2) ! "Transcription on."
 			}
 		}
@@ -183,29 +183,29 @@ replace DoScriptOnOff
 {
 	if word[2] = "on" or words = 1
 	{
-		if (betalib.transcript_is_on) or (not scripton)
-			BetaMessage(&DoScriptOnOff, 1, betalib.transcript_is_on)
+		if betalib is special or (not scripton)
+			BetaMessage(&DoScriptOnOff, 1, (betalib is special))
 	!\
 		"Transcription is already on."
 		or "Unable to begin transcription.", depending
    \!
 		else
 		{
-			betalib.transcript_is_on = true
+			betalib is special
 			BetaMessage(&DoScriptOnOff, 2) ! "Transcription on."
 		}
 	}
 	elseif word[2] = "off"
 	{
-		if (not betalib.transcript_is_on) or (not scriptoff)
-			BetaMessage(&DoScriptOnOff, 3, betalib.transcript_is_on)
+		if betalib is not special or (not scriptoff)
+			BetaMessage(&DoScriptOnOff, 3, (betalib is special))
 	!\
 		"Transcription is not currently on."
 		or "Unable to end transcription.", depending
    \!
 		else
 		{
-			betalib.transcript_is_on = false
+			betalib is not special
 			BetaMessage(&DoScriptOnOff, 4) ! "Transcription off."
 		}
 	}
@@ -219,7 +219,7 @@ replace NewParseError(errornumber, obj)
      ! changed some unnecessary string-matching code
 	if word[1] = "*"
 	{
-		if betalib.transcript_is_on
+		if betalib is special
 			BetaMessage(&DoScriptOnOff, 5) ! Comment recorded!
 		else
 			BetaMessage(&DoScriptOnOff, 6) ! Comment not recorded!
@@ -239,7 +239,7 @@ replace PreParseError
      ! changed some unnecessary string-matching code
 	if word[1] = "*"
 	{
-		if betalib.transcript_is_on
+		if betalib is special
 			BetaMessage(&DoScriptOnOff, 5) ! Comment recorded!
 		else
 			BetaMessage(&DoScriptOnOff, 6) ! Comment not recorded!
@@ -259,7 +259,7 @@ replace DoRestart
 	GetInput
 	if YesorNo = true
 	{
-		if betalib.transcript_is_on
+		if betalib is special
 			word[10] = "beta"
 		if not restart
 			VMessage(&DoRestart, 2)  ! "Unable to restart."
@@ -268,12 +268,12 @@ replace DoRestart
 
 replace DoRestore
 {
-	if betalib.transcript_is_on
+	if betalib is special
 		word[10] = "beta"
 	if restore
 	{
 		if word[10] = "beta"
-			betalib.transcript_is_on = true
+			betalib is special
 		VMessage(&DoRestore, 1)         ! "Restored."
 		PrintStatusline
 		DescribePlace(location, true)

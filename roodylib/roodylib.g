@@ -231,6 +231,10 @@ xverb "script", "transcript", "transcription"
 	* "on"/"off"                                            DoScriptOnOff
 
 #ifclear NO_RECORDING
+xverb "playback"
+	*                                                       DoRecordOnOff
+xverb "playback"
+	*  "on"/"off"                                           DoRecordOnOff
 xverb "record"
 	*                                                       DoRecordOnOff
 xverb "record"

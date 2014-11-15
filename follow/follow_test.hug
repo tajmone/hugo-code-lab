@@ -12,6 +12,7 @@ constant GAME_TITLE	"GAME TITLE"
 !#set PRECOMPILED_LIBRARY ! Use a precompiled header library (see manual)
 !#set VERBSTUBS           ! Include the grammar and routines from verbstubs.g
                           !   and verbstubs.h, respectively
+#set LIST_CLOTHES_FIRST
 !#set USE_ATTACHABLES     ! Use attachable items
 !#set USE_PLURAL_OBJECTS  ! Use plural objects
 !#set USE_VEHICLES        ! Use vehicle objects
@@ -160,6 +161,20 @@ character friendlygiant "friendly giant"
 	}
 }
 
+object hat "hat"
+{
+	article "a"
+	noun "hat"
+	in friendlygiant
+	is clothing worn
+}
+
+object bar "candybar"
+{
+	in friendlygiant
+	noun "candybar"
+	article "a"
+}
 
 routine DoFollow
 {}

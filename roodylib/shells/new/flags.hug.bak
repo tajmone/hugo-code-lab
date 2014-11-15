@@ -43,6 +43,7 @@
                           ! automatically pick up unheld objects)
 !#set USE_PLURAL_OBJECTS  ! Use plural objects
 !#set USE_VEHICLES        ! Use vehicle objects
+!#set VERSIONS            ! Print library versions at compile time
 
 ! Note: the OLD_STYLE_PRONOUNS flag is currently forced by hugolib
 

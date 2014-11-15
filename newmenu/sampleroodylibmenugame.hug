@@ -57,15 +57,6 @@ xverb "test2"
 
 #include "newmenu.h"
 
-!::	Other Library Inclusions
-#ifset BETA
-#include "beta.h"
-#endif
-
-!#ifset CHEAP
-!#include "cheaplib.h"
-!#endif
-
 !:: Other constants and global variables
 !constant IFID "put-IFID here"
 

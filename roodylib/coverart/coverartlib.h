@@ -170,13 +170,13 @@ object coverlib "coverlib v1"
 #ifclear USE_CONFIG_SYSTEM
 	in init_instructions
 	execute
-		{
+	{
 		if not CheckWordSetting("undo") and not CheckWordSetting("restore")
-			{
+		{
 			if CoverArt
 				self.did_print = true
-			}
 		}
+	}
 #else
 	in config_instructions
 	name_sum 0

@@ -98,7 +98,7 @@ routine IntroText
 }
 
 !::	Main game loop
-routine	main
+routine main
 {
 	counter = counter + 1
 	run location.each_turn

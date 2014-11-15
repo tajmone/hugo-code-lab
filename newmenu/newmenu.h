@@ -264,13 +264,13 @@ object menulib "menu"
 		         ! turned off
 	}
 }
-
-property usage_desc ! some text describing what commands turn a library's
-                    ! function on/off (ex: CHEAPMODE ON)
-
 #endif ! _ROODYLIB_H
 
 #ifset USE_DEFAULT_MENU
+#if undefined usage_desc
+property usage_desc ! some text describing what commands turn a library's
+                    ! function on/off (ex: CHEAPMODE ON)
+#endif
 !routine MenuInit
 !{
 !	local i

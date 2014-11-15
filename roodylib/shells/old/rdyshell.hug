@@ -56,8 +56,10 @@ constant RELEASE "1.0"
 #endif
 
 !::	Other Library Inclusions
+#ifclear USE_ROODYLIB
 #ifset BETA
 #include "beta.h"
+#endif
 #endif
 
 !::	Game Initialization	routine
@@ -129,7 +131,7 @@ routine IntroText
 }
 
 !::	Main game loop
-routine	main
+routine main
 {
 	counter = counter + 1
 	run location.each_turn
