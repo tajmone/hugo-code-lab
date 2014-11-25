@@ -5,11 +5,11 @@
 #ifclear _ROODYLIB_H
 #set _ROODYLIB_H
 
-constant ROODYBANNER "RoodyLib Version 3.9"
-constant ROODYVERSION "3.9"
+constant ROODYBANNER "RoodyLib Version 4.0"
+constant ROODYVERSION "4.0"
 
 #ifset VERSIONS
-#message "roodylib.h version 3.9"
+#message "roodylib.h version 4.0"
 #endif
 
 !----------------------------------------------------------------------------
@@ -380,6 +380,10 @@ replace Acquire(newparent, newchild)
 
 !\ Roody's note: This version has added support for animals and things being
 ! called "it" instead of something gendered, written by Mike Snyder.
+! Added a "force" argument. Along with different pronoun handling
+! in Parse and other places, just adding a true value to "force"
+! should guarantee a pronoun change (no longer requiring the author
+! to set last_object to -1.
 \!
 
 replace AssignPronoun(obj,force)
@@ -1081,7 +1085,7 @@ replace ListObjects(thisobj, conjunction)
 				print " "; HERE_WORD;
 				FORMAT = FORMAT & ~ISORAREHERE_F  ! clear it
 
-				if not (FORMAT&LIST_F or FORMAT&TEMPLIST_F)
+				if not (FORMAT & LIST_F or FORMAT & TEMPLIST_F)
 					override_indent = true
 			}
 
@@ -1231,7 +1235,7 @@ replace WhatsIn(obj,dont_flush)
 	{
 		if not dont_flush
 			i is not already_listed
-		if i is not hidden
+		if i is not hidden and i is not already_listed
 			totallisted++
 	}
 
@@ -1335,7 +1339,10 @@ replace WhatsIn(obj,dont_flush)
 		}
 
 		ListObjects(obj)
-
+		for i in obj
+		{
+			i is already_listed
+		}
 		list_nest = initial_list_nest
 	}
 	return totallisted
@@ -2789,7 +2796,7 @@ routine QuitGameText
 	RLibMessage(&QuitGameText) ! "Thanks for playing!"
 	""
 	display.title_caption = PRESS_ANY_KEY
-	if not system(61) ! if not simple port simple port
+	if not system(61) ! if not simple port
 	{
 		print PRESS_ANY_KEY;
 		HiddenPause
@@ -6262,6 +6269,9 @@ routine IsGlk
 	return ((display.screenheight + 100) < display.windowlines)
 }
 
+! Added ClearWindow as a quick way to clear and reset the cursor
+! without clearing the status (and other) windows
+
 routine ClearWindow
 {
 	local a
@@ -6631,6 +6641,10 @@ routine RedrawScreen
 !\ Roody's note: Split the screen-clearing stuff into another routine
    so EndGame and such could use it, too.   \!
 
+#if undefined REPAINT_TIME
+constant REPAINT_TIME 30
+#endif
+
 routine RepaintScreen
 {
 #ifset CHEAP
@@ -6650,7 +6664,7 @@ routine RepaintScreen
 	get_key = system(11) ! READ_KEY
 	if not (system_status or system(61)) ! 61 = MINIMAL_PORT
 	{
-		while a <30 ! 100
+		while a < REPAINT_TIME ! 100
 		{
 			if system(11)
 				break
@@ -10234,6 +10248,26 @@ replace DoTakeOff
 	return true
 }
 
+replace DoWait(count)                   ! count argument is from DoWaitUntil
+{
+	if object = 0
+		count = WAIT_TURN_COUNT
+	elseif count = 0
+		count = object
+
+	VMessage(&DoWait)                ! "Time passes..."
+	event_flag = 0
+	while --count
+	{
+		Main
+		system(32) !(PAUSE_100TH_SECOND)  ! potential updating
+		if event_flag and betalib is not skip_pauses
+			if not KeepWaiting
+				return
+	}
+	event_flag = 0
+	return true
+}
 
 !----------------------------------------------------------------------------
 !* REPLACED VERBSTUB.H ROUTINES
@@ -12201,7 +12235,12 @@ all children objects are not hidden. \!
 
 routine ListChildren(obj,conjunction)
 {
+	local x
 	list_count = children(obj)
+	for x in obj
+	{
+		x is not already_listed
+	}
 	if list_count
 		ListObjects(obj,conjunction)
 }
@@ -13154,7 +13193,8 @@ routine RLibMessage(r, num, a, b)
 					"Pressing the \"+\" key at a MORE prompt may skip
 					through the rest of the MORE prompts, depending on your
 					interpreter."
-				case 6: print "Skip pauses during playback? ";
+				case 6: print "Skip in-game pauses and \"Keep waiting?\" prompts
+				during playback? ";
 				case 7: "No recording during playback."
 				case 8: "Recording already in progress."
 				case 9: "No recording in progress."

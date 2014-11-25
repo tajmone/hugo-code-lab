@@ -18,9 +18,6 @@
 !* Library contribution inclusions
 !----------------------------------------------------------------------------
 #set USE_ROODYLIB        ! Compile with Roodylib
-!#set BETA                ! Compile with the comments-in-transcripts library
-                          !  addition
-!#set CHEAP               ! Compile with cheaplib
 !#set NEW_MENU            ! Compile with newmenu
 !#set USE_DEFAULT_MENU    ! Use newmenu's default menu functionality
 !#set PASTTENSE           ! Compile with "pasttense.h"
@@ -98,6 +95,8 @@
 !#set NO_XYZZY                 ! Don't use >XYZZY response code
 !#set OBJECT_SORTING           ! Use object-sorting system
 !#set ROUTINE_GRAMMAR_HELPER   ! Use Routine Grammar Helper (see comments)
+!#set SHOW_COMMANDS            ! UNDOs and multiple command lines will show
+                               ! the turn being processed
 !#set SKIP_DOORS               ! Player can walk through closed, unlocked doors
                                !  without opening them, just like NPCs
 !#set USE_AFTER_UNDO           ! Use after_undo array to call routines

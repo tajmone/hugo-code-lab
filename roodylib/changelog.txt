@@ -4,7 +4,26 @@ IMPORTANT - Changed behavior from hugolib! Here is a list of things that may pos
 * vehicles have new code for leaving and trying to move (check out roodylibdocs.odt)
 * more reach checking for interactions with objects that have parents
 
+TO DO LIST (for future versions):
+* clean up ListObjects a bit
+* possibly create a helper routine for applying/clearing already_listed from children of objects
+* make HugoFix parser-checking output prettier?
 
+
+v 4.0 - * Added some new constants for some new FindObject/Parse stuff
+	* Incorporated cheaplib.h and betalib.h into Roodylib
+	* Updated AnyVerb, AssignPronoun, CenterTitle, YesOrNo, HugoFix stuff, EndGame, DoMoveInVehicle, DoOpen
+	* Updated DoLook to clear already_listed from children of parents and WhatsIn to have an option to be called so it doesn't clear already_listed
+	* Added QuitGameText routine
+	* New disambiguation code
+	* Stronger NPC order parsing
+	* Hopefully better ParseError responses
+	* A lot of FindObject reorganization
+	* VerbCheck routine for identifying verb words vs. noun/other words.
+	* Tweaked word-array setting save system
+	* Made PreParse and PreParseInstructions separate
+	* added command-printing code for multiple-command lines
+	* Updated a bunch of xverb stuff, including command recording/playback
 v 3.9 - * updated ObjectIs and TestObjectIs
 	* small fix to CheapTitle
 	* updated CenterTitle to work with the NO_MENUS flag
