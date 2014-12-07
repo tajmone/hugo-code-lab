@@ -1,9 +1,12 @@
 !\-----------------------------------------------------------------------
-Beta.h version 2.7, based on code written by Bert Byfield, updated by Mike
+Beta.h version 2.8, based on code written by Bert Byfield, updated by Mike
 Snyder, and turned into this by Jon Blask.
 
-If you are including "roodylib" and have an init routine that calls Init_Calls,
-you don't need to do anything. Otherwise, add this to your init routine before
+This code has been integrated into Roodylib, so if you are using
+Roodylib, just #set-ing BETA in your game will give you the same
+functionality.  This extension now just exists for non-Roodylib games.
+
+In that case, add this to your init routine before
 any text is printed:
 
 #ifset BETA
@@ -52,77 +55,18 @@ routine Version
 #set _BETA_H
 
 #ifset VERSIONS
-#message "Beta.h Version 2.7"
+#message "Beta.h Version 2.8"
 #endif
-
-#ifset USE_EXTENSION_CREDITING
-#ifclear _ROODYLIB_H
-#message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
-#endif
-version_obj beta_version "Beta Version 2.7"
-{
-	in included_extensions
-	desc_detail
-		" by Bert Byfield, Mike Snyder, and Roody Yogurt";
-}
-#endif
-
-!property transcript_is_on alias long_desc
-
 
 object betalib "beta"
-{
-!	transcript_is_on false
-! if roodylib.h has been included before beta.h, nothing needs to be
-! added to the init routine
-#ifset _ROODYLIB_H
-	type settings
-	in init_instructions
-	did_print 0
-#ifset _NEWMENU_H
-	usage_desc
-	{
-		Indent
-		"Betatesters: When a transcript is on (";
-		if system(61) ! simple
-			print "\"";
-		else
-		 print "\#147";
-		 print "\BSCRIPT ON\b\"), preface your
-		notes with an asterisk (";
-		if system(61) ! simple
-			print "\"";
-		else
-		 print "\#147";
-		 "\B*\b\") to have your comments accepted."
-	}
-#endif
-	save_info
-	{
-		if self is special
-			return true
-		else
-			return false
-	}
-	execute
-	{
-		BetaInit
-	}
-#endif  ! _ROODYLIB_H
-}
+{}
 
 
 routine BetaInit
 {
-#ifclear _ROODYLIB_H
 	if word[10] = "beta"
 		betalib is special
 	else
-#else
-	if CheckWordSetting("beta")
-		betalib is special
-	elseif not CheckWordSetting("restore") and not CheckWordSetting("undo")
-#endif
 	{
 		BetaMessage(&BetaInit,1) ! Would you like to start a transcript?
 !: fancy pause stuff below
@@ -167,15 +111,9 @@ routine BetaInit
 		}
 		""
 		BetaMessage(&BetaInit,3) ! "[press a key]"
-#ifclear _ROODYLIB_H
 		pause
 		"\n"
 		cls
-#else
-		HiddenPause
-		"\n"
-		betalib.did_print = true
-#endif
 	}
 }
 
@@ -211,7 +149,6 @@ replace DoScriptOnOff
 	}
 }
 
-#ifclear _ROODYLIB_H
 ! The NewParseError replacement routine has been changed for better
 ! coexisting with other NewParseError code if the game calls for it
 replace NewParseError(errornumber, obj)
@@ -233,24 +170,7 @@ replace NewParseError(errornumber, obj)
 										 ! false
 	return true ! this line is only reached if an error message was replaced
 }
-#else
-replace PreParseError
-{
-     ! changed some unnecessary string-matching code
-	if word[1] = "*"
-	{
-		if betalib is special
-			BetaMessage(&DoScriptOnOff, 5) ! Comment recorded!
-		else
-			BetaMessage(&DoScriptOnOff, 6) ! Comment not recorded!
-		return true ! we'll just return true if someone tried to do a comment
-	}
-	else
-		return false
-}
-#endif
 
-#ifclear _ROODYLIB_H
 ! We replace DoRestart so we can reset the transcript_is_on global to true if
 ! the game is restarted while scripting
 replace DoRestart
@@ -281,7 +201,6 @@ replace DoRestore
 	}
 	else:  VMessage(&DoRestore, 2)           ! "Unable to restore."
 }
-#endif
 
 routine BetaMessage(r, num, a, b)
 {

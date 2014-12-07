@@ -8,7 +8,8 @@ TO DO LIST (for future versions):
 * clean up ListObjects a bit
 * possibly create a helper routine for applying/clearing already_listed from children of objects
 * make HugoFix parser-checking output prettier?
-
+* might integrate other libraries into Roodylib, like boxdraw.h, follow,h, score notification, opportune.h, newcango, and
+  footnotes
 
 v 4.0 - * Added some new constants for some new FindObject/Parse stuff
 	* Incorporated cheaplib.h and betalib.h into Roodylib
