@@ -6,6 +6,8 @@ constant GAME_TITLE	"GAME TITLE"
 !:: Flags
 !#set BETA                ! Compile with the comments-in-transcripts library
 #set USE_ROODYLIB                          !   addition (requires "beta.h")
+#set OBJECT_SORTING
+!#set LIST_KNOWN_ROOMS
 !#set CHEAP
 #set HUGOFIX             ! Compile with HugoFix Debugging Library commands
                           !   available (type $? in game)
@@ -131,6 +133,7 @@ room STARTLOCATION "Start Location"
 	w_to WestRoom
 	no_clump true
 	cango_name "a mysterious place"
+	is inconsistent_exits
 }
 
 room TrapRoom "Dead End"
@@ -202,4 +205,158 @@ room WestRoom "West Room"
 		PrintExits
 	}
 	e_to STARTLOCATION
+}
+
+replace GetExits
+{
+! reset all of our destination "jars" and direction "pebbles"
+	local i
+
+	for (i = north_pebble;i <= out_pebble ;i++ )
+	{
+		move i to direction_pile
+	}
+	OtherExits ! (see below)
+#ifset LIST_KNOWN_ROOMS
+	remove unknownjar
+#endif
+	while child(exit_shelf)
+	{
+		move child(exit_shelf) to storage_shelf
+	}
+
+	if object is inconsistent_exits
+		MixObjects(direction_pile)
+
+	local b, c, d
+	i = youngest(direction_pile)  ! pick a direction pebble
+	while i
+	{
+		d = elder(i)   ! choose next pebble, too
+		if object.(i.direct) ! see if the direction exists from the intended room
+		{
+			b = object.(i.direct)
+			if b.type = door
+			{
+				if b is not locked
+					b = b.between #((object = \
+				b.between #1) + 1)
+			}
+			elseif (&b.door_to and b is not locked and
+			b.type ~= door and b.type ~= room)
+				b = b.door_to
+			elseif (b.door_to and b is not locked and
+			b.type ~= door and b.type ~= room)
+				b = b.door_to
+
+			if b.type = room and b.cango_name ~= SKIP ! make sure the direction
+			{                     ! goes to a room and shouldn't be skipped
+				for c in exit_shelf
+				{
+					if c.name = b.cango_name, b.name
+					{                    ! if a jar on the "exit shelf" has the same
+						move i to c       ! name as the current destination room, move
+						break             ! this pebble to that jar
+					}
+				}
+#ifset LIST_KNOWN_ROOMS
+				if i in direction_pile and b is not known
+				{
+					move i to unknownjar
+					if parent(unknownjar) ~= exit_shelf
+						move unknownjar to exit_shelf
+				}
+				else
+#endif
+				if i in direction_pile        ! if not, start a new destination
+				{                             ! room jar on the exit shelf
+					c = child(storage_shelf)
+					move c to exit_shelf
+					if b.cango_name
+					{
+						c.name = b.cango_name
+					}
+					else
+						c.name = b.name
+					move i to c
+				}
+			}
+		}
+		i = d
+	}
+}
+
+object unknownjar
+{
+!	in storage_shelf
+}
+
+replace PrintExits
+{
+	local a, b, c, d, e,f,g,h
+
+	f = children(exit_shelf)
+	g = f > 2
+	a = child(exit_shelf)
+	while a
+	{
+		h = younger(a)
+		if e and location.no_clump
+		{
+			print AFTER_PERIOD;
+		}
+		elseif e++
+			print " ";
+		if location.no_clump or e=1
+			CanGoMessage(&PrintExits, 1,1) ! "You can go ";
+		b = children(a)
+		d = b > 2
+		c = child(a)
+		while b
+		{
+			print c.name;
+			if b > 1 and d
+			{
+				print ", ";
+			}
+			if b = 2
+			{
+				if not d
+				{
+					" ";
+				}
+				print "or ";
+			}
+			c = younger(c)
+			b--
+		}
+#ifset LIST_KNOWN_ROOMS
+		if a ~= unknownjar
+#endif
+			CanGoMessage(&PrintExits, 1,2,a) ! " to <room name>";
+!		print a.name;
+		if location.no_clump
+			print ".";
+		else
+		{
+			--f
+			if f and g
+			{
+				print ",";
+			}
+			if (f = 1 and g) or (f and not g)
+			{
+				print " or";
+			}
+		}
+		a = h
+	}
+	if e
+	{
+		if not location.no_clump
+			print ".";
+		""
+	}
+	else
+		CanGoMessage(&PrintExits,2 ) ! "In fact, you can't go anywhere."
 }

@@ -1,5 +1,5 @@
 !::
-! New Game (Shell)
+! Game Title
 !::
 
 !:: Raise limits, if necessary (here are some of the limits you're likely to
@@ -8,20 +8,27 @@
 !$MAXDICT = 1024
 !$MAXDICTEXTEND = 0 ! (needed for adding more dictionary words mid-game)
 
-!:: Flags
-#include "flags.hug"   ! edit "flags.hug to fit your game
-
-!:: Switches and Grammar Library Inclusions (grammar must come first)
-#include "switchgram.g"
-
-!:: Constants and global variables (some constants must be set before hugolib
-!   is included):
-
 constant GAME_TITLE "GAME TITLE"
 constant AUTHOR "YOUR NAME"
 constant RELEASE "1.0"
 !constant BLURB "An Interactive Blah"
 !constant IFID "put-IFID here"
+
+!:: Flags
+#include "flags.hug"   ! edit "flags.hug to fit your game
+
+#ifset HDX
+#switches -d              ! if the -d switch is not set in the compiler itself,
+                          ! #set HDX will produce a Hugo Debuggable Executable
+                          ! (.HDX) with extension .HEX
+#endif                    ! Sneaky!
+
+!:: Grammar Library Inclusions (grammar must come first)
+#include "grammar.g"
+
+!:: Other constants and global variables
+!  (some constants must be set before hugolib is included):
+
 !constant AFTER_PERIOD " "     ! include one space after full stops (as opposed
                                !   to two)
 !constant INDENT_SIZE 0        ! no indentation in room descriptions and room
@@ -65,13 +72,17 @@ routine SetGlobalsAndFillArrays
 	ranking[3] = "Master Magic Wand Finder"
 	ranking[4] = "The Genuine Article Sample Game Solver"
 	MAX_RANK = 4  \!
+! if using Roodylib, verbosity can be set to BRIEF, SUPERBRIEF, OR VERBOSE
 	verbosity = 2
 	counter = -1                    ! 1 turn before turn 0
-	STATUSTYPE = 1   ! 1 = score/turns, 2 = time, 3 = moves: score:
-	TEXTCOLOR = DEF_FOREGROUND
-	BGCOLOR = DEF_BACKGROUND
-	SL_TEXTCOLOR = DEF_SL_FOREGROUND
-	SL_BGCOLOR = DEF_SL_BACKGROUND
+! statustype options: 0 = no status, 1 = score/turns, 2 = time
+! if using Roodylib, can be set to NO_STATUS, SCORE_MOVES, TIME_STATUS,
+! CUSTOM_STATUS, INFOCOM_STYLE, MILITARY_TIME
+	STATUSTYPE = 1
+	TEXTCOLOR = DEF_FOREGROUND         ! These are the default values of these
+	BGCOLOR = DEF_BACKGROUND           ! variables. This is mainly here as a
+	SL_TEXTCOLOR = DEF_SL_FOREGROUND   ! reminder you can change the values here
+	SL_BGCOLOR = DEF_SL_BACKGROUND     ! if you'd like.
 #if defined TITLECOLOR
 	TITLECOLOR = DEF_FOREGROUND
 #endif

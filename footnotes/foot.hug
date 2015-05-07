@@ -42,8 +42,8 @@ constant GAME_TITLE "GAME TITLE"
 ! put your new grammar here
 !#include "roodylib.g"
 #include "footnotes.g"
-verb "footnotes"
-	* "always"        DoFootnoteAlways
+!verb "footnotes"
+!	* "always"        DoFootnoteAlways
 ! new grammar needs to be defined before the including verblib
 #include "verblib.g"    ! Verb Library
 
@@ -158,8 +158,8 @@ routine PrintFootnote(num)
 			Get over it. ]"
 }
 
-routine DoFootnoteAlways
-{
-	"footnote always mode on."
-	footnotelib.showfootnotes = 8
-}
+!routine DoFootnoteAlways
+!{
+!	"footnote always mode on."
+!	footnotelib.showfootnotes = 8
+!}

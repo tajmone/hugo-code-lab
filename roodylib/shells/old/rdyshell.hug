@@ -96,9 +96,13 @@ routine SetGlobalsAndFillArrays
 	ranking[3] = "Master Magic Wand Finder"
 	ranking[4] = "The Genuine Article Sample Game Solver"
 	MAX_RANK = 4  \!
+! if using Roodylib, verbosity can be set to BRIEF, SUPERBRIEF, OR VERBOSE
 	verbosity = 2
 	counter = -1                    ! 1 turn before turn 0
-	STATUSTYPE = 1   ! 1 = score/turns, 2 = time, 3 = moves: score:
+! statustype options: 0 = no status, 1 = score/turns, 2 = time
+! if using Roodylib, can be set to NO_STATUS, SCORE_MOVES, TIME_STATUS,
+! CUSTOM_STATUS, INFOCOM_STYLE, MILITARY_TIME
+	STATUSTYPE = 1
 	TEXTCOLOR = DEF_FOREGROUND
 	BGCOLOR = DEF_BACKGROUND
 	SL_TEXTCOLOR = DEF_SL_FOREGROUND

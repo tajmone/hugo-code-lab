@@ -268,6 +268,39 @@ xverb "version"
 #endif ! ifclear NO_VERSION
 #endif  ! ifclear NO_XVERBS
 
+#ifset USE_FOOTNOTES
+verb "footnote","note","fn","f"
+*							DoFootnote
+*	number				DoFootnote
+
+xverb "help"
+	* "footnotes"						DoFootnoteMode
+
+xverb "footnotes", "notes"
+	*										DoFootnoteMode
+	* "help"                      DoFootnoteMode
+	* "always"							DoFootnoteMode
+	* "on"/"normal"					DoFootnoteMode
+	* "off"/"never"					DoFootnoteMode
+#endif ! ifset USE_FOOTNOTES
+
+#ifset SCORE_NOTIFY
+xverb "notify"
+	*        DoScoreNotifyOnOff
+xverb "score"
+* "notify"/"notification"			DoScoreNotifyOnOff
+
+xverb "score", "notify"
+* "on"				DoScoreNotifyOn
+xverb "score"
+* "notify"/"notification" "on" DoScoreNotifyOn
+
+xverb "score", "notify"
+* "off"				DoScoreNotifyOff
+xverb "score"
+* "notify"/"notification" "off" DoScoreNotifyOff
+#endif ! ifset SCORE_NOTIFY
+
 ! We'll allow HugoFix commands to work even in NO_XVERBS games as it is
 ! assumed they'll only be used for betatesting.
 

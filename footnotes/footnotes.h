@@ -144,9 +144,11 @@ routine DoFootnote
 	a = object
 	if a < 1 or a >= MAXFOOTNOTES
 		FootnoteMessage(&DoFootnote,2,a) ! "That isn't a valid footnote number."
+#ifclear HITCHHIKER_STYLE
 	elseif not footnotelib.footnotearray #a
 		FootnoteMessage(&DoFootnote,3) ! "You haven't encountered that footnote
 												 !   yet."
+#endif
 	else
 		PrintFootnote(footnotelib.footnotearray #a)
 	return false

@@ -3,7 +3,7 @@
 !::
 
 
-verb "footnote","note"
+verb "footnote","note","fn","f"
 *							DoFootnote
 *	number				DoFootnote
 
@@ -12,6 +12,7 @@ xverb "help"
 
 xverb "footnotes", "notes"
 	*										DoFootnoteMode
+	* "help"                      DoFootnoteMode
 	* "always"							DoFootnoteMode
 	* "on"/"normal"					DoFootnoteMode
 	* "off"/"never"					DoFootnoteMode

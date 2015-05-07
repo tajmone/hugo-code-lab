@@ -1333,6 +1333,15 @@ replace NewParseError(errornumber, obj)
 
 	if not pasttense
 		return false
+#ifset DEBUG
+	if debug_flags & D_PARSE
+	{
+		Font(BOLD_ON)
+		print "[ParseError("; number errornumber; ", "; obj.name; \
+			" ("; number obj; ")]"
+		Font(BOLD_OFF)
+	}
+#endif
 	if errornumber >= 100
 	{
 		CustomError(errornumber, obj)
@@ -1349,24 +1358,7 @@ replace NewParseError(errornumber, obj)
 		return true
 	}
 
-#ifset DEBUG
-	if debug_flags & D_PARSE
-	{
-		Font(BOLD_ON)
-		print "[ParseError("; number errornumber; ", "; obj.name; \
-			" ("; number obj; ")]"
-		Font(BOLD_OFF)
-	}
-#endif
-
 	select errornumber
-
-		case 1
-			print "You"; \
-				! " can't use the word \""; \
-				MatchPlural(player, "doesn't", "don't"); \
-				" need to use the word \""; \
-				parse$; "\"."
 
 		case 3
 			{print CThe(actor); " couldn't "; parse$; " multiple

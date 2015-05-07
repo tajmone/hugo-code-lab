@@ -1,11 +1,12 @@
 !::
-! NEWMENU.H  Version 3.2 by Roody Yogurt
+! NEWMENU.H  Version 3.3 by Roody Yogurt
 !::
 !\
 
 	For a nice overview of this contribution, check out:
 	http://hugo.gerynarsabode.org/index.php?title=NewMenu.h
 
+	version 3.3 - changed some "press a key" stuff
 	version 3.2 - Got rid of extra screen clears and other code cleaning
 	version 3.1 - added alt_title property for option objects. if provided,
 	              the name property is still used as a menu choice, but alt_title
@@ -119,21 +120,12 @@ option contact_choice "Contact"
 	}
 }
 
-The menu_text property holds the text you want on the page. Personally, I
-believe every time the game is paused, there should be some "press key to
-continue," so I've included a MenuPause routine for doing that quickly.
+The menu_text property holds the text you want on the page. After the menu_text
+property is printed, the MenuPause routine automatically prints a "press a key"
+message and waits for a pause.  Change the MenuPause messages in NewMenuMessages
+if you'd like to change the text.
 
-MenuPause([optional text],[true if text goes in statusline])
-
-MenuPause can also do "press a key" in the status bar by putting a 1 in the
-second value, but as far as menu choices go, you'll probably want the text at
-the bottom. If you want something different than the default "press a key"
-text, put your string in the optional text field.
-
-Of course, if you are in love with the old way, you could just put a regular
-pause there.
-
-You can make change when an option is available by changing its option_available
+You can change when an option is available by changing its option_available
 value.
 Of course, return true when you want it available:
 
@@ -205,7 +197,7 @@ hint_option studiopass_hints "How do I get on the studio lot?"
 #set _NEWMENU_H
 
 #ifset VERSIONS
-#message "NewMenu.h Version 3.2"
+#message "NewMenu.h Version 3.3"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
@@ -213,7 +205,7 @@ hint_option studiopass_hints "How do I get on the studio lot?"
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include
 it first!"
 #endif
-version_obj newmenu_version "NewMenu Version 3.2"
+version_obj newmenu_version "NewMenu Version 3.3"
 {
 	in included_extensions
 	desc_detail
@@ -808,13 +800,12 @@ routine MenuPause(page,no_newline)
 	cos = CheapOrSimple
 	Indent
 	if (cos = 2 or simple_port)
-		MenuMessage(&MenuPause,1,page) ! "[PRESS A KEY TO CONTINUE]";
+		MenuMessage(&MenuPause,1,page) ! "[PRESS A KEY TO CONTINUE]"
 	else
-		MenuMessage(&MenuPause,2,page) ! "\Ipress a key to continue\i";
+		MenuMessage(&MenuPause,2,page) ! "\Ipress a key to continue\i"
 	PressKey
-
 	Font(DEFAULT_FONT)
-	print newline
+!	print newline
 	if not no_newline
 		""
 }
@@ -881,6 +872,8 @@ routine PressKey
 {
 	local key
 	key = system(11) ! READ_KEY
+	if not system_status
+		system(32) ! PAUSE_100TH_SECOND
 	if system_status or CheaporSimple ! system(61) ! MINIMAL_INTERFACE
 	{
 		pause
@@ -1113,9 +1106,9 @@ proportional font). Out for now. \!
 		{
 			select num
 				case 1  ! default cheapglk "press a key"
-					"[PRESS A KEY TO CONTINUE]";
+					"[PRESS A KEY TO CONTINUE]" ! ;
 				case 2  ! default normal "press a key"
-					"\Ipress a key to continue\i";
+					"\Ipress a key to continue\i" ! ;
 		}
 		case &Help_Hints
 		{

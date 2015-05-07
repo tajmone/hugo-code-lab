@@ -286,7 +286,7 @@ routine Box(epiflag, remember)   ! epiflag should never be supplied by user
 	if not m
 		color boxdrawlib.BOX_TEXTCOLOR, boxdrawlib.BOX_BGCOLOR
                                           !        Draw:
-	print to endpos;                 !   top of box
+	print to endpos ! ;                 !   top of box
 	if not epiflag
 	{
 		color TEXTCOLOR, BGCOLOR
@@ -307,7 +307,8 @@ routine Box(epiflag, remember)   ! epiflag should never be supplied by user
 		if m
 			Font(BOLD_ON)
 		print to (display.linelength/2 - l/2); box_array[b];     ! the string, centered
-		print to endpos;    ! right side of box
+		print to endpos ! ;    ! right side of box
+!		""
 		if not epiflag
 		{
 			color TEXTCOLOR, BGCOLOR

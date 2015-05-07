@@ -2,49 +2,10 @@
 ! ROODYLIB EXTRA ROUTINES
 !::
 
-!\#ifset VERSIONS
-#message "extraroutines.hug Version 1.1"
-#endif \!
+#ifset VERSIONS
+#message "extraroutines.hug Version 1.2"
+#endif
 
-
-!\ Roody's note: Future Boy!'s AddPropValue and RemovePropValue are like
-the routines AddToScope and RemoveFromScope except they aren't limited to
-one property (like in those cases, "scope").
-As such, they are very useful routines. Written by Kent Tessman.
-\!
-
-! AddPropValue(obj, prop, value)
-! Adds 'value' as a property value for obj, if possible
-
-routine AddPropValue(obj, prop, val)
-{
-	local i
-	for (i=1; i<=obj.#prop; i++)
-	{
-		if obj.prop #i = 0
-		{
-			obj.prop #i = val
-			return i
-		}
-	}
-}
-
-
-! RemovePropValue(obj, prop, value)
-! Removes 'value' as a property value for obj, if applicable
-
-routine RemovePropValue(obj, prop, val)
-{
-	local i
-	for (i=1; i<=obj.#prop; i++)
-	{
-		if obj.prop #i = val
-		{
-			obj.prop #i = 0
-			return i
-		}
-	}
-}
 
 ! CenterLine is a one-line only version of CenterTitle, printing
 ! string "a" in the center of the current line. Its accuracy will
@@ -206,7 +167,6 @@ routine GetPrompt(p)
 		print ">";
 	input
 }
-
 
 
 ! Roody's note: IsYounger by Kent Tessman for Future Boy!

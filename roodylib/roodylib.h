@@ -22,6 +22,20 @@ constant LAST_TURN 31 ! used by SaveSettings/LoadSettings to keep track of
 constant CHEAP_ON 1
 constant CHEAP_MENUS 2
 #endif
+
+! some verbosity constants since I can never remember which value is which
+enumerate step + 1
+{
+	BRIEF, SUPERBRIEF, VERBOSE
+}
+
+! some statustype constants
+enumerate step * 2
+{
+	NO_STATUS, SCORE_MOVES = 1, TIME_STATUS, CUSTOM_STATUS, INFOCOM_STYLE,
+	MILITARY_TIME
+}
+
 enumerate start = 32, step * 2
 {
 	FINDOBJECT_LIVING, FINDOBJECT_FOUND , FINDOBJECT_CALLED
@@ -30,7 +44,7 @@ enumerate start = 32, step * 2
 ! if newmenu.h is going to be included, it's easier to just declare the
 ! usage_desc property now
 #if undefined usage_desc
-property usage_desc
+property usage_desc alias short_desc
 #endif
 
 !----------------------------------------------------------------------------
@@ -367,7 +381,11 @@ replace Acquire(newparent, newchild)
 		p = parent(newchild)
 		move newchild to newparent
 		CalculateHolding(p)
+#ifset MULTI_PCS
+		MakeMovedVisited(newchild)
+#else
 		newchild is moved
+#endif
 		newchild is not hidden
 		if newparent.#holding
 			newparent.holding = newparent.holding + newchild.size
@@ -384,21 +402,44 @@ replace Acquire(newparent, newchild)
 ! in Parse and other places, just adding a true value to "force"
 ! should guarantee a pronoun change (no longer requiring the author
 ! to set last_object to -1.
+! Also made it so that if there isn't a current value for the applicable
+! pronoun global variable, it sets it anyway.
 \!
 
 replace AssignPronoun(obj,force)
 {
-#ifset NEW_STYLE_PRONOUNS
-	if obj >= it_object and obj <= them_object
+	local a
+
+	if ExcludeFromPronouns(obj)
 		return
-#endif
-	if obj = player:  return
-	if NEW_PARSE & PRONOUNS_SET and not force:  return
 
 	! No use if you can't refer to it
 	if not obj.#noun and not obj.#adjective
 		return
+	select true
+		case (obj is plural)
+		{
+			if not them_obj
+				a = true
+		}
+		case (obj is not living or obj.pronoun #2 = "it")
+		{
+			if not it_obj
+				a = true
+		}
+		case (obj is female)
+		{
+			if not her_obj
+				a = true
+		}
+		case else
+		{
+			if not him_obj
+				a = true
+		}
 
+!	if not a and NEW_PARSE & PRONOUNS_SET and not force:  return
+	if NEW_PARSE & PRONOUNS_SET and not force:  return
 	if obj is not living
 	{
 		if obj is not plural
@@ -419,6 +460,24 @@ replace AssignPronoun(obj,force)
 	}
 	if force
 		NEW_PARSE |= PRONOUNS_SET
+}
+
+!\ Roody's note: I created a routine for establishing rules for objects
+that pronouns should never be set to.  Like the original AssignPronoun,
+I've included the player object but I also included direction objects.  Replace
+this routine if you'd like special rules for your game. \!
+
+routine ExcludeFromPronouns(obj)
+{
+#ifset NEW_STYLE_PRONOUNS
+	if obj >= it_object and obj <= them_object
+		return true
+#endif
+	if obj = player:  return true
+#ifclear NO_OBJLIB
+	elseif obj.type = direction : return true
+#endif
+	return false
 }
 
 !\ Roody's note: This has some extra code added to avoid mobile object
@@ -473,11 +532,13 @@ replace CenterTitle(a, lines,force)
 		b = DEF_SL_BACKGROUND
 		c = DEF_SL_FOREGROUND
 	}
+#ifclear NO_MENUS
 	elseif (MENU_SELECTCOLOR or MENU_SELECTBGCOLOR)
 	{
 		b = MENU_SELECTBGCOLOR
 		c = MENU_SELECTCOLOR
 	}
+#endif
 	else
 	{
 		b = SL_BGCOLOR
@@ -892,11 +953,19 @@ replace ListObjects(thisobj, conjunction)
 			obj is already_listed
 #ifclear NO_OBJLIB
 			if obj.type = scenery
+#ifset MULTI_PCS
+				MakeKnown(obj)
+#else
 				obj is known
-#endif
+#endif  ! MULTI_PCS
+#endif  ! NO_OBJLIB
 		}
 		else
+#ifset MULTI_PCS
+			MakeKnown(obj)
+#else
 			obj is known
+#endif
 
 #ifset USE_PLURAL_OBJECTS
 
@@ -1378,8 +1447,11 @@ replace SpecialDesc(obj)
 				AddSpecialDesc(a)
 			}
 		}
-
+#ifset MULTI_PCS
+		elseif not ObjectIsMovedVisited(a) and flag
+#else
 		elseif a is not moved and flag
+#endif
 		{
 			if &a.initial_desc
 			{
@@ -1669,7 +1741,11 @@ replace DoHugoFix
 	{
 		if object
 		{
+#ifset MULTI_PCS
+			MakeKnown(object)
+#else
 			object is known
+#endif
 			print "["; object.name; " now 'known']"
 		}
 		else
@@ -1680,7 +1756,11 @@ replace DoHugoFix
 			i = out_obj + 1
 #endif
 			for (; i<objects; i++)
+#ifset MULTI_PCS
+				MakeKnown(i)
+#else
 				i is known
+#endif
 			"[All objects now 'known']"
 		}
 	}
@@ -1692,7 +1772,11 @@ replace DoHugoFix
 		print xobject.name; ")]"
 		move object to xobject
 		object is not hidden
+#ifset MULTI_PCS
+		MakeKnown(object)
+#else
 		object is known
+#endif
 	}
 	case "$mp"
 	{
@@ -1843,7 +1927,11 @@ replace DoHugoFix
 
 	case "$uk"
 	{
+#ifset MULTI_PCS
+		MakeUnknown(object)
+#else
 		object is not known
+#endif
 		print "["; object.name; " now not 'known']"
 	}
 	case "$wn"
@@ -1858,6 +1946,13 @@ replace DoHugoFix
 	Font(DEFAULT_FONT)	! restore font (i.e., proportional printing
 				! if it was turned off)
 }
+
+#ifset MULTI_PCS
+routine MakeUnknown(obj)
+{
+	obj is not known
+}
+#endif
 
 ! Roody's note - added some code so windows and replaced objects
 ! get listed when printing the object tree
@@ -1970,11 +2065,11 @@ replace The(obj, a)
 	if obj = player and player_person = 1 and a
 		print player.pronoun #2;
 	else
-		{
+	{
 		if obj.article
 			print "the ";
 		print obj.name;
-		}
+	}
 
 	if (debug_flags & D_OBJNUM)
 		print " ["; number obj; "]";
@@ -2650,6 +2745,18 @@ routine OrganizeTree
 	}
 }
 
+!\ Roody's note: When I'm testing stuff, I often will code something
+in a room's long_desc to print out whether things are true and false.
+Here is a helper routine to save people some time.
+\!
+routine TrueorFalse(arg)
+{
+	if arg
+		print "true";
+	else
+		print "false";
+}
+
 #endif  ! #ifset HUGOFIX
 
 
@@ -2739,7 +2846,7 @@ routine ProcessKey(entry,end_type)
 #ifclear NO_XVERBS
 		case "restore", "e"
 		{
-			word[1] = "e"
+			word[1] = "restore"
 			if (call &DoRestore)
 				r = 1
 		}
@@ -2747,6 +2854,7 @@ routine ProcessKey(entry,end_type)
 #ifclear NO_UNDO
 		case "undo", "u"
 		{
+			word[1] = "undo"
 #ifclear NO_XVERBS
 			if (call &DoUndo)
 				r = 1
@@ -2798,7 +2906,7 @@ routine QuitGameText
 	display.title_caption = PRESS_ANY_KEY
 	if not system(61) ! if not simple port
 	{
-		print PRESS_ANY_KEY;
+		print PRESS_ANY_KEY  ! was PRESS_ANY_KEY; but that doesn't show up in DOS
 		HiddenPause
 	}
 }
@@ -2927,7 +3035,11 @@ replace FindObject(obj, objloc, recurse)
 		}
 
 		! nothing and player are always available
+#ifset MULTI_PCS
+		MakeKnown(obj)
+#else
 		obj is known
+#endif
 		return true
 	}
 #ifclear NO_FUSES
@@ -2965,7 +3077,7 @@ replace FindObject(obj, objloc, recurse)
 #ifset USE_CHECKHELD
 		if checkheld is active
 		{
-			if DismissUnheldItems(obj)
+			if DismissUnheldItems(obj,objloc)
 				return false
 			elseif PrioritizeHeldItems(obj)
 				this_parse_rank += 100
@@ -2983,10 +3095,18 @@ replace FindObject(obj, objloc, recurse)
 
 	if objloc = 0 and parser_data[PARSER_STATUS] & PARSER_ACTIVE
 	{
+#ifset MULTI_PCS
+		if location and not ObjectIsKnown(obj)
+#else
 		if location and obj is not known
+#endif
 		{
 			if FindObject(obj, location, true)
+#ifset MULTI_PCS
+				MakeKnown(obj)
+#else
 				obj is known
+#endif
 		}
 
 		if not ObjectIsKnown(obj)
@@ -3026,7 +3146,11 @@ replace FindObject(obj, objloc, recurse)
 		(player in obj and obj ~= objloc and (obj~=location or not recurse)) or
 		p = obj or p = objloc or p = player
 	{
+#ifset MULTI_PCS
+		MakeKnown(obj)
+#else
 		obj is known
+#endif
 		FindObjectIsFound = true
 	}
 	elseif p  ! does obj have a parent?
@@ -3049,7 +3173,11 @@ replace FindObject(obj, objloc, recurse)
 		{
 			if FindObject(p, objloc, true) and ObjectisKnown(p)
 			{
+#ifset MULTI_PCS
+				MakeKnown(obj)
+#else
 				obj is known
+#endif
 				FindObjectIsFound = true
 			}
 		}
@@ -3057,7 +3185,11 @@ replace FindObject(obj, objloc, recurse)
 		{
 			if FindObject(p, objloc, true) and ObjectisKnown(p)
 			{
+#ifset MULTI_PCS
+				MakeKnown(obj)
+#else
 				obj is known
+#endif
 				FindObjectIsFound = true
 			}
 		}
@@ -3066,7 +3198,11 @@ replace FindObject(obj, objloc, recurse)
 		{
 			if FindObject(p, objloc, true) and ObjectisKnown(p)
 			{
+#ifset MULTI_PCS
+				MakeKnown(obj)
+#else
 				obj is known
+#endif
 				found_result = 2
 				FindObjectIsFound = true
 			}
@@ -3080,7 +3216,11 @@ replace FindObject(obj, objloc, recurse)
 			if obj.found_in #a and (obj.found_in #a = objloc or
 				FindObject(obj.found_in #a, objloc, true))
 			{
+#ifset MULTI_PCS
+				MakeKnown(obj)
+#else
 				obj is known
+#endif
 				FindObjectIsFound = true
 				break
 			}
@@ -3099,7 +3239,11 @@ replace FindObject(obj, objloc, recurse)
 					FindObjectIsFound = true
 				if FindObjectIsFound
 				{
+#ifset MULTI_PCS
+					MakeKnown(obj)
+#else
 					obj is known
+#endif
 					break
 				}
 			}
@@ -3454,7 +3598,7 @@ routine AnythingTokenCheck(obj,objloc)
 #ifset USE_CHECKHELD
 ! Roody's note: DismissUnheldItems is called when a command uses
 ! "all" and the USE_CHECKHELD system is turned on.
-routine DismissUnheldItems(obj)
+routine DismissUnheldItems(obj,objloc)
 {
 	if checkheld is not plural or obj is checkheld_flag
 		return
@@ -3495,12 +3639,13 @@ routine CheckHeld_Verb_Check
 
 !\ Roody's note: This version of HoursMinutes should work for several
 "days" (up to 22) \!
-replace HoursMinutes(val, military)
+replace HoursMinutes(val)
 {
-	local hours, minutes
+	local hours, minutes, military
 
 	hours = val / 60
 	minutes = val - hours * 60
+	military = (STATUSTYPE & MILITARY_TIME)
 
 	if not military
 	{
@@ -3521,9 +3666,12 @@ replace HoursMinutes(val, military)
 	if minutes < 10
 		print "0";
 	print number minutes; " ";
-
 	if not military
 	{
+		while val > 1440
+		{
+			val -= 1440
+		}
 		if val >= 720
 			print "p.m.";
 		else
@@ -3622,7 +3770,17 @@ replace MovePlayer(loc, silent, ignore)
 				ret = location.after
 		}
 		if lig and not silent
+		{
+#ifset NEW_ROOMS
+			if not location.first_visit
+				location.first_visit = counter + 1
+#endif
+#ifset MULTI_PCS
+			MakeMovedVisited(location)
+#else
 			location is visited
+#endif
+		}
 	}
 	verbroutine = v
 	object = obj
@@ -3745,6 +3903,11 @@ replace Parse
 		elseif Inlist(location, extra_scenery, word[a])
 		{
 			Message(&Parse, 1)
+			error = true
+		}
+		elseif word[a] = "~oops"
+		{
+			ParseError(6) ! "That doesn't make any sense."
 			error = true
 		}
 		elseif word[a] = "~and" and VerbCheck(word[a+1])
@@ -3898,6 +4061,17 @@ replace Parse
 						if a ~= her_obj or
 							(a = her_obj and (count = 2 or count = words))
 						{
+!   Maybe this is a bad idea, but I was hoping this next bit might
+!   help with repeated ASK/TELL about other characters, like:
+!   >TELL BOB ABOUT FRED.  >ASK BOB ABOUT HIM
+							if count ~= 2 and count = words and
+							(object is living and
+							(word[count] = "her" and xobject is female) or
+							(word[count] = "him" and xobject.pronoun #2 = "him"))
+							{
+								if ObjWord(word[2],object)
+									a = xobject
+							}
 							n = SetObjWord(count, a)
 							replace_pronoun[number_pronouns] = a
 							number_pronouns++
@@ -4015,10 +4189,8 @@ routine MultiCommandInstructions(n) ! n is CurrentCommandWords
 	else
 	{
 #ifset SHOW_COMMANDS
-		FONT(ITALIC_ON)
 		if PrintCurrentCommand(true)
-		""
-				FONT(ITALIC_OFF)
+			""
 #endif
 		if n = words
 			NEW_PARSE = NEW_PARSE & ~MULTICOMMAND_F ! multicommand = false
@@ -4049,6 +4221,7 @@ routine PrintCurrentCommand(print_prompt)
 {
 	if (NEW_PARSE & HIDE_COMMAND_F)
 		return false
+	FONT(ITALIC_ON)
 	if print_prompt
 		print prompt;
 	if last_actor and last_actor ~= player and (word[1] ~= "g","again")
@@ -4074,6 +4247,7 @@ routine PrintCurrentCommand(print_prompt)
 			print " ";
 		a++
 	}
+	FONT(ITALIC_OFF)
 	return true
 }
 
@@ -4090,8 +4264,8 @@ routine SaveOldWord
 		oldword[ow++] = word[a++]
 	}
 	oldword[(ow+1)]= ""
-	oldword[ow--] = ""
-	oldword[0] = ow
+	oldword[ow] = "" ! oldword[ow--] = ""  ! old code
+	oldword[0] = words  ! oldword[0] = ow ! old code
 }
 
 routine RestoreFromOldWord
@@ -4839,7 +5013,12 @@ replace RunScripts
 					}
 				}
 			}
-			if actor in location:  actor is known
+			if actor in location
+#ifset MULTI_PCS
+	MakeKnown(actor)
+#else
+	actor  is known
+#endif
 			actor = tempactor
 			verbroutine = tempverb
 			object = tempobject
@@ -4861,14 +5040,22 @@ replace RunScripts
 replace ShortDescribe(obj)
 {
 	local ListContents
+#ifset MULTI_PCS
+	MakeKnown(obj)
+#else
 	obj is known
+#endif
 
 	if list_nest = 1
 		print newline
 
 	AssignPronoun(obj)
 
+#ifset MULTI_PCS
+	if not ObjectIsMovedVisited(obj) and &obj.initial_desc
+#else
 	if obj is not moved and &obj.initial_desc
+#endif
 	{
 		Indent
 		run obj.initial_desc
@@ -5227,13 +5414,14 @@ It is different from the normal system as it uses additional objects that
 redirect actions to the applicable pronoun global variable (it_obj, him_obj,
 etc.).
 
-This is actually useful when the relevant object is *no longer* there,
-as the player will just get "You don't see that." instead of
+Originally, I thought that one of the perks of this system was that it didn't
+always print "(Assuming you mean the so-and-so)" text (which can be nice in a
+game with more behind-the-scenes trickery to hide), but that turned out to be
+due to some mishandled code.
 
-"(Assuming you mean the so-and-so)
- You don't see that."
-
-Which can sometimes show the seams in your programming.
+So, the nicest thing about this system is that it avoids all of the word
+array manipulation the regular system uses, a step-saving method that might
+be especially useful in games where game state memory is tight.
 
 The main thing to watch out if you use the new style pronouns is that
 verb definitions that use object-specific grammar tokens will not allow
@@ -5253,7 +5441,7 @@ verb "test"
 with this accompanying grammar routine:
 routine TestRoutine(obj)
 {
-	if CheckObject(obj, box1) ! (see next Roodylib entry)
+	if CheckObject(obj, box1)
 		return true
 }
 
@@ -5276,7 +5464,7 @@ object it_object "that" ! to match "You don't see that." ParseError message.
 		local obj
 		obj = self.misc
 		if FindObject(obj, location)
-			return parent(obj)
+			return location ! parent(obj)
 		else
 			return false
 	}
@@ -5590,21 +5778,18 @@ object printstatuslib
 		local highest, i, a
 		if children(self) ~= 1
 		{
-			for i in self
+			i = child(self)
+			while i
 			{
 				a = i.find_height
-				if i.status_override
+				if i.status_override or a > highest
 				{
 					self.chosen_window = i
-					highest = i.find_height
-					break
+					highest = a
+					if i.status_override
+						break
 				}
-!				if higher(highest,a) = a  figured aux math routines aren't neeeded
-				if a > highest
-				{
-					self.chosen_window = i
-					highest = i.find_height
-				}
+				i = younger(i)
 			}
 		}
 		else
@@ -5654,20 +5839,22 @@ object statuslinelib "statuslinelib"
 			display.statusline_height = word[(a+1)]
 #endif
 		}
+		if word[LAST_TURN] ~= "undo"
+		{
+	! set the "terp_type" value
+			if IsGlk
+				printstatuslib.terp_type = GLK_TERP
+			elseif system(61) ! minimal port
+				printstatuslib.terp_type = SIMPLE_TERP
+			else
+				printstatuslib.terp_type = NORMAL_TERP
+		}
 	}
 }
 
 replace PrintStatusline
 {
 	local newstatusheight, window_top
-
-	! set the "terp_type" value
-	if IsGlk
-		printstatuslib.terp_type = GLK_TERP
-	elseif system(61) ! minimal port
-		printstatuslib.terp_type = SIMPLE_TERP
-	else
-		printstatuslib.terp_type = NORMAL_TERP
 #ifclear CHEAP
 	local cheap
 #endif
@@ -5689,9 +5876,11 @@ replace PrintStatusline
 		window_top = 1
 
 	! clear/remove the window if the status window height has changed
-	if (newstatusheight < display.statusline_height) and not system(61)
+	if (newstatusheight < display.statusline_height) and not system(61) and
+	display.statusline_height
 	{
-		window display.statusline_height
+		window 1, window_top, display.screenwidth,
+		(display.statusline_height + window_top - 1)
 		{cls} ! clear whatever's there
 		window 0
 	}
@@ -5699,16 +5888,31 @@ replace PrintStatusline
 	display.statusline_height = newstatusheight
 
 	Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
-	window 1, window_top, display.screenwidth,
-	(display.statusline_height + window_top - 1)
+	if printstatuslib.terp_type ~= NORMAL_TERP
 	{
-		if printstatuslib.terp_type ~= SIMPLE_TERP
+		window display.statusline_height
 		{
-			color SL_TEXTCOLOR, SL_BGCOLOR
-			cls
-			locate 1,1
+			if printstatuslib.terp_type ~= SIMPLE_TERP
+			{
+				cls
+				locate 1,1
+			}
+			run printstatuslib.draw_window
 		}
-		run printstatuslib.draw_window
+	}
+	else
+	{
+		window 1, window_top, display.screenwidth,
+		(display.statusline_height + window_top - 1)
+		{
+			if printstatuslib.terp_type ~= SIMPLE_TERP
+			{
+				color SL_TEXTCOLOR, SL_BGCOLOR
+				cls
+				locate 1,1
+			}
+			run printstatuslib.draw_window
+		}
 	}
 	color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 	Font(DEFAULT_FONT)
@@ -5741,59 +5945,31 @@ have a line like this:
 ! routine for finding the height of the regular status info
 routine FindStatusHeight
 {
-	local a, b
-	text to _temp_string
-	! can't start off a string with a space, it seems
-	!if not location     ! so we'll save this space-writing code for the
-	!    print "\_";     ! "status-writing" routine
-	RlibMessage(&FindStatusHeight,1,location) ! "In the dark" or location
-	                                          ! name, depending
-	text to 0
-	a = StringLength(_temp_string)
-	text to _temp_string
-	PrintStatusType
-	!if (FORMAT & DESCFORM_F) and (printstatuslib.terp_type ~= GLK_TERP)
-	!	print "\_";
-	text to 0
+	local len1, b
+	if not light_source
+		len1 = 11
+	else
+		len1 = string(_temp_string,location.name)
 	if STATUSTYPE
 	{
-		b = StringLength(_temp_string)
-		statuswindow.counter_length = ++b
+		b = GetStatusLength(len1)
+		statuswindow.counter_length = b
 	}
 	else
 	{
 		b = 1
-		while display.screenwidth < (b*a)
+		while display.screenwidth < (b*len1)
 		{
 			b++
 		}
 		return b
 	}
-	if (b + a + 4)<display.screenwidth ! let's force a 4 character gap between
+	if (b + len1 + 4)<display.screenwidth ! let's force a 4 character gap between
 	{                              ! the two fields
-		return 1
-	}
-	elseif (b + a - 4 ) < display.screenwidth and STATUSTYPE = 3
-	{
-		text to _temp_string
-		print "S: "; number score; "\_ "; "M: "; number counter;
-		if (printstatuslib.terp_type ~= GLK_TERP)
-			print "\_";
-		text to 0
 		return 1
 	}
 	else
 		return 2
-}
-
-routine PrintStatusType
-{
-	select STATUSTYPE
-		case 1 : print number score; " / "; number counter;
-		case 2 : print HoursMinutes(counter);
-		case 3 : print "Score: "; number score; "\_ "; "Moves: "; number counter;
-	! STATUSTYPE case 3 is the "Infocom"-style status
-		case 4 : StatusType4 ! routine for configurable statusline
 }
 
 ! Roody's note: Replace this if you want to use the top right area
@@ -5808,7 +5984,7 @@ routine WriteStatus
 	if printstatuslib.bottom_justified and
 		printstatuslib.terp_type ~= SIMPLE_TERP
 	{
-		if statuswindow.find_height = 2
+		if display.statusline_height > 1
 			row = display.statusline_height - 1
 		else
 			row = display.statusline_height
@@ -5816,88 +5992,144 @@ routine WriteStatus
 	}
 	else
 		row = 1
-
 	RlibMessage(&WriteStatus,1,location) ! "in the dark" or location name
-
-	if statuswindow.find_height = 1 and STATUSTYPE
+	if display.statusline_height = 1 and STATUSTYPE
 	{
-	!		if display.linelength = 80 and printstatuslib.terp_type ~= GLK_TERP
-	!			a = 79
-	!		else
 		a = display.linelength
 		print to (a - \
 			( statuswindow.counter_length + \
 			(printstatuslib.terp_type = SIMPLE_TERP)* 2 - \
 			(printstatuslib.terp_type = GLK_TERP)));
-		if STATUSTYPE = 4
-			STATUSTYPE4
-		else
-			StringPrint(_temp_string)
 	}
-	elseif STATUSTYPE and statuswindow.find_height = 2
+	elseif STATUSTYPE and display.statusline_height = 2
 	{
 		if printstatuslib.terp_type ~= SIMPLE_TERP
 			locate 1, ++row
 		else
 			""
-	!			if (FORMAT & DESCFORM_F) or (printstatuslib.terp_type = GLK_TERP)
 		print "\_";
-		if STATUSTYPE = 4
-			STATUSTYPE4
-		else
-			StringPrint(_temp_string)
 	}
+	PrintStatusType
 }
 #endif  !ifclear NO_FANCY_STUFF
+
+routine CountDigits(num)
+{
+	local sum
+	do
+	{
+		sum++
+		num /= 10
+	}
+	while num
+	return sum
+}
+
+routine GetStatusLength(len)
+{
+	if STATUSTYPE = 1,INFOCOM_STYLE, 9
+	{
+		local a,b, sum
+		a = CountDigits(score)
+		b = CountDigits(counter)
+		if STATUSTYPE = 1
+		{
+			sum = a + b + 4
+		}
+		else
+		{
+			sum = a + b + 17
+			if (STATUSTYPE & INFOCOM_STYLE) and
+				((len + sum + 6) > display.screenwidth)
+			{
+				if (sum - 8 + len) < display.screenwidth
+				{
+					sum = a + b + 9
+				}
+			}
+		}
+	}
+	elseif STATUSTYPE = 2,16, 18
+	{
+		if (STATUSTYPE & MILITARY_TIME)
+			sum = 6
+		else
+		{
+			local num
+			num =  counter / 60
+			while num > 12
+			{
+				num -= 12
+			}
+			if not num or num > 9
+				sum = 11
+			else
+				sum = 10
+		}
+	}
+	elseif STATUSTYPE = 4
+	{
+		text to _temp_string
+		StatusType4
+		text to 0
+		sum = StringLength(_temp_string) + 1
+	}
+	return sum
+}
+
+routine PrintStatusType
+{
+	if (STATUSTYPE & INFOCOM_STYLE)
+	{
+		if (STATUSTYPE & INFOCOM_STYLE) and
+			((display.linelength - display.cursor_column) <  17)
+		{
+				print "S: "; number score; "\_ "; "M: "; number counter;
+				return
+		}
+		print "Score: "; number score; "\_ "; "Moves: "; number counter;
+	}
+	elseif (STATUSTYPE & SCORE_MOVES)
+			print number score; " / "; number counter;
+	elseif (STATUSTYPE & TIME_STATUS) or (STATUSTYPE & MILITARY_TIME) or
+		STATUSTYPE = 2
+	{
+		print HoursMinutes(counter);
+	}
+	elseif (STATUSTYPE = 4)
+		StatusType4 ! routine for configurable statusline
+}
 
 #ifset NO_FANCY_STUFF
 replace PrintStatusline
 {
-	local simple
-	simple = (not isGlk and system(61))
-	if display.linelength < 60
-		display.statusline_height = 2
-	else
+	local simple, a, g
+	g = isGlk
+	simple = (not g and system(61))
+	if not display.statusline_height
 		display.statusline_height = 1
 
 	Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
 	color SL_TEXTCOLOR, SL_BGCOLOR
 	window display.statusline_height
 	{
-		if not system(61)
-		cls
 		if not simple
+		{
+			cls
 			locate 1, 1
-		RlibMessage(&PrintStatusLine,1,location) ! "in the dark" or location name
-
-	! (The part we're changing)
-	! print to 65; ! is 65 characters good for every window size? No!
-
-	! Instead, let's begin by writing the entire 'SCORE / MOVES' to array
-	! _temp_string (_temp_string is an array declared by the library)
-
-		text to _temp_string
-		PrintStatusType
-		text to 0
-	! Ok, we've closed off the string array
-
-	! Now, if the screen is wide enough, let's move to the end of the screen
-	! MINUS the length of the _temp_string array
-		if display.statusline_height = 1
-			print to (display.screenwidth - (StringLength(_temp_string) + 1 + (simple*2)));
-		else
-		{
-			locate 1, 2
-			print "\_ ";
 		}
-
-	! Now let's print it!
-		if STATUSTYPE
+		print "\_";
+		if not light_source
+			print "In the dark";
+		else
+			print location.name;
+		a = GetStatusLength(display.cursor_column)
+		if (a + display.cursor_column + 4) < display.linelength
 		{
-			if STATUSTYPE = 4
-				STATUSTYPE4
-			else
-				StringPrint(_temp_string)
+			print to (display.linelength - \
+			( a + \
+			(simple* 2) - g));
+			PrintStatusType
 		}
 	}
 	color TEXTCOLOR, BGCOLOR
@@ -5929,9 +6161,9 @@ to save certain game state things. \!
 
 routine SaveSettings(w)
 {
-	local i,n = 30
 	word[LAST_TURN] = w
 #ifclear NO_FANCY_STUFF
+	local i,n = 30
 	for i in init_instructions
 	{
 		if i.save_info
@@ -6157,6 +6389,484 @@ object main_instructions
 }
 
 !----------------------------------------------------------------------------
+!* FOOTNOTES
+!----------------------------------------------------------------------------
+!\ This section allows Hitchhiker/Guilty Bastards style footnotes.
+\!
+
+#ifset USE_FOOTNOTES
+#if undefined MAXFOOTNOTES
+	constant MAXFOOTNOTES 10
+#endif
+
+! if roodylib.h has been included before footnotes.h, nothing needs to be
+! added to the main routine
+
+property footnote_notify alias d_to
+property footnotearray alias cant_go
+property totalfootnotes alias out_to
+property showfootnotes alias e_to
+
+!\ Notes- I made two settings objects. One goes in main_instructions
+ to handle the printing of footnotes. The other goes in init_instructions
+ and handles the saving of the footnotes setting over the play session
+ (so it remains consistent over game restarts and restorations).
+\!
+object footnotelib "footnote"
+{
+	footnote_notify 0
+	footnotearray #MAXFOOTNOTES
+	totalfootnotes 0
+	showfootnotes 1
+	save_info
+	{
+		select self.showfootnotes
+			case 0 : SaveWordSetting("never")
+			case 1 : SaveWordSetting("once")
+			case 8 : SaveWordSetting("always")
+		return true
+	}
+	type settings
+	in init_instructions
+	execute
+	{
+		local a
+		a = CheckWordSetting("footnote")
+		if a
+		{
+			select word[(a+1)]
+				case "never": self.showfootnotes = 0
+				case "once": self.showfootnotes = 1
+				case "always": self.showfootnotes = 8
+		}
+	}
+	usage_desc
+	{
+		Indent
+		"\BFOOTNOTE #- Prints applicable footnote."
+		Indent
+		"\BFOOTNOTES ON\b- Footnote prompts are shown."
+		Indent
+		"\BFOOTNOTES OFF/NEVER\b- Footnote prompts are not shown."
+		Indent
+		"\BFOOTNOTES ALWAYS\b- Footnote prompts show each time (not just the
+		first time)."
+	}
+}
+
+object footnotemain
+{
+	type settings
+	in main_instructions
+	execute
+	{
+		FootnoteNotify
+	}
+}
+
+routine DoFootnote
+{
+	if not object
+	{
+		RLibMessage(&DoFootnote,1) ! "The proper syntax is
+												 ! >FOOTNOTE [number]."
+		return false
+	}
+	local a
+	a = object
+	if a < 1 or a >= MAXFOOTNOTES
+		RLibMessage(&DoFootnote,2,a) ! "That isn't a valid footnote number."
+#ifclear HITCHHIKER_STYLE
+	elseif not footnotelib.footnotearray #a
+		RLibMessage(&DoFootnote,3) ! "You haven't encountered that footnote
+												 !   yet."
+	else
+		PrintFootnote(footnotelib.footnotearray #a)
+#else
+	else
+		PrintFootnote(a)
+#endif
+	return false
+}
+
+routine AddFootnote(num,silent)
+{
+	local a
+	a = InList(footnotelib,footnotearray,num)
+	if not a and footnotelib.showfootnotes
+	{
+		footnotelib.footnotearray #(++footnotelib.totalfootnotes) = num
+		if not silent
+			footnotelib.footnote_notify = footnotelib.totalfootnotes
+	}
+	elseif a and footnotelib.showfootnotes = 8
+	{
+		if not silent
+			footnotelib.footnote_notify = a
+	}
+}
+
+routine FootnoteNotify
+{
+	if not footnotelib.footnote_notify
+		return
+		""
+	RLibMessage(&FootnoteNotify) ! "\I{"; "Footnote #"; ")\i"
+	footnotelib.footnote_notify = 0
+}
+
+! the Footnote routine is a shortcut for printing
+! "(Footnote <whatever is the next footnote number>)"
+routine Footnote(num)
+{
+	local a
+	a = InList(footnotelib,footnotearray,num)
+	if not a and footnotelib.showfootnotes
+	{
+		AddFootnote(num,1)
+		RLibMessage(&Footnote,1) ! "("; "Footnote #"; ")";
+	}
+	elseif a and footnotelib.showfootnotes = 8
+		RLibMessage(&Footnote,2, a) ! "("; "Footnote #"; ")";
+}
+
+routine DoFootnoteMode
+{
+	if word[2] = "on", "normal"
+	{
+		if footnotelib.showfootnotes = 1
+			RLibMessage(&DoFootnoteMode, 1) ! "Footnotes are already on."
+		else
+		{
+			footnotelib.showfootnotes = 1
+			RLibMessage(&DoFootnoteMode, 2) ! "Footnotes on."
+		}
+	}
+	elseif word[2] = "off", "never"
+	{
+		if not footnotelib.showfootnotes
+			RLibMessage(&DoFootnoteMode, 3) ! "Footnotes are already off."
+		else
+		{
+			footnotelib.showfootnotes = 0
+			RLibMessage(&DoFootnoteMode, 4) ! "Footnotes off."
+		}
+	}
+	elseif word[2] = "always"
+	{
+		if footnotelib.showfootnotes = 8
+			RLibMessage(&DoFootnoteMode, 5) ! "Footnotes are already in
+															! always-on mode."
+		else
+		{
+			footnotelib.showfootnotes = 8
+			RLibMessage(&DoFootnoteMode, 6) ! "Footnotes akways on."
+		}
+	}
+	else
+		RLibMessage(&DoFootnoteMode, 7) ! Footnote instructions
+}
+
+routine PrintFootNote
+{
+	"You need to replace the PrintFootNote routine with one that prints
+	your own responses!"
+}
+#endif ! ifset USE_FOOTNOTES
+
+!----------------------------------------------------------------------------
+!* SCORE NOTIFY
+!----------------------------------------------------------------------------
+!\
+Provides text like "You score has gone up by [x] points!"
+\!
+
+#ifset SCORE_NOTIFY
+attribute notify_on alias special
+
+property points alias e_to
+
+object scorenotifylib "scorenotify"
+{
+	points 0
+	is notify_on
+	save_info
+	{
+		select self is notify_on
+			case 0 : SaveWordSetting("score_off")
+			case 1 : SaveWordSetting("score_on")
+		return true
+	}
+	type settings
+	in init_instructions
+	execute
+	{
+		local a
+		a = CheckWordSetting("scorenotify")
+		if a
+		{
+			select word[(a+1)]
+				case "score_off": self is not notify_on
+				case "score_on": self is notify_on
+		}
+	}
+	usage_desc
+	{
+		"\BSCORE NOTIFICATION ON\b- Be notified when you score points."
+		Indent
+		"\BSCORE NOTIFICATION OFF\b- Play without score notifications."
+	}
+}
+
+object scorenotifymain
+{
+	type settings
+	in main_instructions
+	execute
+	{
+		ScoreNotify
+	}
+}
+
+!\ Set the NOTIFY_FONT global to whatever font you want the notification to be
+    in. You can even combine fonts with sometime like:
+	NOTIFY_FONT = BOLD_ON | ITALIC_ON
+
+	(any font styles other than BOLD_ON, ITALIC_ON, or UNDERLINE_ON will
+	probably cause trouble} \!
+global NOTIFY_FONT = BOLD_ON
+
+routine ScoreNotify
+{
+	if scorenotifylib.points and scorenotifylib is notify_on
+	{
+		""
+		Font(NOTIFY_FONT)
+		if scorenotifylib.points > 0
+			RLibMessage(&ScoreNotify, 1, scorenotifylib.points )
+			! "[Your score has gone up.]"
+		else
+			RLibMessage(&ScoreNotify, 2, -scorenotifylib.points )
+		! "[Your score has gone down.]"
+		Font((NOTIFY_FONT*2))
+	}
+	if scorenotifylib.points
+	{
+		scorenotifylib.points = 0    ! reset the point counter
+!		PrintStatusLine  ! update status bar with new score
+	}
+
+}
+
+! routine to call for the last score of a game (after the winning move), as
+! main is not called again
+routine LastScore(a)
+{
+	score += a
+}
+
+! otherwise, call this routine to add to the game score
+routine AddScore(a)
+{
+	scorenotifylib.points += a
+	score += scorenotifylib.points   ! add the points to the score
+}
+
+routine SubtractScore(a)
+{
+	scorenotifylib.points -= a
+	score += scorenotifylib.points   ! add the points to the score
+}
+
+routine DoScoreNotifyOnOff
+{
+	if scorenotifylib is notify_on
+		Perform(&DoScoreNotifyOff)
+	else
+		Perform(&DoScoreNotifyOn)
+}
+
+routine DoScoreNotifyOn
+{
+	if scorenotifylib is notify_on
+		RLibMessage(&DoScoreNotifyOn, 1 )
+		! "[Score notification already on.]"
+	else
+	{
+		RLibMessage(&DoScoreNotifyOn, 2 )
+		! "[Score notification on.]"
+		scorenotifylib is notify_on
+	}
+}
+
+routine DoScoreNotifyOff
+{
+	if scorenotifylib is not notify_on
+		RLibMessage(&DoScoreNotifyOff, 1 )
+		! "[Score notification already off.]"
+	else
+	{
+		RLibMessage(&DoScoreNotifyOff, 2 )
+		! "[Score notification off.]"
+		scorenotifylib is not notify_on
+	}
+}
+#endif  ! ifset SCORE_NOTIFY
+
+!----------------------------------------------------------------------------
+!* BOXDRAW
+!----------------------------------------------------------------------------
+#ifset USE_BOXDRAW
+property line alias misc
+global nextepigram
+attribute centered alias special
+property simplefont alias capacity
+
+object boxlib
+{
+	type settings
+	in main_instructions
+	execute
+	{
+		if nextepigram
+			Epigram(nextepigram)
+	}
+}
+
+class quote
+{
+	line 0
+	simplefont ITALIC_ON  ! note: gargoyle will only honor italic OR bold, not
+	                      ! both
+}
+
+routine Epigram(quotefile, pauseflag)
+{
+	nextepigram = quotefile
+	if not system(61) and parser_data[PARSER_STATUS] ~= PARSER_RESET
+		return
+	Box(quotefile, pauseflag)
+}
+
+routine TitleEpigram(quotefile)
+{
+	InitScreen
+	nextepigram = quotefile
+	Box(quotefile, true)
+	""
+	InitScreen
+}
+
+routine QuoteboxPosition
+{
+	return 3
+}
+
+routine Box(quotefile, pauseflag,force_simple)
+{
+	local a,i, l, lng, pos_start, pos_end, start_row, old_lng, current_pos
+	if system(61) or force_simple
+	{
+		a = quotefile.#line
+		if quotefile.simplefont
+			Font(quotefile.simplefont)
+		for (i=1;i<=a ;i++ )
+		{
+			Indent
+			if i = 1 and not nextepigram
+				print "[";
+			print quotefile.line #i;
+			if i = a and not nextepigram
+				print "]"
+			else
+				""
+		}
+		nextepigram = 0
+		if quotefile.simplefont
+			Font(quotefile.simplefont * 2)
+		ExtraText(quotefile)
+		if pauseflag
+			CoolPause(0,1)
+		return
+	}
+	for (i = 1;i<= quotefile.#line ;i++ )
+	{
+		old_lng = l
+		l = string(_temp_string, quotefile.line #i )
+		lng = higher(old_lng,l)
+	}
+	if lng >= (display.linelength - 4)
+	{
+		Box(quotefile,pauseflag,true)
+		return
+	}
+	""
+	FONT(PROP_OFF)
+	if nextepigram
+	{
+		start_row = display.statusline_height + QuoteboxPosition
+		current_pos = display.cursor_row
+	}
+	else
+	{
+		start_row = display.cursor_row
+	}
+	pos_start = (display.screenwidth / 2 - (lng/2) - 2)
+	pos_end = pos_start + lng + 3
+	for (i = 1;i<= quotefile.#line ;i++ )
+	{
+		locate pos_start, (start_row + i - 1)
+		if i = 1
+		{
+			color TEXTCOLOR, TEXTCOLOR
+			print "[ ";
+			color BGCOLOR, TEXTCOLOR
+		}
+		else
+			print "\_ ";
+		if quotefile is centered
+		{
+			l = string(_temp_string, quotefile.line #i )
+			if l < lng
+				print to (display.linelength / 2 - (l / 2));
+		}
+		print quotefile.line #i;
+		if i = quotefile.#line
+		{
+			print to (pos_end - 1);
+			color TEXTCOLOR, TEXTCOLOR
+			print "]"
+		}
+		else
+		{
+			local x
+			for (x = (i+1);x<= quotefile.#line ;x++ )
+			{
+				if quotefile.line #x
+				{
+					print to pos_end
+					break
+				}
+			}
+		}
+	}
+	color TEXTCOLOR, BGCOLOR
+	ExtraText(quotefile)
+	if nextepigram
+		locate 1, current_pos
+	FONT(DEFAULT_FONT)
+	if pauseflag
+	{
+		CoolPause(0,1)
+	}
+	nextepigram = 0
+}
+
+routine ExtraText(quotefile)
+{}
+
+#endif ! ifset USE_BOXDRAW
+!----------------------------------------------------------------------------
 !* INIT ROUTINES
 !----------------------------------------------------------------------------
 
@@ -6254,7 +6964,7 @@ routine CheapTitle
 
 routine LinesFromTop
 {
-	if not display.hasgraphics
+	if not display.hasvideo
 		return display.windowlines
 	else
 		return 2
@@ -6384,7 +7094,7 @@ routine BetaInit
 		else
 			RlibMessage(&BetaInit,2) ! "No transcript started."
 		""
-		CoolPause
+		CoolPause(0,true)
 		betalib.did_print = true
 	}
 #endif ! ifset BETA
@@ -6531,7 +7241,6 @@ routine DrawCheap ! this is basically InitScreen, slightly modified
 !* PREPARSE CODE
 !----------------------------------------------------------------------------
 
-#ifclear NO_FANCY_STUFF
 routine PreParseInstructions
 {
 	local i , p, r
@@ -6548,6 +7257,7 @@ object preparse_instructions
 	in settings
 }
 
+#ifclear NO_FANCY_STUFF
 ! Roody's note: setting the AIF switch allows wearing and removing "all"
 ! (haha not specifically promoting AIF just thought the switch name would
 !  be funny)
@@ -7089,6 +7799,22 @@ event
 !----------------------------------------------------------------------------
 !* REPLACED OBJLIB.H CODE
 !----------------------------------------------------------------------------
+#ifclear NO_OBJLIB
+
+! Roody's note: if NEW_ROOMS is set, Roodylib sets the "first_visit" property
+! to the game counter when a room is first visited.  This allows Roodylib
+! to check if it's the first turn in a room after an UNDO or RESTORE and give
+! the initial_desc instead of a long_desc.
+
+#ifset NEW_ROOMS
+property first_visit
+replace room
+{
+	first_visit 0
+	type room
+	is static, light, open
+}
+#endif
 
 ! Roody's note: characters now default to being excluded from >ALL
 !  (suggested by Paul Lee)
@@ -7107,7 +7833,6 @@ event
 	time."
 \!
 
-#ifclear NO_OBJLIB
 replace character
 {
 	type character
@@ -7605,7 +8330,11 @@ replace DoMoveinVehicle
 
 	! Finally, the vehicle can move
 	move v to moveto
+#ifset MULTI_PCS
+	MakeMovedVisited(v)
+#else
 	v is moved
+#endif
 	old_location = location
 	location = moveto
 
@@ -7620,7 +8349,11 @@ replace DoMoveinVehicle
 		if not event_flag
 			event_flag = true
 		DescribePlace(location)
+#ifset MULTI_PCS
+		MakeMovedVisited(location)
+#else
 		location is visited
+#endif
 	}
 
 	run parent(player).after
@@ -9181,7 +9914,7 @@ if not JumpToEnd
 		{
 			if parent(player) is platform
 			{
-				RlibMessage(&DoGo, 1)
+				RlibMessage(&DoGo, 1) ! "You'll have to get up."
 				return false
 			}
 			else
@@ -9191,7 +9924,7 @@ if not JumpToEnd
 		{
 			if parent(player) is container
 			{
-				RlibMessage(&DoGo, 1)
+				RlibMessage(&DoGo, 1) ! "You'll have to get out."
 				return false
 			}
 			else
@@ -9228,7 +9961,7 @@ if not JumpToEnd
 		{
 			if parent(player) is platform
 			{
-				RlibMessage(&DoGo, 1)
+				RlibMessage(&DoGo, 1) ! "You'll have to get up."
 				return false
 			}
 			else
@@ -9238,7 +9971,7 @@ if not JumpToEnd
 		{
 			if parent(player) is container
 			{
-				RlibMessage(&DoGo, 1)
+				RlibMessage(&DoGo, 1) ! "You'll have to get out."
 				return false
 			}
 			else
@@ -9256,7 +9989,7 @@ if not JumpToEnd
 	{
 		exit_type = 0
 		if not location.cant_go
-			VMessage(&DoGo, 2)      ! "You can't go that way."
+			RlibMessage(&DoGo, 3)      ! "You can't go that way."
 		return false
 	}
 	elseif moveto = true                    ! already printed message
@@ -9727,7 +10460,11 @@ replace DoOpen
 	else
 	{
 		object is open
+#ifset MULTI_PCS
+		MakeMovedVisited(object)
+#else
 		object is moved
+#endif
 		local i
 		if not Contains(object,player) and object is not transparent
 		{
@@ -9876,11 +10613,11 @@ replace DoRestart
 	else
 	{
 		RlibMessage(&DoRestart, 1) ! "\nContinuing on."
-	if FORMAT & DESCFORM_I
-		""
+		if FORMAT & DESCFORM_I
+			""
 #ifclear USE_DARK_ROOM
-	elseif not FindLight(location)
-		""
+		elseif not FindLight(location)
+			""
 #endif
 		DescribePlace
 #ifset NEW_FUSE
@@ -10202,6 +10939,14 @@ routine UndoResponse
 #endif
 }
 
+! Roody's note: Fixes a typo from verblib.h version
+replace DoStand
+{
+	if parent(parent(player)) = nothing     ! i.e., a room
+		VMessage(&DoEnter, 3)           ! "A bit redundant..."
+	else
+		return Perform(&DoExit , (parent(player)))
+}
 
 ! Roody's note: Added some other situations where >GET could be called.
 replace DoTakeOff
@@ -10345,7 +11090,10 @@ routine DoSearch
 #endif
 
 ! Roody's note: Applies "DoListen" logic to DoSmell. Makes it a standard verb.
-#ifset _VERBSTUB_H
+#ifclear _VERBSTUB_H
+routine DoSmell
+{}
+#endif
 replace DoSmell
 {
 	if not object
@@ -10364,26 +11112,6 @@ replace DoSmell
 	verbroutine = ""
 	return true
 }
-#else
-routine DoSmell
-{
-	if not object
-	{
-		if not location.after
-		{
-			RLibMessage(&DoSmell) ! "You smell nothing unusual."
-			return true
-		}
-		verbroutine = ""
-		return true
-	}
-	elseif not object.after
-		RLibMessage(&DoSmell) ! "You smell nothing unusual."
-! we have to clear verbroutine or else location.after.DoListen will run again
-	verbroutine = ""
-	return true
-}
-#endif
 
 #ifset _VERBSTUB_H
 ! Roody's note: DoSwim now supports objects, but we'll assume that the object
@@ -10396,6 +11124,175 @@ replace DoSwim
 		"Not here, you won't."
 }
 #endif
+
+!----------------------------------------------------------------------------
+!* MULTI_PCS
+!----------------------------------------------------------------------------
+!\ Roody's note - Games with multiple player characters may have situtations
+where you want to keep the characters' "knowledge" separate from eachother,
+where an object seen by one still gets a "You haven't seen anything like that."
+response from another.  Set #MULTI_PCS to be able to do that.
+
+(You will have to replace the MakeKnown, ObjectIsKnown, MakeMovedVisited, and
+ObjectIsMovedVisited routines to configure them for your game.)\!
+#ifset MULTI_PCS
+replace DoClose
+{
+	if not CheckReach(object):  return false
+
+	if object is not openable
+	{
+		VMessage(&DoClose, 1)            ! "You can't close that."
+		return
+	}
+	elseif object is not open
+		VMessage(&DoClose, 2)            ! "It's already closed."
+	else
+	{
+		object is not open
+		MakeMovedVisited(object)
+		if not object.after
+			VMessage(&DoClose, 3)    ! "Closed."
+
+		if not FindLight(location)      ! in case the light source
+						! has been concealed
+
+			VMessage(&DoClose, 4)    ! "Everything goes dark."
+	}
+	return true
+}
+
+replace DoDrop
+{
+	if object is clothing and object is worn
+		VMessage(&DoDrop, 1)     ! "You'll have to take it off first."
+
+	! For the following, xobject is true only
+	! when called by DoPutonGround:
+	elseif player not in location and (parent(player) is container or
+		parent(player) is platform) and not xobject
+	{
+		Perform(&DoPutIn, object, parent(player))
+	}
+	else
+	{
+		move object to location
+		MakeMovedVisited(object)
+		player.holding = player.holding - object.size
+		if not object.after
+			VMessage(&DoDrop, 2)     ! "Dropped."
+	}
+	xobject = 0
+	return true
+}
+
+replace TheorThat(obj)
+{
+	if ObjectIsKnown(obj)
+		print The(obj);
+	else
+		print "that";
+}
+
+routine MakeMovedVisited(obj)
+{
+	obj is moved
+}
+
+routine ObjectIsMovedVisited(obj)
+{
+	if obj is moved
+		return true
+	return false
+}
+
+routine MakeKnown(obj)
+{
+	obj is known
+}
+
+replace AddSpecialDesc(a)
+{
+	a is already_listed
+#ifset MULTI_PCS
+	MakeKnown(a)
+#else
+	a is known
+#endif
+	list_count++
+	AssignPronoun(a)
+}
+
+#ifset USE_ATTACHABLES
+replace Attachable_MoveAttached(att, obj, oldloc, newloc)
+{
+	local i, j, first
+
+	if att.#attached_to
+	{
+		for (i=1; i<=att.#attached_to; i++)
+		{
+			j = att.attached_to #i
+
+			if j
+			{
+				if Contains(oldloc, j) and j not in obj
+				{
+					if obj is not workflag
+					{
+						first = att
+						obj is workflag
+					}
+					move j to newloc
+					MakeMovedVisited(j)
+					Attachable_MoveChildren(j, oldloc, newloc)
+					Attachable_MoveAttachedTo(j, oldloc, newloc)
+				}
+			}
+		}
+	}
+	return first
+}
+
+
+! Attachable_MoveAttachedTo scans <oldloc> for anything attached to <obj>, moving
+! any valid matches to <newloc>.  Not particularly graceful, since it must
+! recurse inward for each object, since attachments are explicit only from
+! attachable to object, and not vice-versa.
+
+replace Attachable_MoveAttachedTo(obj, oldloc, newloc)
+{
+	local i, j, k, first
+
+	for i in oldloc
+	{
+		for (j=1; j<=i.#attached_to; j++)
+		{
+			if i.attached_to #j = obj or
+				Contains(obj, i.attached_to #j):
+			{
+				move i to newloc
+				MakeMovedVisited(j)
+				if not first:  first = i
+				k = Attachable_MoveAttached(i, obj, oldloc, newloc)
+				if not first:  first = k
+				k = Attachable_MoveChildren(i, obj, oldloc, newloc)
+				if not first:  first = k
+			}
+		}
+
+		if child(i)
+		{
+			k = Attachable_MoveAttachedTo(obj, child(i), newloc)
+			if not first:  first = k
+		}
+	}
+	return first
+}
+#endif ! USE_ATTACHABLES
+
+#endif ! MULTI_PCS
+
 
 !----------------------------------------------------------------------------
 !* NEW_DESC
@@ -10466,8 +11363,8 @@ routine AssignPronounsToRoom
 !	{
 !		return true
 !	}
-	if (verbroutine = &MovePlayer, &DoLookAround) or not word[1] or
-		(word[1] = "restart","restore")
+	if (verbroutine = &MovePlayer, &DoLookAround) or ! not word[1] or
+		XverbCheck(word[1]) !(word[1] = "restart","restore")
 		return true
 	else
 		return false
@@ -10491,7 +11388,11 @@ replace Describeplace(place, long)
 #ifclear NO_VERBS
 	if verbroutine = &MovePlayer
 	{
+#ifset MULTI_PCS
+		if not ObjectIsMovedVisited(place) and verbosity ~= 1
+#else
 		if place is not visited and verbosity ~= 1
+#endif
 			return Perform(&DoLookAround)
 		elseif long = true or verbosity = 2
 			return Perform(&DoLookAround)
@@ -10506,14 +11407,22 @@ replace Describeplace(place, long)
 		return
 	}
 
+#ifset MULTI_PCS
+	MakeKnown(place)
+#else
 	place is known
+#endif
 
    ! Print the name of the location as a heading
 	RLibMessage(&DescribePlace,1,place)
 
 	override_indent = false
 
+#ifset MULTI_PCS
+	if not ObjectIsMovedVisited(place) and verbosity ~= 1
+#else
 	if place is not visited and verbosity ~= 1
+#endif
 	{
 		if &place.initial_desc or &place.long_desc
 			Indent
@@ -10522,11 +11431,21 @@ replace Describeplace(place, long)
 	}
 	elseif long = true or verbosity = 2
 	{
-		if &place.long_desc
+		if &place.long_desc or &place.initial_desc
 			Indent
-		run place.long_desc
+#ifset NEW_ROOMS
+		if &place.initial_desc and place.first_visit = counter and
+			(parser_data[VERB_IS_XVERB] or word[1] = "undo")
+			run place.initial_desc
+		else
+#endif
+			run place.long_desc
 	}
+#ifset MULTI_PCS
+	elseif not ObjectIsMovedVisited(place) and verbosity = 1
+#else
 	elseif place is not visited and verbosity = 1
+#endif
 	{
 		if &place.initial_desc
 			Indent
@@ -10689,7 +11608,11 @@ replace Describeplace(place, long)
 		{
 			if obj.type = scenery
 			{
+#ifset MULTI_PCS
+				MakeKnown(obj)
+#else
 				obj is known
+#endif
 				if player not in obj and
            !    (obj is open or obj is not openable)
 			!	((obj is container and (obj is open or obj is transparent))  or
@@ -10776,7 +11699,11 @@ replace Describeplace(place, long)
 #ifclear NO_VERBS
 	if verbroutine = &MovePlayer ! was "if verbroutine ~= &DoLookAround"
 	{
+#ifset MULTI_PCS
+		if not ObjectIsMovedVisited(place) and verbosity ~= 1
+#else
 		if place is not visited and verbosity ~= 1
+#endif
 			return Perform(&DoLookAround)
 		elseif long = true or verbosity = 2
 			return Perform(&DoLookAround)
@@ -10791,14 +11718,22 @@ replace Describeplace(place, long)
 		return
 	}
 
+#ifset MULTI_PCS
+	MakeKnown(place)
+#else
 	place is known
+#endif
 
    ! Print the name of the location as a heading
 	RLibMessage(&DescribePlace,1,place)
 
 	override_indent = false
 
+#ifset MULTI_PCS
+	if not ObjectIsMovedVisited(place) and verbosity ~= 1
+#else
 	if place is not visited and verbosity ~= 1
+#endif
 	{
 		if &place.initial_desc or &place.long_desc
 		{
@@ -10815,9 +11750,19 @@ replace Describeplace(place, long)
 			Indent
 			didprint = true
 		}
+#ifset NEW_ROOMS
+		if &place.initial_desc and place.first_visit = counter and
+			(parser_data[VERB_IS_XVERB] or word[1] = "undo")
+			run place.initial_desc
+		else
+#endif
 		run place.long_desc
 	}
+#ifset MULTI_PCS
+	elseif not ObjectIsMovedVisited(place) and verbosity = 1
+#else
 	elseif place is not visited and verbosity = 1
+#endif
 	{
 		if &place.initial_desc
 		{
@@ -11335,7 +12280,11 @@ routine AttachablesScenery(place, for_reals)
 
 			! For scenery-derived objects that may change the type
 			elseif obj is static, hidden
+#ifset MULTI_PCS
+				MakeKnown(obj)
+#else
 				obj is known
+#endif
 		}
 		print newline
 		override_indent = false
@@ -11396,7 +12345,7 @@ routine NewDescribe(obj)
 }
 #endif
 !----------------------------------------------------------------------------
-!* NEW VERB ROUTINES
+!* ADDITIONAL VERB AND UTILITY ROUTINES
 !----------------------------------------------------------------------------
 
 ! Roody's note: This only exists for CHARACTER, G. Never actually called.
@@ -11582,6 +12531,195 @@ routine DoXYZZY
 	RLibMessage(&DoXYZZY)
 }
 #endif
+
+!\ Roody's note: ROTATE_DESC and NEW_ROTATE. Both allow a nicer way to quickly
+add multiple descriptions to an object. ROTATE_DESC is quicker to set up but is
+limited to 5 descriptions per object. NEW_ROTATE uses as many as you'd like. \!
+#ifset ROTATE_DESC
+! Examples:
+!door red_door "red door"
+!{
+!	noun "door"
+!	adjective "red"
+!	article "the"
+!	rotations 0
+!	long_desc
+!	{
+!		rotate( "It's a door.", "It's still a door.", "Stop looking at it.", \
+!		"I mean it.", "I really do.")
+!	}
+!	between startlocation east_room
+!	!is recycle  ! uncomment if you want descs to cycle
+!}
+!
+!object rock "rock"
+!{
+!	article "a"
+!	noun "rock"
+!	in STARTLOCATION
+!	long_desc
+!	{
+!		RandomDesc("A rock.","2nd rock desc.", "3rd rock.","4th rock.")
+!	}
+!	rotations 0
+!}
+property rotations ! objects with rotating descriptions need a property to hold
+                   ! a value
+attribute recycle ! give this attribute to cycle back to the beginning when end
+                  ! is reached
+
+!\ My Rotate routine can handle up to five descriptions. Of course, it could
+   be expanded to do more. Unfortunately, there's no cool way to get the routine
+	to just adapt to whatever arguments you throw it so it basically has to check
+	every expected argument by hand.\!
+
+routine Rotate(arg1, arg2, arg3,arg4,arg5)
+{
+	local n
+	object.rotations += 1
+	n = object.rotations
+	select n
+		case 1: print arg1 ! we'll assume this routine won't be used with one
+		                   ! "rotation" so we don't need to check for arg2
+		case 2
+		{
+			print arg2
+			if not arg3 ! if there are only 2 descriptions
+			{
+				if object is recycle  ! should it cycle?
+					object.rotations = 0  ! start back at the beginning
+				else
+					object.rotations -= 1 ! or just subtract one so it stays the
+					                      ! same next time
+				return
+			}
+		}
+		case 3
+		{
+			print arg3
+			if not arg4
+			{
+				if object is recycle
+					object.rotations = 0
+				else
+					object.rotations -= 1
+				return
+			}
+		}
+		case 4
+		{
+			print arg4
+			if not arg5
+			{
+				if object is recycle
+					object.rotations = 0
+				else
+					object.rotations -= 1
+				return
+			}
+		}
+		case 5
+		{
+			print arg5
+			if object is recycle
+				object.rotations = 0
+			else
+				object.rotations -= 1
+			return
+		}
+}
+
+!\ I sometimes like random descriptions, too, so I threw in a random description
+   version \!
+routine RandomDesc(arg1, arg2, arg3,arg4,arg5)
+{
+	local x,n
+
+	if arg1: x++
+	if arg2: x++
+	if arg3: x++
+	if arg4: x++
+	if arg5: x++
+
+	do
+		n = random(x)
+	while (n = object.rotations)
+	object.rotations = n
+	select n
+		case 1:print arg1
+		case 2: print arg2
+		case 3: print arg3
+		case 4: print arg4
+		case 5: print arg5
+}
+#endif ! endif ROTATE_DESC
+#ifset NEW_ROTATE
+! Examples:
+!door red_door "red door"
+!{
+!	noun "door"
+!	adjective "red"
+!	article "the"
+!	rotations 0
+!	long_desc
+!		Rotate
+!	rotate_desc "It's a door." "It's still a door." "Stop looking at it." \
+!		"I mean it." "I really do."
+!	between startlocation east_room
+!	!is recycle  ! uncomment if you want descs to cycle
+!}
+!
+!object rock "rock"
+!{
+!	article "a"
+!	noun "rock"
+!	in STARTLOCATION
+!	long_desc
+!		RandomDesc
+!	random_desc "A rock." "2nd rock desc." "3rd rock." "4th rock."
+!	rotations 0
+!}
+
+property rotations ! objects with rotating descriptions need a property to hold
+                   ! a value
+attribute recycle ! give this attribute to cycle back to the beginning when end
+                  ! is reached
+property rotate_desc ! holds descriptions to rotate
+property random_desc alias rotate_desc
+
+routine Rotate(obj)
+{
+	if not obj
+		obj = object
+	local n
+	obj.rotations += 1
+	n = obj.rotations
+	print obj.rotate_desc #n
+	if n = obj.#rotate_desc
+	{
+		if obj is recycle
+			obj.rotations = 0
+		else
+			obj.rotations -= 1
+	}
+}
+
+!\ I sometimes like random descriptions, too, so I threw in a random description
+   version \!
+routine RandomDesc(obj)
+{
+	local x,n
+	if not obj
+		obj = object
+	x = obj.#random_desc
+	do
+		n = random(x)
+	while (n = object.rotations)
+	object.rotations = n
+	print obj.random_desc #n
+}
+#endif ! endif NEW_ROTATE
+
 !----------------------------------------------------------------------------
 !* ARRAY SORTING
 !----------------------------------------------------------------------------
@@ -11712,10 +12850,12 @@ routine MovePosition(obj,par,pos)
 	{
 		if n++ = pos
 			move obj to par
-		elseif child(temp_bowl) = obj
-			move obj to temp_bowl
 		else
+		{
+			if child(temp_bowl) = obj
+				move obj to temp_bowl
 			move child(temp_bowl) to par
+		}
 	}
 }
 
@@ -11741,6 +12881,16 @@ routine MixObjects(par)
 			n--
 		}
 		move obj to par
+	}
+}
+
+! MoveFromTo - with object-based designs, I sometimes need to move all
+! children from one object to another. Here is a routine for convenience.
+routine MoveFromTo(first,second)
+{
+	while child(first)
+	{
+		move child(first) to second
 	}
 }
 
@@ -11991,9 +13141,7 @@ routine CanGoDir
 		return false
 	select true
 		case (object in direction)
-		{
 			m = location.(object.dir_to)
-		}
 		case (object.type = door)
 		{
 			if location = object.between #1
@@ -12004,9 +13152,7 @@ routine CanGoDir
 		case else
 		{
 			if object.door_to
-			{
 				m = object.door_to
-			}
 			else
 				return true
 		}
@@ -12034,9 +13180,7 @@ routine ClearArray(array_to_be_cleared)
 			t = 0
 		}
 		if t = 2
-		{
 			break
-		}
 	}
 }
 ! Roody's note: The previous array won't let us use it on the word array so
@@ -12068,8 +13212,8 @@ routine ClearPronoun(obj)
 
 ! Roody's note: CoolPause is a routine I wrote for newmenu.h, but I find it
 ! so useful that I have decided to add it to Roodylib. Anyhow, it's a routine
-! for doing "press a key" text. Put 1 for the top value if you'd like the
-! text in the status bar.
+! for doing "press a key" text. Put a true value for the top_text value if
+! you'd like the text in the status bar.
 
 ! CoolPause("Press a key to continue...",1)
 
@@ -12101,7 +13245,6 @@ routine CoolPause(pausetext,top_text)
 #endif
 	if top_text
 	{
-#ifclear NO_STRING_ARRAYS
 		Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
 		if not system(61)
 		{
@@ -12133,12 +13276,9 @@ routine CoolPause(pausetext,top_text)
 		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 		Font(DEFAULT_FONT)
 		HiddenPause ! PauseForKey
-!		""
-#endif ! ifclear NO_STRING_ARRAYS
 	}
 	else
 	{
-		Font(DEFAULT_FONT)
 #ifset CHEAP
 		if (cheap & CHEAP_ON)
 		{
@@ -12156,15 +13296,73 @@ routine CoolPause(pausetext,top_text)
 #ifset CHEAP
 		}
 #endif
-	}
-	Font(DEFAULT_FONT)
-	print newline
-#ifset CHEAP
-	if not (cheap & CHEAP_ON)
-#endif
+		Font(DEFAULT_FONT)
+		print newline
 		""
+	}
 	if save_title
 		display.title_caption = save_title
+}
+
+! Roody's note: GetNumber just exists so authors don't have to remember
+! the word[]/parse$ thing when converting player's input to a number. Change
+! the wordnum value if for some reason you want to check something other than
+! word[1]
+
+routine GetNumber(wordnum)
+{
+	local ret
+	if not wordnum
+		wordnum = 1
+	if word[wordnum]
+		ret = StringToNumber(word[wordnum])
+	else
+		ret = StringToNumber(parse$)
+	return ret
+}
+
+! Roody's note: EnterNumber is an example routine using the above routine.
+! Call with text t1 and t2 arguments if you want to change the prompt text
+! without changing RlibMessage messages
+
+routine EnterNumber(low,high,t1,t2)
+{
+	local ret
+	if t1
+		print t1;
+	else
+		RlibMessage(&EnterNumber,1) ! "Enter a number >";
+	while true
+	{
+		input
+		""
+		if words = 1
+			ret = GetNumber
+		else
+			word[1] = ""
+		if ret
+		{
+			if high
+			{
+				if ret <= high and ret >= low
+					return ret
+			}
+			elseif low
+			{
+				if ret >= low
+					return ret
+			}
+			else
+				return ret
+		}
+		elseif not low and word[1] = "0"
+			return ret
+		if t2
+			print t2;
+		else
+		! "Enter a valid number between X and Y >";
+			RlibMessage(&EnterNumber,2,low,high)
+	}
 }
 
 !\ Roody's note: GrandParent is like Contains except it returns the
@@ -12888,9 +14086,9 @@ routine RLibMessage(r, num, a, b)
 					Indent
 					Font(ITALIC_ON)
 					if a
-						print a;
+						print a ! was ;
 					else
-						"press a key to continue";
+						"press a key to continue" ! was ;
 					Font(ITALIC_OFF)
 				}
 		}
@@ -13045,6 +14243,21 @@ routine RLibMessage(r, num, a, b)
 					print " of "; The(object); "."
 				}
 		}
+		case &EnterNumber
+		{
+			select num
+				case 1: print "Enter a number >";
+				case 2
+				{
+					print "Enter a valid number";
+					if b
+					{
+						print " between "; number a ;
+						print " and "; number b ;
+					}
+					print " >";
+				}
+		}
 #ifclear NO_FANCY_STUFF
 #ifclear NO_STRING_ARRAYS
 		case &FindStatusHeight
@@ -13062,6 +14275,42 @@ routine RLibMessage(r, num, a, b)
 				}
 		}
 #endif
+#endif
+#ifset USE_FOOTNOTES
+		case &DoFootnote
+		{
+			select num
+				case 1: "The proper syntax is >FOOTNOTE [number]."
+				case 2: "That isn't a valid footnote number."
+				case 3: "You haven't encountered that footnote yet."
+		}
+		case &FootNoteNotify
+		{
+			print "\I("; "Footnote "; number footnotelib.footnote_notify; ")\i"
+		}
+		case &FootNote
+		{
+			select num
+				case 1
+					print "("; "Footnote "; number footnotelib.totalfootnotes; ")";
+				case 2
+					print "("; "Footnote ";  number a ; ")";
+		}
+		case &DoFootnoteMode
+		{
+			select num
+				case 1: "Footnotes are already on."
+				case 2: "Footnotes on."
+				case 3: "Footnotes are already off."
+				case 4: "Footnotes off."
+				case 5: "Footnotes are already in always-on mode."
+				case 6: "Footnotes always on."
+				case 7: "Try \"footnote (number)\" to read a particular footnote.  \
+							Normally the indication of a footnote is printed only once;
+							to make sure it is always printed, use \"footnotes always\".
+							Use \"footnotes never\" to turn footnote printing off or
+							\"footnotes normal\" to restore the default mode."
+		}
 #endif
 		case &DoGet
 		{
@@ -13106,6 +14355,10 @@ routine RLibMessage(r, num, a, b)
 				}
 				case 2	!  going to a non-enterable object in the same room
 					print Cthe(object) ; IsorAre(object,true) ;" right here."
+				case 3
+				{
+					print CThe(player); " can't go that way."
+				}
 		}
 		case &DoHit
 		{
@@ -13209,6 +14462,28 @@ routine RLibMessage(r, num, a, b)
 				case 4: "Comment not recorded! (Transcription is not on.)"
 		}
 #endif ! NO_XVERBS
+#ifset SCORE_NOTIFY
+		case &DoScoreNotifyOn
+		{
+			select num
+				case 1:  "[Score notification already on.]"
+				case 2: "[Score notification on.]"
+		}
+		case &DoScoreNotifyOff
+		{
+			select num
+				case 1:  "[Score notification already off.]"
+				case 2: "[Score notification off.]"
+		}
+		case &ScoreNotify
+		{
+			select num
+				case 1
+					print "[Your score has gone up by "; number a; " points.]"
+				case 2
+					print "[Your score has gone down by "; number a; " points.]"
+		}
+#endif ! SCORE_NOTIFY
 		case &DoSmell
 		{
 			select num

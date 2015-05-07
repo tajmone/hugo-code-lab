@@ -89,22 +89,20 @@ property no_clump ! set to true if each destination gets its own sentance
 
 property direct ! you don't need to worry about this
 
-global inconsistent_exits ! set to true if exit order should not be held to a
-                          ! strict order (otherwise, it goes with the order of
-								  ! the object hierarchy code it uses)
+attribute inconsistent_exits ! give rooms this attribute if exit order should                                ! be listed consistently the same way
+                             ! (otherwise, it goes with the order of
+								     ! object declaration)
 routine GetExits
 {
 ! reset all of our destination "jars" and direction "pebbles"
 	local i
 
 	if not object
-	{
 		object = location
-	}
 
 	i = child(exit_shelf)
 
-	if i and not inconsistent_exits
+	if i and object is not inconsistent_exits
 	{
 		for (i = north_pebble;i <= out_pebble ;i++ )
 		{
@@ -115,7 +113,7 @@ routine GetExits
 
 	while i
 	{
-		else  ! inconsistent_exits
+		else  ! object has inconsistent_exits attributes
 		{
 			local r
 			i = child(exit_shelf)
@@ -403,13 +401,11 @@ routine PrintExits
 	if e
 	{
 		if not location.no_clump
-		{
 			print ".";
-		}
 		""
 	}
 	else
-		CanGoMessage(&PrintExits,2 ) ! "You can't go anywhere."
+		CanGoMessage(&PrintExits,2 ) ! "In fact, you can't go anywhere."
 }
 
 routine CanGoMessage(r, num, a, b)
@@ -431,10 +427,10 @@ routine CanGoMessage(r, num, a, b)
 					print CThe(player); " can go ";
 				}
 				case 2
-					" to ";
+					print " to "; b.name;
 		}
 		case 2
-			print CThe(player); " can't go anywhere."
+			print "In fact, "; The(player); " can't go anywhere."
 	}
 }
 

@@ -25,6 +25,8 @@ v 4.0 - * Added some new constants for some new FindObject/Parse stuff
 	* Made PreParse and PreParseInstructions separate
 	* added command-printing code for multiple-command lines
 	* Updated a bunch of xverb stuff, including command recording/playback
+	* Better description of the benefits of NEW_STYLE_PRONOUNS
+	* Fixed a mistake in the it_object from NEW_STYLE_PRONOUNS
 v 3.9 - * updated ObjectIs and TestObjectIs
 	* small fix to CheapTitle
 	* updated CenterTitle to work with the NO_MENUS flag

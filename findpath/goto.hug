@@ -1,0 +1,290 @@
+!::
+! New Game (Shell)
+!::
+constant GAME_TITLE	"GAME TITLE"
+
+!:: Flags
+!#set BETA                ! Compile with the comments-in-transcripts library
+                          !   addition (requires "beta.h")
+!#set CHEAP
+#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
+                          !   available (type $? in game)
+!#set PRECOMPILED_LIBRARY ! Use a precompiled header library (see manual)
+!#set VERBSTUBS           ! Include the grammar and routines from verbstubs.g
+                          !   and verbstubs.h, respectively
+!#set USE_ATTACHABLES     ! Use attachable items
+!#set USE_PLURAL_OBJECTS  ! Use plural objects
+!#set USE_VEHICLES        ! Use vehicle objects
+!$set VERSIONS            ! Print library versions at compile time
+
+!:: switches              ! example how one can add compiler switches to source
+!#switches -ls            ! print compilation stats to .LST file
+
+#ifset HUGOFIX
+#set DEBUG
+#endif
+
+!:: Other pre-Hugolib.h Constants
+! (some constants must be set before hugolib is included)
+
+!constant AFTER_PERIOD " "     ! include one space after full stops (as opposed
+                               !   to two)
+!constant INDENT_SIZE 0        ! no indentation in room descriptions and room
+                               !   content listings
+verb "go", "walk"
+	*							DoGo
+	* "to" anything DoGoto
+	* "in"/"into"/"inside"/"through" object            DoEnter
+	* "out"/"off" object                                          DoGo
+	* "out"/"outside"                                       DoExit
+	* anything DoGoto
+
+verb "setpath"
+*						DoSetPath
+!:: Grammar Library Inclusions (grammar must come first)
+#include "roodylib.g"
+! new grammar needs to be defined before the including verblib
+#include "verblib.g"        ! Verb Library
+
+#include "hugolib.h"        ! Standard  Hugo Library
+#include "roodylib.h"         ! Hugo  Library Updates
+#include "findpath.h"
+
+!::	Other Library Inclusions
+#ifset BETA
+#include "beta.h"
+#endif
+
+#ifset CHEAP
+#include "cheaplib.h"
+#endif
+
+!:: Other constants and global variables
+!constant IFID "put-IFID here"
+
+!::	Game Initialization	routine
+routine init
+{
+!: First Things First
+SetGlobalsAndFillArrays
+!: Screen clear section
+SimpleIntro
+InitScreen
+!: Set up any special libries
+Init_Calls
+!: Game opening
+IntroText
+MovePlayer(location)
+}
+
+
+routine SetGlobalsAndFillArrays
+{
+!\ Uncomment and modify this section if your game has scoring and ranking.
+	MAX_SCORE = 50
+	ranking[0] = "Amateur Adventurer"
+	ranking[1] = "Competent Door-Unlocker"
+	ranking[2] = "Bomb-Meddling Adventurer"
+	ranking[3] = "Master Magic Wand Finder"
+	ranking[4] = "The Genuine Article Sample Game Solver"
+	MAX_RANK = 4  \!
+	verbosity = 2
+	counter = -1                    ! 1 turn before turn 0
+	!ask_color = 0
+	STATUSTYPE = 1   ! 1 = score/turns, 2 = time, 3 = moves: score:
+	TEXTCOLOR = DEF_FOREGROUND
+	BGCOLOR = DEF_BACKGROUND
+	SL_TEXTCOLOR = DEF_SL_FOREGROUND
+	SL_BGCOLOR = DEF_SL_BACKGROUND
+	prompt = ">"
+	DEFAULT_FONT = PROP_ON
+	player = you
+	location = westroom
+}
+
+!::	Main game loop
+routine	main
+{
+	counter	= counter +	1
+	run	location.each_turn
+	runevents
+	RunScripts
+	if GrandParent(speaking) ~= location
+		speaking = 0
+	PrintStatusLine
+	Main_Calls
+}
+
+routine IntroText
+{
+
+}
+
+player_character you "you"
+{
+}
+
+room westroom "West Room"
+{
+	adjective "west"
+	noun "room"
+	e_to STARTLOCATION
+}
+
+room STARTLOCATION "Start Location"
+{
+	adjective "start"
+	noun "location"
+	w_to westroom
+ 	e_to reddoor ! eastroom ! reddoor
+}
+
+character fred "Fred"
+{
+	in westroom
+	noun "fred"
+}
+
+door reddoor "red door"
+{
+	article "the"
+	adjective "red"
+	noun "door"
+	is lockable
+	found_in STARTLOCATION eastroom
+	! is locked
+}
+
+room eastroom "east room"
+{
+	adjective "east"
+	noun "room"
+	w_to reddoor ! startlocation ! reddoor
+	s_to bedroom
+}
+
+room bedroom "bed room"
+{
+	adjective "bed"
+	noun "room" "bedroom"
+	n_to eastroom
+}
+
+routine DoSetPath
+{
+	local a
+	"Set."
+	MakePath(westroom,bedroom)
+	a = SetPath(fred)
+	If not a : "\nFred can't get there."
+	return true
+}
+
+
+
+routine DoGoTo
+{
+	if object.type ~= room
+	{
+		if FindObject(object)
+		{
+		! &DoGo *should* redirect to DoEnter in applicable circumstances
+			return Perform(&DoGo, object)
+		}
+		"You can't go to that!"
+		return false
+	}
+	elseif object = location
+	{
+		"You are already there."
+		return false
+	}
+
+	local a
+	MakePath(location,object)
+	a = SetPath(player)
+	If not a
+	{
+		"You can't get there from here."
+		return false
+	}
+	! take the first step of our journey
+	RunScripts
+	! check that we have more steps in our journey and that nothing
+	! important has happened
+	while ( (FindScript(player)~= MAX_SCRIPTS) and event_flag ~= 2)
+	{
+		main
+	}
+}
+
+! replaced CharMove to allow usage for the player character
+replace CharMove(char, dir)
+{
+#ifclear NO_OBJLIB
+
+	local newroom, a
+
+	if dir.type ~= direction
+		return
+
+	newroom = parent(char).(dir.dir_to)
+
+	if newroom.type = door
+	{
+		a = newroom
+		newroom = a.between #((parent(char) = \
+				a.between #1) + 1)
+		if a is not open
+		{
+			if char in location or newroom = location
+			{
+				self = a
+				""
+				OMessage(door, 5)
+			}
+		}
+		elseif newroom = location or char in location
+			a = 0
+	}
+
+	if char in location and not a
+	{
+		Message(&CharMove, 1, char, dir)
+		if not event_flag
+			event_flag = true
+	}
+
+	if char = player
+	{
+		MovePlayer(newroom)
+	}
+	else
+		move char to newroom
+
+#ifset DEBUG
+	if debug_flags & D_SCRIPTS
+	{
+		print "["; CThe(char); IsorAre(char, true); " now in:  ";
+		print capital parent(char).name; ".]"
+	}
+#endif
+
+	if char ~= player
+	{
+		if char in location and not a
+		{
+			Message(&CharMove, 2, char, dir)
+			event_flag = true
+		}
+		elseif char in location
+			event_flag = true
+	}
+
+#endif  ! ifclear NO_OBJLIB
+
+	run parent(char).after
+
+	return true
+}
+
