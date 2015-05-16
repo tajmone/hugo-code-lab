@@ -10993,6 +10993,8 @@ replace DoTakeOff
 	return true
 }
 
+!\ Roody's note: Replaced so "keep waiting?" prompts can be ignored during
+recording playback. \!
 replace DoWait(count)                   ! count argument is from DoWaitUntil
 {
 	if object = 0

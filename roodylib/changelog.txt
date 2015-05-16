@@ -8,11 +8,10 @@ TO DO LIST (for future versions):
 * clean up ListObjects a bit
 * possibly create a helper routine for applying/clearing already_listed from children of objects
 * make HugoFix parser-checking output prettier?
-* might integrate other libraries into Roodylib, like boxdraw.h, follow,h, score notification, opportune.h, newcango, and
-  footnotes
+* might integrate other libraries into Roodylib, like follow,h, opportune.h, and newcango
 
 v 4.0 - * Added some new constants for some new FindObject/Parse stuff
-	* Incorporated cheaplib.h and betalib.h into Roodylib
+	* Incorporated cheaplib.h, beta.h, footnotes.h, scorenotify.h, newboxdraw.h, into Roodylib
 	* Updated AnyVerb, AssignPronoun, CenterTitle, YesOrNo, HugoFix stuff, EndGame, DoMoveInVehicle, DoOpen
 	* Updated DoLook to clear already_listed from children of parents and WhatsIn to have an option to be called so it doesn't clear already_listed
 	* Added QuitGameText routine
@@ -27,6 +26,14 @@ v 4.0 - * Added some new constants for some new FindObject/Parse stuff
 	* Updated a bunch of xverb stuff, including command recording/playback
 	* Better description of the benefits of NEW_STYLE_PRONOUNS
 	* Fixed a mistake in the it_object from NEW_STYLE_PRONOUNS
+	* Added support for multiple PCs (in a game that switches characters) who visit the same rooms and interact with the same objects (check MULTI_PCS section of roodylib.h)
+	* Updated the included shell files
+	* Added BRIEF, SUPERBRIEF, and VERBOSE constants for easier verbosity checking
+	* Updated PrintStatusLine system
+	* Updated HoursMinutes
+	* Added ROTATE_DESC and NEW_ROTATE for quick description rotation
+	* Changed how CoolPause works
+	* Added GetNumber routine for turning a word into a number
 v 3.9 - * updated ObjectIs and TestObjectIs
 	* small fix to CheapTitle
 	* updated CenterTitle to work with the NO_MENUS flag

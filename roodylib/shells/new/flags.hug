@@ -78,6 +78,8 @@
 !#set FORCE_DEFAULT_MESSAGE    ! Containers with no long_desc get old descs
 !#set LIST_CLOTHES_FIRST       ! List worn items first in inventories and
                                ! examining characters (see documentation)
+!#set MULTI_PCS                ! Support for games where you play different
+                               ! player characters visiting the same rooms
 !#set NEW_DESC                 ! like short_desc but doesn't demand a new line
                                ! after being printed (experimental)
 !#set NEW_EMPTY                ! Use more robust DoEmpty behavior (see roodylib)
