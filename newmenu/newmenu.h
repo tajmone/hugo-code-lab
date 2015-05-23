@@ -1,11 +1,15 @@
 !::
-! NEWMENU.H  Version 3.3 by Roody Yogurt
+! NEWMENU.H  Version 3.4 by Roody Yogurt
 !::
 !\
 
 	For a nice overview of this contribution, check out:
 	http://hugo.gerynarsabode.org/index.php?title=NewMenu.h
 
+	version 3.4 - got rid of the array usage for setting up menus (a legacy
+	              from the original menu routines). now it's completely based
+                 on object hierarchy. added some stuff to sort menus by priority
+                 property the first time they are opened
 	version 3.3 - changed some "press a key" stuff
 	version 3.2 - Got rid of extra screen clears and other code cleaning
 	version 3.1 - added alt_title property for option objects. if provided,
@@ -197,7 +201,7 @@ hint_option studiopass_hints "How do I get on the studio lot?"
 #set _NEWMENU_H
 
 #ifset VERSIONS
-#message "NewMenu.h Version 3.3"
+#message "NewMenu.h Version 3.4"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
@@ -205,7 +209,7 @@ hint_option studiopass_hints "How do I get on the studio lot?"
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include
 it first!"
 #endif
-version_obj newmenu_version "NewMenu Version 3.3"
+version_obj newmenu_version "NewMenu Version 3.4"
 {
 	in included_extensions
 	desc_detail
@@ -299,6 +303,8 @@ array verbstub_commands[TOTAL_COMMANDS] = "SEARCH","PUSH", "PULL", "YELL", \
 #endif
 
 #endif ! USE_DEFAULT_MENU
+
+attribute sorted alias special
 
 ! menu_category properties
 property title_gap alias initial_desc
@@ -413,7 +419,7 @@ routine MakeMenu(menu_title, recurse)
 			if category.option_available
 			{
 				++count
-				if category.priority
+				if category.priority and menu_title is not sorted
 					c = true
 			}
 		}
@@ -1335,6 +1341,7 @@ routine SortMenu(menu_title)
 			}
 		}
 	}
+	menu_title is sorted
 	return true ! means we resorted
 }
 
