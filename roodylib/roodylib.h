@@ -5,11 +5,11 @@
 #ifclear _ROODYLIB_H
 #set _ROODYLIB_H
 
-constant ROODYBANNER "RoodyLib Version 4.0"
-constant ROODYVERSION "4.0"
+constant ROODYBANNER "RoodyLib Version 4.0.1"
+constant ROODYVERSION "4.0.1"
 
 #ifset VERSIONS
-#message "roodylib.h version 4.0"
+#message "roodylib.h version 4.0.1"
 #endif
 
 !----------------------------------------------------------------------------
@@ -118,6 +118,207 @@ routine ListExtensions
 !----------------------------------------------------------------------------
 !* REPLACED HUGOLIB.H ROUTINES
 !----------------------------------------------------------------------------
+
+! Roody's note: AfterRoutines and BeforeRoutines called player.react_before
+! twice
+
+replace AfterRoutines
+{
+	local i, r
+
+	r = player.after
+	if r
+	{
+#ifset DEBUG
+		if debug_flags & D_PARSE
+		{
+			print "\B["; player.name;
+			if debug_flags & D_OBJNUM
+				print " ["; number player; "]";
+			print ".after returned "; number r; "]\b"
+		}
+#endif
+	}
+
+	r = player.react_after
+	if r
+	{
+#ifset DEBUG
+		if debug_flags & D_PARSE
+		{
+			print "\B["; player.name;
+			if debug_flags & D_OBJNUM
+				print " ["; number player; "]";
+			print ".react_after returned "; number r; "]\b"
+		}
+#endif
+	}
+
+	r = location.after
+	if r
+	{
+#ifset DEBUG
+		if debug_flags & D_PARSE
+		{
+			print "\B["; location.name;
+			if debug_flags & D_OBJNUM
+				print " ["; number location; "]";
+			print ".after returned "; number r; "]\b"
+		}
+#endif
+	}
+
+	r = location.react_after
+	if r
+	{
+#ifset DEBUG
+		if debug_flags & D_PARSE
+		{
+			print "\B["; location.name;
+			if debug_flags & D_OBJNUM
+				print " ["; number location; "]";
+			print ".react_after returned "; number r; "]\b"
+		}
+#endif
+	}
+
+	for i in location
+	{
+		if i ~= player
+			r = i.react_after
+		if r
+		{
+#ifset DEBUG
+			if debug_flags & D_PARSE
+			{
+				print "\B["; i.name;
+				if debug_flags & D_OBJNUM
+					print " ["; number i; "]";
+				print ".react_after returned "; number r; "]\b"
+			}
+#endif
+		}
+	}
+}
+
+replace BeforeRoutines(queue)
+{
+	local r, i
+
+	r = player.react_before
+	if r
+	{
+#ifset DEBUG
+		if debug_flags & D_PARSE
+		{
+			print "\B["; player.name;
+			if debug_flags & D_OBJNUM
+				print " ["; number player; "]";
+			print ".react_before returned "; number r; "]\b"
+		}
+#endif
+		return r
+	}
+	r = player.before
+	if r
+	{
+#ifset DEBUG
+		if debug_flags & D_PARSE
+		{
+			print "\B["; player.name;
+			if debug_flags & D_OBJNUM
+				print " ["; number player; "]";
+			print ".before returned "; number r; "]\b"
+		}
+#endif
+		return r
+	}
+
+	r = location.react_before
+	if r
+	{
+#ifset DEBUG
+		if debug_flags & D_PARSE
+		{
+			print "\B["; location.name;
+			if debug_flags & D_OBJNUM
+				print " ["; number location; "]";
+			print ".react_before returned "; number r; "]\b"
+		}
+#endif
+		return r
+	}
+	r = location.before
+	if r
+	{
+#ifset DEBUG
+		if debug_flags & D_PARSE
+		{
+			print "\B["; location.name;
+			if debug_flags & D_OBJNUM
+				print " ["; number location; "]";
+			print "before returned "; number r; "]\b"
+		}
+#endif
+		return r
+	}
+
+	for i in location
+	{
+		if i ~= player
+			r = i.react_before
+		if r
+		{
+#ifset DEBUG
+			if debug_flags & D_PARSE
+			{
+				print "\B["; i.name;
+				if debug_flags & D_OBJNUM
+					print " ["; number i; "]";
+				print ".react_before returned "; number r; "]\b"
+			}
+#endif
+			return r
+		}
+	}
+
+	! queue is -1 if the object was a number (i.e., a literal digit)
+	if queue ~= -1 and xobject > display
+	{
+		r = xobject.before
+		if r
+		{
+#ifset DEBUG
+			if debug_flags & D_PARSE
+			{
+				print "\B["; xobject.name;
+				if debug_flags & D_OBJNUM
+					print " ["; number xobject; "]";
+				print ".before returned "; number r; "]\b"
+			}
+#endif
+			return r
+		}
+	}
+
+	if queue ~= -1 and object > display
+	{
+		r = object.before
+		if r
+		{
+#ifset DEBUG
+			if debug_flags & D_PARSE
+			{
+				print "\B["; object.name;
+				if debug_flags & D_OBJNUM
+					print " ["; number object; "]";
+				print ".before returned "; number r; "]\b"
+			}
+#endif
+			return r
+		}
+	}
+}
 
 ! Roody's note: Replaced AnyVerb because the player's PreParse check can
 ! confuse it. Also added an argument for disallowing SpeakTo since that has
@@ -3683,7 +3884,7 @@ replace HoursMinutes(val)
 ! also gets rid of jump, also moves PrintStatusLine to end of routine
 replace MovePlayer(loc, silent, ignore)
 {
-	local v, obj, xobj, act, ret, LeavingMovePlayer
+	local v, obj, xobj, act, ret, LeavingMovePlayer,real_loc
 
 #ifclear NO_OBJLIB
 	if loc.type = direction
@@ -3696,9 +3897,13 @@ replace MovePlayer(loc, silent, ignore)
 			return
 	}
 #endif
+	if parent(loc) = 0
+		real_loc = loc
+	else
+		real_loc = parent(loc)
 
 #ifset USE_ATTACHABLES
-	if ObjectisAttached(player, location, loc)
+	if ObjectisAttached(player, location, real_loc)
 		return
 #endif
 
@@ -3711,7 +3916,7 @@ replace MovePlayer(loc, silent, ignore)
 	xobj = xobject
 	act = actor
 	verbroutine = &MovePlayer
-	object = loc
+	object = real_loc
 	xobject = location
 	actor = player
 	if not ignore
@@ -3722,8 +3927,15 @@ replace MovePlayer(loc, silent, ignore)
 			if ret : break
 			ret = location.before
 			if ret : break
-			ret = loc.before
+			ret = real_loc.before
 			if ret : break
+!        local i
+!			for i in location
+!			{
+!				ret = i.react_before
+!				if ret
+!					break
+!			}
 			break
 		}
 		if ret : LeavingMovePlayer = true
@@ -3733,12 +3945,7 @@ replace MovePlayer(loc, silent, ignore)
 	{
 		move player to loc
 		old_location = location
-		if parent(loc) = 0              ! if it's likely a room object
-			location = loc
-		else                            ! if it's an enterable object
-			location = parent(loc)  ! (noting that the object must be
-	! in a room, not inside another
-	! non-room object)
+		location = real_loc
 
 #ifset USE_ATTACHABLES
 		MoveAllAttachables(player, old_location, location)
@@ -3768,6 +3975,16 @@ replace MovePlayer(loc, silent, ignore)
 			ret = player.after
 			if not ret
 				ret = location.after
+!			if not ret
+!			{
+!				for i in location
+!				{
+!					if i is static
+!						ret = i.react_after
+!					if ret
+!						break
+!				}
+!			}
 		}
 		if lig and not silent
 		{
@@ -7901,23 +8118,53 @@ replace door "door"
 				if self is not locked and self is openable:
 				{
 #ifclear SKIP_DOORS
-					OMessage(door, 2)       ! "(opening it first)"
+					! check to see if Perform has already been called
+					if parser_data[PARSER_STATUS] = 128
+						RlibOMessage(door,1) ! "(and then opening it)"
+					else
+						OMessage(door, 2)       ! "(opening it first)"
 					Perform(&DoOpen, self)
 					Main    ! counts as a turn
 					if self is not open
 	!					Perform(&DoGo, self)
 						return true
+					local d
+					if currentroom = self.between #1
+						d = self.between #2
+					else
+						d = self.between #1
+					if not FindLight(d) or (FORMAT & DESCFORM_I)
+						""
 #endif   ! SKIP_DOORS
 				}
 
 				if self is lockable and self is locked
 				{
 #ifclear NO_AUTOMATIC_DOOR_UNLOCK
-					RlibOMessage(door, 3)      ! "(unlocking <the blank> first))"
-					Perform(&DoUnlock, self)
+					local k,a
+					if self.key_object
+					{
+						for (a=1; a <= self.#key_object ; a++)
+						{
+							if Contains(player, self.key_object #a)
+							{
+								k = self.key_object #a
+								if k is not quiet
+									break
+							}
+						}
+					}
+					if (k and k is quiet) or not k
+					{
+						OMessage(door, 3)      ! "It is locked."
+						return true
+					}
+					RlibOMessage(door, 2,k)      ! "(unlocking <the blank> first))"
+					Perform(&DoUnlock, self,k)
 					if self is not locked
 					{
 						Main
+						""
 						Perform(&DoGo, self)
 						return true
 					}
@@ -8929,10 +9176,130 @@ replace WordisNumber(w)
 #endif ! #ifset USE_PLURAL_OBJECTS
 
 #ifset USE_ATTACHABLES
+!\ Roody's note: I had to add the "k not in newloc" check so that it doesn't
+try to re-move objects that have already been moved.  Maybe this will break
+something since it's hard to keep track of everything that's going on, but
+cursory testing seems to work ok.  \!
+replace Attachable_MoveChildren(obj, oldloc, newloc)
+{
+	local i, k, first
+
+	for i in obj
+	{
+		k = Attachable_MoveAttached(i, obj, oldloc, newloc)
+		if not first and k not in newloc:  first = k
+	}
+	return first
+}
+
+!\ This routine only has support for one object being pushed which I figure
+   works for most games, but I still gave the system its own routine in case
+	anyone needs to code a more complex system. \!
+routine CheckForAttachments(obj,loc)
+{
+	local i, j
+
+	for i in loc
+	{
+		for (j=1; j<=i.#attached_to; j++)
+		{
+			if i.attached_to #j = obj or
+				Contains(obj, i.attached_to #j):
+			{
+				return i
+			}
+		}
+	}
+	for i in player
+	{
+		for (j=1; j<=i.#attached_to; j++)
+		{
+			if i.attached_to #j = obj or
+				Contains(obj, i.attached_to #j):
+			{
+				return i
+			}
+		}
+	}
+	return 0
+}
+
+! Roody's note: Just replaced so that >TIE OBJECT TO ME gets a "you can't tie
+! that to yourself." message instead of "you can't tie that to you."
+! message
+replace DoAttachObject
+{
+	if object.type ~= attachable
+	{
+		OMessage(attachable, 6)        ! "You can't (attach) that."
+		return false
+	}
+
+	! Match the verb
+	if not InList(object, attach_verbs, VerbWord)
+	{
+		OMessage(attachable, 7, object.attach_verb)    ! wrong verb
+		return false
+	}
+
+	if not xobject
+	{
+		OMessage(attachable, 8)        ! "Be more specific..."
+		return false
+	}
+
+	if not CheckReach(xobject)
+		return false
+
+#ifclear NO_VERBS
+	if object.attach_take and object not in player
+	{
+		OMessage(attachable, 9)         ! "(taking it first)"
+		Perform(&DoGet, object)
+		if object not in player
+			return false
+		Main                    ! counts as a turn
+	}
+#endif
+
+	! See if the attach-to object is appropriate
+	if object.attachable_to and not InList(object, attachable_to, xobject)
+	{
+		! "You can't (attach) it to that."
+		RLibOMessage(attachable, 2)
+		return false
+	}
+
+	! Make sure it's not already attached
+	if InList(object, attached_to, xobject)
+	{
+		! "Except that it is already (attached) to that."
+		OMessage(attachable, 11)
+		return false
+	}
+
+	if not ObjectAttach(object, xobject)
+	{
+		! "Except that it is already (attached) to (list)..."
+		OMessage(attachable, 12)
+		return false
+	}
+
+	if not xobject.after
+	{
+		if not object.after
+			! "You (attach) it to..."
+			OMessage(attachable, 13)
+	}
+
+	return true
+}
+
 ! ObjectisAttached returns true if something in <oldloc> is keeping
 ! <obj> from moving to <newloc>.
 
-! Roody's note- got rid of a couple jumps
+! Roody's note- got rid of a couple jumps and added a special response for
+! pushed-objects-with-attachments
 replace ObjectisAttached(obj, oldloc, newloc)
 {
 	local check
@@ -8965,6 +9332,11 @@ replace ObjectisAttached(obj, oldloc, newloc)
 		! "Not while it is still (attached) to..."
 		OMessage(attachable, 18, check)
 	}
+#ifset USE_ROLLABLES
+	elseif verbroutine = &DoPushDirTo
+		RLibOMessage(attachable, 1, check, object)
+	! "You can't move the <blank> while it's attached to the <thing>"
+#endif
 	else
 	{
 #endif
@@ -10088,7 +10460,12 @@ replace DoUnlock
 			return true
 		}
 	}
-	elseif object.key_object
+	if object is not locked
+	{
+		VMessage(&DoUnlock, 3)           ! already unlocked
+		return true
+	}
+	if object.key_object and not xobject
 	{
 		for (a=1; a <= object.#key_object ; a++)
 		{
@@ -10104,9 +10481,12 @@ replace DoUnlock
 					cant_reach = object.key_object #a
 			}
 		}
-		if not xobject
+		if not xobject or xobject is quiet
 		{
-			if cant_reach
+			if xobject is quiet
+				RLibMessage(&DoUnlock, 1) ! "It is unclear what you'd like to
+				                          !  unlock the <blank> with."
+			elseif cant_reach
 				RLibMessage(&DoUnLock, 2, cant_reach)     ! "You can't reach the..."
 			else
 				VMessage(&DoUnlock, 2)           ! no key that fits
@@ -10119,10 +10499,12 @@ replace DoUnlock
 	else
 	{
 		object is not locked
+		if xobject
+			xobject is not quiet
 		if not object.after
 		{
 			if not xobject.after
-				RLibMessage(&DoUnlock, 1, list_key)   ! "Unlocked."
+				RLibMessage(&DoUnlock, 3, list_key)   ! "Unlocked."
 		}
 	}
 	return true
@@ -10142,7 +10524,12 @@ replace DoLock
 			return true
 		}
 	}
-	elseif object.key_object
+	if object is locked
+	{
+		VMessage(&DoLock, 1)             ! already locked
+		return true
+	}
+	if object.key_object and not xobject
 	{
 		for (a=1; a <= object.#key_object ; a++)
 		{
@@ -10158,9 +10545,14 @@ replace DoLock
 					cant_reach = object.key_object #a
 			}
 		}
-		if not xobject
+		if not xobject or xobject is quiet
 		{
-			if cant_reach
+			if xobject is quiet
+			{
+				RLibMessage(&DoLock, 1) ! "It is unclear what you'd like to
+								  !  lock the <blank> with."
+			}
+			elseif cant_reach
 				RLibMessage(&DoUnLock, 2, cant_reach)     ! "You can't reach the..."
 			else
 				VMessage(&DoUnlock, 2)           ! no key that fits
@@ -10174,11 +10566,13 @@ replace DoLock
 		VMessage(&DoLock, 2)             ! "Have to close it first..."
 	else
 	{
+		if xobject
+			xobject is not quiet
 		object is locked
 		if not object.after
 		{
 			if not xobject.after
-				RLibMessage(&DoLock, 1, list_key)     ! "Locked."
+				RLibMessage(&DoLock, 2, list_key)     ! "Locked."
 		}
 	}
 	return true
@@ -11631,6 +12025,48 @@ replace Describeplace(place, long)
 			elseif obj is static, hidden
 				obj is known
 		}
+#ifset USE_ATTACHABLES
+		print newline
+		count = 0
+		local no_good, good,a
+		for obj in player
+		{
+			no_good = 0
+			good = 0
+			if obj.type = attachable
+			{
+				if Inlist(obj,attached_to,player)
+					no_good = true
+				if not no_good
+				{
+					for (a=1; a<=obj.#attached_to; a++)
+					{
+						if obj.attached_to #a
+						{
+							if not Contains(player,obj.attached_to #a)
+							{
+								if FindObject(obj.attached_to #a,place)
+								{
+									good = true
+									break
+								}
+							}
+						}
+					}
+					if good
+					{
+						if count++
+							print AFTER_PERIOD;
+						else
+							Indent
+						RLibMessage(&DescribePlace,2, obj) ! "The <blank> you are
+						                                   !  holding is tied to the
+                                                     !  <blank>."
+					}
+				}
+			}
+		}
+#endif  ! ifset USE_ATTACHMENTS
 #endif  ! ifclear NO_OBJLIB
 
 		print newline
@@ -11639,44 +12075,13 @@ replace Describeplace(place, long)
 	}
 }
 #else
-!! A DescribePlaceArray-setting object just so most authors don't have to worry
-!! about setting DescribePlace order themselves
-!object describe_order "DescribePlace order"
-!{
-!	in init_instructions
-!	type settings
-!	execute
-!	{
-!		if not CheckWordSetting("undo")
-!		{
-!			if not CheckWordSetting("restore")
-!			{
-!				if not DescribePlaceArray[0]
-!				{
-!#ifclear NEW_DESC
-!					DescribePlaceArray[0] = &ParentofPlayer, &CharsWithDescs,
-!					&CharsWithoutDescs, &ObjsWithDescs,&ObjsWithoutDescs,
-!					&AttachablesScenery
-!#else
-!					DescribePlaceArray[0] = &ParentofPlayer, &CharsWithDescs,
-!					&CharsWithNewDescs,
-!					&CharsWithoutDescs, &ObjsWithDescs,
-!					&objsWithNewDescs, &ObjsWithoutDescs,
-!					&AttachablesScenery
-!#endif
-!				}
-!			}
-!		}
-!	}
-!}
-
 ! This constant needs to be declared with something higher if you are
 ! adding additional elements into the mix
 #if undefined DESCRIBEPLACE_ELEMENTS
 #ifset NEW_DESC
-	constant DESCRIBEPLACE_ELEMENTS 8
+	constant DESCRIBEPLACE_ELEMENTS 9
 #else
-	constant DESCRIBEPLACE_ELEMENTS 6
+	constant DESCRIBEPLACE_ELEMENTS 7
 #endif
 #endif
 
@@ -12295,15 +12700,93 @@ routine AttachablesScenery(place, for_reals)
 	}
 }
 
+routine ListHeldAttachables(place, for_realz)
+{
+#ifset USE_ATTACHABLES
+	local i,a,no_good, good, count
+	if not for_realz
+	{
+		for i in player
+		{
+			no_good = 0
+			good = 0
+			if i.type = attachable
+			{
+				if Inlist(i,attached_to,player)
+					no_good = true
+				if not no_good
+				{
+					for (a=1; a<=i.#attached_to; a++)
+					{
+						if i.attached_to #a
+						{
+							if not Contains(player,i.attached_to #a)
+							{
+								if FindObject(i.attached_to #a,place)
+								{
+									good = true
+									break
+								}
+							}
+						}
+					}
+					if good
+						return true
+				}
+			}
+		}
+		return false
+	}
+	for i in player
+	{
+		no_good = 0
+		good = 0
+		if i.type = attachable
+		{
+			if Inlist(i,attached_to,player)
+				no_good = true
+			if not no_good
+			{
+				for (a=1; a<=i.#attached_to; a++)
+				{
+					if i.attached_to #a
+					{
+						if not Contains(player,i.attached_to #a)
+						{
+							if FindObject(i.attached_to #a,place)
+							{
+								good = true
+								break
+							}
+						}
+					}
+				}
+				if good
+				{
+					if count++
+						print AFTER_PERIOD;
+					else
+						Indent
+					RLibMessage(&DescribePlace,2, i) ! "The <blank> you are
+																  !  holding is tied to the
+																  !  <blank>."
+				}
+			}
+		}
+	}
+	print newline
+#endif
+}
+
 #ifclear NEW_DESC
 array DescribePlaceArray[DESCRIBEPLACE_ELEMENTS] = &ParentofPlayer, \
 	&CharsWithDescs, &CharsWithoutDescs, &ObjsWithDescs, \
-	&ObjsWithoutDescs, &AttachablesScenery
+	&ObjsWithoutDescs, &AttachablesScenery, &ListHeldAttachables
 #else
 array DescribePlaceArray[DESCRIBEPLACE_ELEMENTS] = &ParentofPlayer, \
 	&CharsWithDescs,	&CharsWithNewDescs,	&CharsWithoutDescs, \
 	&ObjsWithDescs, &objsWithNewDescs, &ObjsWithoutDescs, \
-	&AttachablesScenery
+	&AttachablesScenery, &ListHeldAttachables
 #endif
 
 #endif
@@ -12453,6 +12936,9 @@ property pushend ! desc. property to be printed after successful push
 ! Roody's note- This routine might not work if a game also has "attachable"
 ! objects.
 
+!\ DoPushDirTo uses pretty much the first method I ever learned for
+exit-checking.  It probably won't work great for directions that lead to doors.
+Maybe I'll perfect it at some point. \!
 routine DoPushDirTo
 {
 	local moveto
@@ -12463,7 +12949,8 @@ routine DoPushDirTo
 	if not (object is mobile and  object is not clothing)
 #if defined DoPush
 		return Perform(&DoPush, object)
-#else
+#endif
+#if undefined DoPush
 		return Perform(&DoMove, object)
 #endif
 	elseif xobject.type ~= direction
@@ -12485,10 +12972,28 @@ routine DoPushDirTo
 		! is the direction a room we can walk to but can't push objects to?
 		if k.outofbounds
 			return false
-
+#ifset USE_ATTACHABLES
+		if ObjectisAttached(object, location, k) or
+			ObjectisAttached(player, location, k)
+			return false
+		local a
+		a = CheckForAttachments(object,location)
+		if a and player in location
+		{
+! We'll move the objects silently if it's attached to the pushed object AND
+! being held.  Otherwise, we'll print a message.
+			if a not in player
+				MoveAllAttachables(object, location, k)
+			else
+				MoveAllAttachables(object, location, k,true)
+		}
+#endif
 		! Let's print a success message before the move "You start pushing..."
-		if not object.pushstart
+		if not object.pushstart and player in location
+		{
 			RLibMessage(&DoPushDirTo,3) ! "You push the object over to the..."
+			move object to k
+		}
 	}
 
 	! If DoGo works, then move the object to the location and print
@@ -12497,9 +13002,15 @@ routine DoPushDirTo
 	{
 		print ""
 		move object to location
-		RLibMessage(&DoPushDirto,4)
+		if not object.pushend
+			RLibMessage(&DoPushDirto,4) ! "The [x] slows to a stop."
 		return true
 	}
+	elseif player in location
+		MoveAllAttachables(object, k, location, true)
+	! Hopefully, it didn't get to Perform(&DoGo) only to have the command
+	! fail, but if it does, we silently move the attachables back to the
+	! first room
 }
 #endif ! USE_ROLLABLES
 
@@ -14138,6 +14649,15 @@ routine RLibMessage(r, num, a, b)
 					print newline
 					Font(BOLD_OFF)
 				}
+#ifset USE_ATTACHABLES
+				case 2
+				{
+					print CThe(a) ; " that "; The(player) ; IsorAre(player);
+					print " holding is "; a.attached_desc ; " ";
+					ListAttachments(a)
+					print ".";
+				}
+#endif
 		}
 !		case &DoClose
 !		{
@@ -14406,13 +14926,24 @@ routine RLibMessage(r, num, a, b)
         ! Let's set default DoPushDirTo messages
 			select num
 				case 1: "That would not help the present situation."
-				case 2:  print "Try pushing "; Art(object); " in a direction."
+				case 2
+				{
+					print "Try "; word[1] ; "ing "; Art(object); " in a direction."
+				}
 				case 3
 				{
-					print CThe(player); MatchPlural(player, " pushes ", " push "); \
-						Art(object); " over to the..."
+					if word[1] = "push","press"
+						a = "es "
+					else
+						a = "s "
+					print CThe(player); " "; word[1];
+					if player is not plural
+					{
+						print a;
+					}
+					print " "; The(object); " over to the..."
 				}
-				case 4:  print CArt(object); " slows to a stop."
+				case 4:  print CThe(object); " slows to a stop."
 		}
 	case &DoPutIn
 	{
@@ -14508,9 +15039,8 @@ routine RLibMessage(r, num, a, b)
 			select num
 				case 1
 				{
-					if a
-						print "(with "; The(xobject); ")"
-					print "Unlocked."
+					print "Be more specific about what you want to unlock "; The(object);
+					print " with."
 				}
 				case 2
 				{
@@ -14518,11 +15048,22 @@ routine RLibMessage(r, num, a, b)
 					print " can't reach "; The(a); ", which is currently in ";
 					print The(parent(a)); "."
 				}
+				case 3
+				{
+					if a
+						print "(with "; The(xobject); ")"
+					print "Unlocked."
+				}
 		}
 		case &DoLock
 		{
 			select num
 				case 1
+				{
+					print "Be more specific about what you want to lock "; The(object);
+					print " with."
+				}
+				case 2
 				{
 					if a
 						print "(with "; The(xobject); ")"
@@ -14714,9 +15255,16 @@ routine RlibOMessage(obj, num, a, b)
 	case door
 	{
 		select num
-			case 3
+			case 1
 			{
-				print "(unlocking "; Art(self); " first)"
+				print "(and then opening it)"
+			}
+			case 2
+			{
+				print "(unlocking "; Art(self);
+				if a
+					print " with "; The(a);
+				" first)"
 			}
 	}
 #ifset USE_VEHICLES
@@ -14745,6 +15293,46 @@ routine RlibOMessage(obj, num, a, b)
 		}
 		case 3
 			"Good luck with that."
+	}
+#endif
+#ifset USE_ATTACHABLES
+	case attachable
+	{
+		select num
+		case 1
+		{
+			local i, td
+			print CThe(player); " can't move "; The(b); " while ";
+			for (i = 1;i <= a.attached_to ;i++ )
+			{
+				if a.attached_to #i ~= b and a.attached_to #i is not mobile and
+					a.attached_to #i is static
+				{
+					td = a.attached_to #i
+					break
+				}
+			}
+			if td
+			{
+				print The(a); IsorAre(a, true); " still "; \
+				a.attached_desc; " to "; The(td);
+			}
+			else
+			{
+				print " still "; \
+				a.attached_desc; " to "; The(a);
+			}
+			print "."
+		}
+		case 2
+		{
+			print CThe(player); " can't "; VerbWord; " "; \
+			The(object); " "; object.attach_prep; " ";
+			if xobject = player
+				print player.pronoun #4; "."
+			else
+			   print The(xobject); "."
+		}
 	}
 #endif
 }

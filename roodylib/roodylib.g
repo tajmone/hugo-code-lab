@@ -38,15 +38,15 @@ verb "look", "l", "examine", "x", "watch"
 	* "beside"/"behind"/"around" object                     DoLookUnder
 	* object                                                DoLook
 
-#ifclear NO_OBJLIB
-verb "push","pull","press","move","roll"
-	* object "to" xobject			DoPushDirTo
-#endif
+!#ifclear NO_OBJLIB
+!verb "push","pull","press","move","roll"
+!	* object "to" xobject			DoPushDirTo
+!#endif
 
 verb "push","pull","press","move","roll", "shove", "yank", "tug"
 	*			DoVague
 #ifclear NO_OBJLIB
-	* object "to" xobject			DoPushDir
+	* object "to" xobject			DoPushDirTo
 	* object "north"/ "n"/ "south"/ "s"/ "east"/ "e"/ "west"/ "w"/ \
 	"southeast"/ "se"/ "southwest"/ "sw"/ "northwest"/ "nw"/ \
 	"northeast"/ "ne"/ "up"/ "u"/ "down"/ "d"/ "in"/ "out"/ \
