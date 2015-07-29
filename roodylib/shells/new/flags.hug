@@ -109,6 +109,7 @@
 !#set USE_AFTER_UNDO           ! Use after_undo array to call routines
                                !  after successful UNDOs
 !#set USE_BOXDRAW              ! Use quote box code
+!#set USE_CONFIG_SYSTEM        ! Use configuration-file-writing helper code
 !#set USE_DARK_ROOM            ! Dark rooms appear more room-like when entered
 !#set USE_ELEVATED_PLATFORMS   ! Allows enterable platforms for which >DOWN
                                !  exits (like a ladder or bleachers)

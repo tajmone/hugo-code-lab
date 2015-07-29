@@ -12,6 +12,9 @@ constant ROODYVERSION "4.0.1"
 #message "roodylib.h version 4.0.1"
 #endif
 
+#ifset USE_CONFIG_SYSTEM
+#set USE_TIME_SYSTEM
+#endif
 !----------------------------------------------------------------------------
 !* SOME RANDOM CONSTANTS AND PROPERTIES AND STUFF
 !----------------------------------------------------------------------------
@@ -532,7 +535,11 @@ replace Deactivate(a)
 {
 	local err
 
+#ifset HUGOFIX
+	move a to fuses_and_daemons
+#else
 	remove a
+#endif
 	a.in_scope = 0
 	a is not active
 
@@ -1107,24 +1114,31 @@ replace DarkWarning
 #endif
 
 !\ Roody's note : Replaced so a new line is still printed, even if indenting
-is turned off. \!
+is turned off. Also changed it so that when FORMAT & LIST_F is on, it indents
+by the same method for consistency.  \!
 
 replace Indent(newl)
 {
 	local i
 
-	if newl
+	if newl or (display.cursor_column > 1 and FORMAT & LIST_F)
 		print ""
-
 	if override_indent or display.cursor_column > 1
 		print AFTER_PERIOD;
-	elseif not (FORMAT & NOINDENT_F) and INDENT_SIZE
+	elseif not (FORMAT & NOINDENT_F)
 	{
+		if FORMAT & LIST_F
+		{
+			print to 2;
+		}
+		elseif INDENT_SIZE
+		{
 		! See display.cursor_column > 1, above
 		!print newline
 		print "\_";
 		for (i=2; i<=INDENT_SIZE; i++)
 			print " ";
+		}
 	}
 	override_indent = false
 }
@@ -1137,7 +1151,7 @@ replace Indent(newl)
 \!
 replace ListObjects(thisobj, conjunction)
 {
-	local i, obj, count, pluralcount
+	local i, obj, count, pluralcount,d
 	local templist_count            ! temporary total of unlisted objs.
 	local id_count                  ! for identical (or plural) objects
 #ifset USE_PLURAL_OBJECTS
@@ -1203,15 +1217,9 @@ replace ListObjects(thisobj, conjunction)
 			{
 				if list_count = 1 and id_count <= 1 and
 					obj is not plural
-				{
 					RLibMessage(&ListObjects,1, IS_WORD) ! "is"
-				!	print " "; IS_WORD;
-				}
 				else
-				{
 					RLibMessage(&ListObjects,1, ARE_WORD) ! "are"
-				!	print " "; ARE_WORD;
-				}
 				if FORMAT & LIST_F
 					RLibMessage(&ListObjects,2) ! ":"
 				FORMAT = FORMAT & ~ISORARE_F    ! clear it
@@ -1233,7 +1241,11 @@ replace ListObjects(thisobj, conjunction)
 			}
 			else
 			{
-				print to (list_nest * 2);	! INDENT_SIZE);
+				d = list_nest
+				if (verbroutine ~= &DoInventory, &DoLookIn,&DoLook)  and
+				FORMAT & NOINDENT_F
+					d--
+				print to ((d ) * 2);	! INDENT_SIZE);
 			}
 
 #ifset USE_PLURAL_OBJECTS
@@ -1248,14 +1260,14 @@ replace ListObjects(thisobj, conjunction)
 			{
 				if id_count = 1
 				{
-					if FORMAT & FIRSTCAPITAL_F
+					if FORMAT & FIRSTCAPITAL_F or FORMAT & LIST_F
 						CArt(obj)
 					else
 						Art(obj)
 				}
 				else
 				{
-					if FORMAT & FIRSTCAPITAL_F
+					if FORMAT & FIRSTCAPITAL_F or FORMAT & LIST_F
 						print NumberWord(id_count, true);
 					else
 						print NumberWord(id_count);
@@ -1288,9 +1300,15 @@ replace ListObjects(thisobj, conjunction)
 								else
 								{
 									print "\n";
-									print to ((list_nest+1) * 2);	! INDENT_SIZE);
+									d = list_nest
+									if (verbroutine ~= &DoInventory, &DoLookIn,&DoLook) and  FORMAT & NOINDENT_F
+										d--
+									print to ((d ) * 2);	! INDENT_SIZE);
 								}
-								Art(j)
+								if FORMAT & LIST_F and verbroutine ~= &DoInventory
+									CArt(j)
+								else
+									Art(j)
 								if not (FORMAT & NOPARENTHESES_F)
 									ObjectIs(j)
 								k++
@@ -1306,7 +1324,8 @@ replace ListObjects(thisobj, conjunction)
 				! Regular old non-plural, non-identical
 				! objects get listed here:
 
-				if FORMAT & FIRSTCAPITAL_F
+				if (FORMAT & FIRSTCAPITAL_F or FORMAT & LIST_F) and
+					verbroutine ~= &DoInventory
 					CArt(obj)
 				else:  Art(obj)
 				if not (FORMAT & NOPARENTHESES_F)
@@ -1352,10 +1371,29 @@ replace ListObjects(thisobj, conjunction)
 				if count + pluralcount > 1
 					print " "; ARE_WORD;
 				else:  print " "; IS_WORD;
-				print " "; HERE_WORD;
+#ifset COOL_PARENTS
+				if not (DESCRIBEPLACEFORMAT & OVERRIDEHERE_F)  or
+				((DESCRIBEPLACEFORMAT & OVERRIDEHERE_F) and
+				thisobj = parent(player))
+#endif
+					print " "; HERE_WORD;
+#ifset COOL_PARENTS
+				if DESCRIBEPLACEFORMAT & OVERRIDEHERE_F
+				{
+					if DESCRIBEPLACEFORMAT & ALSO_F
+					{
+						print " also";
+						DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT & ~ALSO_F
+					}
+					print " ";
+					RelativeText(thisobj)
+					if DESCRIBEPLACEFORMAT & OVERRIDEHERE_F
+						DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT & ~OVERRIDEHERE_F
+						! clear it
+				}
+#endif
 				FORMAT = FORMAT & ~ISORAREHERE_F  ! clear it
-
-				if not (FORMAT & LIST_F or FORMAT & TEMPLIST_F)
+				if not ((FORMAT & LIST_F) or (FORMAT & TEMPLIST_F))
 					override_indent = true
 			}
 
@@ -1387,6 +1425,7 @@ replace ListObjects(thisobj, conjunction)
 					print newline
 				}
 
+#ifclear NO_OBJLIB
 				if count > 1 and obj.type = character
 				{
 					FORMAT = FORMAT | USECHARNAMES_F
@@ -1396,6 +1435,7 @@ replace ListObjects(thisobj, conjunction)
 						override_indent = false
 					}
 				}
+#endif
 				templist_count = list_count
 				WhatsIn(obj)
 				list_count = templist_count
@@ -1510,8 +1550,10 @@ replace WhatsIn(obj,dont_flush)
 	}
 
 	if totallisted = 0
+	{
+		print newline
 		return
-
+	}
 	list_count = totallisted
 
 	if obj is not container or obj is platform or
@@ -1545,6 +1587,11 @@ replace WhatsIn(obj,dont_flush)
 			return totallisted
 		}
 
+#ifset NEW_DESCRIBEPLACE
+		if need_newline and (FORMAT & DESCFORM_D) and
+			not (FORMAT & LIST_F)
+			""
+#endif
 		if obj.list_contents
 			return totallisted
 
@@ -1557,24 +1604,26 @@ replace WhatsIn(obj,dont_flush)
 				! Indent the first time so that it lines up with
 				! paragraph indentation:
 				i = list_nest
-				if list_nest = 1 and not (FORMAT & NOINDENT_F)
+				if (FORMAT & NOINDENT_F) and
+				verbroutine ~= &DoInventory, &DoLook, &DoLookIn
 				{
-					Indent
 					i--
 				}
-
 				print to (i * 2);	! INDENT_SIZE);
 			}
 		}
 		else
-		{
 			Indent
-		}
 
 		if obj.contains_desc    ! custom heading
 		{
 			if FORMAT & LIST_F
 				RLibMessage(&WhatsIn, 1 )  !  ":"
+#ifset COOL_PARENTS
+			FORMAT = FORMAT & ~FIRSTCAPITAL_F
+			FORMAT = FORMAT & ~ISORAREHERE_F
+			DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT & ~ OVERRIDEHERE_F
+#endif
 		}
 		else
 		{
@@ -1596,7 +1645,11 @@ replace WhatsIn(obj,dont_flush)
 				if FORMAT & LIST_F
 					RLibMessage(&WhatsIn, 1 )  !  ":"
 			}
+#ifset COOL_PARENTS
+			elseif not (DESCRIBEPLACEFORMAT & OVERRIDEHERE_F)
+#else
 			else
+#endif
 			{
 				if list_count < totallisted
 					! "Also sitting on/in..."
@@ -1618,11 +1671,12 @@ replace WhatsIn(obj,dont_flush)
 	return totallisted
 }
 
+
 !\ Roody's note: Added some code to SpecialDesc so that if the obj is the only
 child of a parent, it still checks (and lists) any children of that obj. \!
 replace SpecialDesc(obj)
 {
-	local a, c, flag, printed_blankline
+	local a, c, flag, printed_blankline, d
 
 	if FORMAT & LIST_F
 		return
@@ -1632,8 +1686,8 @@ replace SpecialDesc(obj)
 	{
 		if a is not hidden
 		{
-			c++
 			flag = true
+			c++
 		}
 		else
 			flag = false
@@ -1641,7 +1695,10 @@ replace SpecialDesc(obj)
 		if FORMAT & INVENTORY_F and obj = player and flag
 		{
 			if &a.inv_desc
+			{
+				print newline
 				Indent
+			}
 			if a.inv_desc
 			{
 				if FORMAT & LIST_F:  print newline
@@ -1656,12 +1713,19 @@ replace SpecialDesc(obj)
 		{
 			if &a.initial_desc
 			{
-				print newline
+				d++
+#ifset NEW_DESCRIBEPLACE
+				if FORMAT & DESCFORM_D and d > 1
+					""
+				elseif not (FORMAT & DESCFORM_D)
+#endif
+					print newline
 				override_indent = false
 				if FORMAT & INVENTORY_F and FORMAT & NOINDENT_F and not printed_blankline
 					print ""
 				printed_blankline = true
 				Indent
+				need_newline = true
 			}
 			if a.initial_desc
 				AddSpecialDesc(a)
@@ -1678,6 +1742,10 @@ replace SpecialDesc(obj)
 			(a is not openable or (a is openable and a is open)))) and
 			not a.list_contents and not ClothingCheck(a)
 			{
+#ifset NEW_DESCRIBEPLACE
+				if FORMAT & DESCFORM_D
+					""
+#endif
 				WhatsIn(a)
 				list_count = 0
 			}
@@ -1732,8 +1800,17 @@ replace YesorNo
 	}
 }
 
+!----------------------------------------------------------------------------
+!* REPLACED HUGOFIX.H ROUTINES
+!----------------------------------------------------------------------------
+
 ! Roody's note: Changed the parse$-printing code.
 #ifset HUGOFIX
+enumerate start = 64, step * 2
+{
+	D_PLAYBACK_HELPER
+}
+
 replace DoHugoFix
 {
 	local i, n
@@ -1802,6 +1879,7 @@ replace DoHugoFix
 		\_    $nr                - Normalize random numbers\n\
 		\_    $ot [obj. | $loc]  - Print object tree (beginning with
 			<obj.>)\n\
+		\_    $rp                - Skip in-game pauses in recording playback\n\
 		\_    $rr                - Restore \"random\" random numbers\n\
 		\_    $uk <obj.>         - Make object unknown\n\
 		\_    $wo <val.>         - Print dictionary word entry <val.>\n\
@@ -1981,12 +2059,18 @@ replace DoHugoFix
 	}
 	case "$mp"
 	{
-		if (parent(object) and object is not enterable) or
-			(not parent(object) and object.type ~= room)
+		if (parent(object) and object is not enterable)
 		{
 			print "[Obj. "; number object; " (";
 			print object.name; ") is not a room or enterable object]"
 		}
+#ifclear NO_OBJLIB
+		elseif (not parent(object) and object.type ~= room)
+		{
+			print "[Obj. "; number object; " (";
+			print object.name; ") is not a room or enterable object]"
+		}
+#endif
 		else
 		{
 			Font(DEFAULT_FONT)
@@ -2031,12 +2115,12 @@ replace DoHugoFix
 			print object.name
 #ifset _WINDOW_H
 		elseif object.type = window_class
-			{
+		{
 			if object = window_class
 				print "(window_class)"
 			else
 				print "(window object)"
-			}
+		}
 #endif
 		else
 			print "<replaced object>"
@@ -2101,6 +2185,11 @@ replace DoHugoFix
 			if not count
 				"No parser conflicts found."
 		}
+	}
+	case "$rp"
+	{
+		"[In-game pause-skipping in recording playback";
+		OnorOff(D_PLAYBACK_HELPER)
 	}
 	case "$pm"
 	{
@@ -2258,6 +2347,23 @@ replace ListParserConflicts(obj, parse_rank_only)
 	return matched
 }
 
+! Roody's note: Added an option to call it silently
+replace OnorOff(a,silent)
+{
+	if not (debug_flags & a)
+	{
+		if not silent
+			print " on.]"
+		debug_flags = debug_flags | a
+	}
+	else
+	{
+		if not silent
+			print " off.]"
+		debug_flags = debug_flags & ~a
+	}
+}
+
 ! Roody's note - just got rid of a jump
 replace The(obj, a)
 {
@@ -2408,6 +2514,7 @@ replace HugoFixAudit
 	Font(DEFAULT_FONT)
 }
 
+#ifclear NO_OBJLIB
 !\ DoScope and DoScopeRooms - Here are two debugging routines for reminding you
 what objects are in scope of various rooms. "SCOPE" will just list the items
 in scope of the current location, while "SCOPE ROOMS" will list all objects
@@ -2418,19 +2525,17 @@ player character object.    \!
 
 routine DoScope
 {
-        print "Total objects: "; number objects
+	print "Total objects: "; number objects
 	print "Highest object number: "; number (objects - 1)
 	"Objects in scope:"
-	local a
+	local a, b
 	for (a=player ; a< objects ; a=a+1)
 	{
-		if a.type ~= room
+		b = (a.type = room)
+		if FindObject(a,location) and not b
 		{
-			if FindObject(a,location)
-                              {
-                              print "\_  ";
-			      print a.name
-                              }
+			print "\_  ";
+			print a.name
 		}
 	}
 }
@@ -2472,6 +2577,7 @@ routine DoScopeRooms
 	}
 	while a< objects
 }
+#endif
 
 !\  DoVerbTest is another debugging utility. Type >VERBTEST <OBJECT>
     to see what the responses are to a host of verbs. Hopefully, it'll remind
@@ -2820,7 +2926,7 @@ routine HugoFixInit
 			}
 			else
 				numb = key - 48
-			if numb and (numb > 0) and (numb < 7)
+			if numb and (numb > 0) and (numb < 8)
 			{
 				ret = numb
 				break
@@ -2833,12 +2939,13 @@ routine HugoFixInit
 		{
 			local cheap_mode
 			select ret
-				case 1: OnOrOff(D_OBJNUM)
-				case 2: OnOrOff(D_SCRIPTS)
-				case 3: OnOrOff(D_FUSES)
-				case 4: OnOrOff(D_FINDOBJECT)
-				case 5: OnOrOff(D_PARSE)
-				case 6: OnOrOff(D_PARSE_RANK)
+				case 1: OnOrOff(D_OBJNUM,1)
+				case 2: OnOrOff(D_SCRIPTS,1)
+				case 3: OnOrOff(D_FUSES,1)
+				case 4: OnOrOff(D_FINDOBJECT,1)
+				case 5: OnOrOff(D_PARSE,1)
+				case 6: OnOrOff(D_PARSE_RANK,1)
+				case 7: OnOrOff(D_PLAYBACK_HELPER,1)
 			window 0 ! only to draw a line in simple interpreters
 #ifset CHEAP
 			cheap_mode = cheap
@@ -2854,7 +2961,7 @@ routine HugoFixInit
 routine PrintHugoFixOptions
 {
 	local sel = 1
-	while sel < 7
+	while sel < 8
 	{
 		Indent
 		print number sel; ". ";
@@ -2913,6 +3020,15 @@ routine PrintHugoFixOptions
 					print "OFF";
 				")"
 			}
+			case 7
+			{
+				print "Recording Playback Helper (";
+				if (debug_flags & D_PLAYBACK_HELPER)
+					print "ON";
+				else
+					print "OFF";
+				")"
+			}
 		sel++
 	}
 }
@@ -2921,13 +3037,19 @@ routine PrintHugoFixOptions
 ! is on to better distinguish between Hugo "guts" and game objects like rooms
 ! and their contents.
 
+object replaced_objects
+{}
+
 object object_classes
+{}
+
+object fuses_and_daemons
 {}
 
 routine OrganizeTree
 {
 	local i
-	for (i=1;i<=objects ;i++ )
+	for (i=2;i<=objects ;i++ )
 	{
 		if parent(i) = nothing
 		{
@@ -2936,11 +3058,18 @@ routine OrganizeTree
 				a = female_character ! since female_character is of type character
 #endif
 			if i.type = i or i = a
-			{
 				move i to object_classes
-			}
 			elseif i.type = settings
 				move i to settings
+			elseif i.type = fuse,daemon
+				move i to fuses_and_daemons
+			elseif not i.name
+			{
+#ifset _WINDOW_H
+				if i.type ~= window_class
+#endif
+					move i to replaced_objects
+			}
 		}
 
 	}
@@ -3197,6 +3326,7 @@ property disamb_total alias each_turn
 
 object disamb_holder
 {
+	in settings
 	disamb_total 0
 	disamb_suspects #DISAMB_MAX
 }
@@ -3511,7 +3641,7 @@ replace FindObject(obj, objloc, recurse)
 ! Some are from the original FindObject, some are new. Mainly, they
 ! affect how some things are handled in ParseError.
 
-routine MakeParserNotes(obj,found)
+routine MakeParserNotes(obj,is_found)
 {
 	! If any object FindObject is attempting to disambiguate
 	! is known, make a note of it (if during the parsing phase)
@@ -3524,7 +3654,7 @@ routine MakeParserNotes(obj,found)
 	}
 	if ObjectisKnown(obj)
 		parser_data[PARSER_STATUS] |= FINDOBJECT_KNOWN
-	if found
+	if is_found
 		parser_data[PARSER_STATUS] |= FINDOBJECT_FOUND
 }
 
@@ -3936,6 +4066,10 @@ replace MovePlayer(loc, silent, ignore)
 !				if ret
 !					break
 !			}
+#ifset USE_SCOPE_REACT
+			if ret : break
+			ret = ScopeReactBefore
+#endif
 			break
 		}
 		if ret : LeavingMovePlayer = true
@@ -3985,6 +4119,10 @@ replace MovePlayer(loc, silent, ignore)
 !						break
 !				}
 !			}
+#ifset USE_SCOPE_REACT
+			if not ret
+				ret = ScopeReactAfter
+#endif
 		}
 		if lig and not silent
 		{
@@ -5075,6 +5213,10 @@ replace Perform(action, obj, xobj, queue, isxverb)
 	}
 
 	r = BeforeRoutines(queue)
+#ifset USE_SCOPE_REACT
+	if not r
+		r = ScopeReactBefore
+#endif
 	if not r ! if action not stopped by before routines
 	{
 		r = call action                 ! object.after and xobject.after
@@ -5086,6 +5228,9 @@ replace Perform(action, obj, xobj, queue, isxverb)
 		if r  ! if action was successful, run after routines
 		{
 			AfterRoutines
+#ifset USE_SCOPE_REACT
+			ScopeReactAfter
+#endif
 		}
 	}
 
@@ -5305,18 +5450,7 @@ replace ShortDescribe(obj)
 		if &obj.short_desc
 			Indent
 
-		local a
-		a = obj.short_desc
-		if a > 1
-		{
-			print a ;
-		}
-		elseif not a
-!		if &obj.short_desc > 1
-!		{
-!			print obj.short_desc ;
-!		}
-!		elseif not obj.short_desc
+		if not obj.short_desc
 			return
 	}
 
@@ -5325,18 +5459,21 @@ replace ShortDescribe(obj)
 	AssignPronoun(obj)
 
 	list_count = 0
-!	if children(obj) > 0 and (obj is not container or
-!		(obj is container and obj is not openable) or
-!		(obj is container and obj is openable and
-!			(obj is open or obj is transparent))) and
-!		obj is not quiet
 
 	if children(obj) > 0 and (obj is platform or obj is transparent or
 	(obj is container and
 	(obj is not openable or (obj is openable and obj is open)))) and
 	obj is not quiet
 	{
-		list_nest = 1
+#ifset NEW_DESCRIBEPLACE
+		if FORMAT & DESCFORM_D and not FORMAT & LIST_F
+			""
+#endif
+		list_nest = (LIST_F = FORMAT & LIST_F)
+!		if FORMAT & LIST_F
+!			list_nest = 1
+!		else
+!			list_nest = 0
 		WhatsIn(obj)
 	}
 
@@ -6495,6 +6632,8 @@ object hugofixlib "hugofixlib"
 			b = SaveWordSetting("findobject",b)
 		if debug_flags & D_PARSE_RANK
 			b = SaveWordSetting("parserank",b)
+		if debug_flags & D_PLAYBACK_HELPER
+			b = SaveWordSetting("playbackhelper",b)
 		if b
 			return true
 		else
@@ -6517,6 +6656,7 @@ object hugofixlib "hugofixlib"
 						case "scripts" : b = D_SCRIPTS
 						case "findobject" : b = D_FINDOBJECT
 						case "parserank" : b = D_PARSE_RANK
+						case "playbackhelper" : b = D_PLAYBACK_HELPER
 						case else : break
 					debug_flags = debug_flags | b
 					a++
@@ -6576,6 +6716,9 @@ object roodylib "roodylib"
 				case "brief" : verbosity = 0
 				case "superbrief" : verbosity = 1
 				case "verbose" : verbosity = 2
+#endif
+#ifset USE_SCOPE_REACT
+			OrganizeScopeObjects
 #endif
 		}
 	}
@@ -7235,7 +7378,7 @@ version_obj beta_version "Beta Version 2.7"
 attribute playback_on alias switchedon
 attribute record_on alias workflag
 attribute transcript_on alias special
-attribute skip_pauses alias light
+!attribute skip_pauses alias light
 
 object betalib "betalib"
 {
@@ -7630,6 +7773,86 @@ routine ShowCommand
 	print ""
 }
 
+!----------------------------------------------------------------------------
+!* SCOPE_REACT
+!----------------------------------------------------------------------------
+
+#ifset USE_SCOPE_REACT
+object scope_objects
+{}
+
+routine OrganizeScopeObjects
+{
+	local i
+	for (i=1;i<=objects ;i++ )
+	{
+		if i.#found_in or i.#in_scope
+		{
+			if i.type ~= i and parent(i) = nothing and i.type ~= fuse and
+				i.type ~= daemon
+			{
+				move i to scope_objects
+			}
+		}
+	}
+}
+
+routine ScopeReactBefore
+{
+	local i,r
+	for i in scope_objects
+	{
+		if InList(i, found_in, location)
+			r = i.react_before
+		if not r and InList(i, in_scope, player)
+			r = i.react_before
+		if r
+		{
+#ifset DEBUG
+			if debug_flags & D_PARSE
+			{
+				print "\B["; i.name;
+				if debug_flags & D_OBJNUM
+					print " ["; number i; "]";
+				print ".react_before returned "; number r; "]\b"
+			}
+#endif
+			break
+		}
+	}
+	return r
+}
+
+routine ScopeReactAfter
+{
+	local i,r
+	for i in scope_objects
+	{
+		if InList(i, found_in, location)
+			r = i.react_after
+#ifset DEBUG
+		if debug_flags & D_PARSE and r
+		{
+			print "\B["; i.name;
+			if debug_flags & D_OBJNUM
+				print " ["; number i; "]";
+			print ".react_after returned "; number r; "]\b"
+		}
+#endif
+		if InList(i, in_scope, player)
+			r = i.react_after
+#ifset DEBUG
+		if debug_flags & D_PARSE and r
+		{
+			print "\B["; i.name;
+			if debug_flags & D_OBJNUM
+				print " ["; number i; "]";
+			print ".react_after returned "; number r; "]\b"
+		}
+#endif
+	}
+}
+#endif
 
 !----------------------------------------------------------------------------
 !* SUPERCONTAINER CLASS
@@ -8974,6 +9197,12 @@ replace ParsePluralObjects
 
 		if w > 1
 		{
+!#ifclear NO_DISAMB_HELP
+!! This might cause trouble with similarly named plural classes, but
+!! this is the best fix in the meantime for a clash between the disamb
+!! system and the plural class checking for number words
+!			if disamb_holder is not special
+!#endif
 			k = WordisNumber(word[w-1])
 			if k >= 1                       ! e.g., "one (or more) things"
 			{
@@ -9163,15 +9392,14 @@ replace WordisNumber(w)
 	case "eight", "8":      return 8
 	case "nine", "9":       return 9
 	case "ten", "10":       return 10
-	case else
+	case -1
 	{
 		local a
 		a = StringToNumber(parse$)
-		if not a
-			return -1
-		else
+		if a
 			return a
 	}
+	return -1
 }
 #endif ! #ifset USE_PLURAL_OBJECTS
 
@@ -9907,6 +10135,8 @@ replace DoEnter
 		move player to object
 		if not object.after
 			VMessage(&DoEnter, 4)    ! "You get in..."
+		if FORMAT & DESCFORM_I
+			""
 		object is not quiet
 		DescribePlace(location)
 		return true
@@ -10160,6 +10390,7 @@ replace DoGo
 		b = parent(player).before	! i.e., a vehicle, etc.
 		if b = 1
 			return false ! so the error message doesn't take up a turn
+#ifclear NO_OBJLIB
 		elseif not b
 		{
 #ifset USE_ELEVATED_PLATFORMS
@@ -10174,6 +10405,7 @@ replace DoGo
 			elseif parent(player) is container and object = out_obj
 				a++
 		}
+#endif
 
 		if	not a and not b
 		{
@@ -10269,10 +10501,12 @@ if not JumpToEnd
 		if moveto = 1
 			return true
 
+#ifclear NO_OBJLIB
 		if object.type = door
 			exit_type = door
 		else
 			exit_type = non_door_portal
+#endif
 	}
 }  !  if not JumpToEnd bracket
 
@@ -10388,10 +10622,10 @@ if not JumpToEnd
 			return true
 		verbroutine = m
 \!
+#ifclear NO_OBJLIB
 		if not exit_type
-		{
 			exit_type = direction
-		}
+#endif
 		MovePlayer(moveto)
 
 		return true
@@ -10412,6 +10646,30 @@ replace DoHit
 	}
 	else
 		return true
+}
+
+! Roody's note: Made it so the verboutine is always DoInventory so this routine
+!  can be called for inventory windows in graphical games.
+replace DoInventory
+{
+	local tempformat,v
+
+	if word[2] = "tall"
+		INVENTORY_MASK = INVENTORY_MASK | LIST_F
+	elseif word[2] = "wide"
+		INVENTORY_MASK = INVENTORY_MASK & ~LIST_F
+	v = verbroutine
+	verbroutine = &DoInventory
+	tempformat = FORMAT
+	FORMAT = FORMAT | INVENTORY_F | GROUPPLURALS_F | NOINDENT_F
+	FORMAT = FORMAT | INVENTORY_MASK
+	list_nest = 0
+	if not WhatsIn(player)
+		VMessage(&DoInventory)   ! "You aren't carrying anything."
+	FORMAT = tempformat
+	verbroutine = v
+
+	return true
 }
 
 ! Roody's note: This version of DoListen is more friendly to room-listening.
@@ -10716,8 +10974,8 @@ replace DoLookIn
 	}
 	else
 	{
-		if object is container and (object is openable and
-			object is not open and object is not transparent):
+		if object is container and ((object is openable and
+			object is not open) and object is not transparent):
 			VMessage(&DoLookIn, 1)           ! "It's closed."
 		else
 		{
@@ -11106,7 +11364,7 @@ replace DoRecordOnOff
 				RLibMessage(&DoRecordOnOff,1) ! "No playback in progress."
 			else
 			{
-				betalib is not skip_pauses
+!				betalib is not skip_pauses
 				betalib is not playback_on
 				RLibMessage(&DoRecordOnOff,2) ! "Playback completed."
 			}
@@ -11120,18 +11378,14 @@ replace DoRecordOnOff
 			if not system(61) ! not a minimal port
 			{
 				RLibMessage(&DoRecordOnOff,5) ! "MORE skipping spiel"
+				CoolPause(0,1)
+				PrintStatusLine
 				""
 			}
-			RLibMessage(&DoRecordOnOff,6) ! "Skip pauses during playback? "
-			local a
-			a = YesorNo
-			""
 			if not playback
 				VMessage(&DoRecordOnOff, 1)  ! "Unable to begin..."
 			else
 			{
-				if a
-					betalib is skip_pauses
 				VMessage(&DoRecordOnOff, 2)  ! "Playback beginning..."
 				betalib is switchedon
 			}
@@ -11402,7 +11656,11 @@ replace DoWait(count)                   ! count argument is from DoWaitUntil
 	{
 		Main
 		system(32) !(PAUSE_100TH_SECOND)  ! potential updating
-		if event_flag and betalib is not skip_pauses
+		local a
+#ifset DEBUG
+		a = (debug_flags & D_PLAYBACK_HELPER)
+#endif
+		if event_flag and not a
 			if not KeepWaiting
 				return
 	}
@@ -11738,14 +11996,26 @@ In the "robust" (NEW_DESCRIBEPLACE) version, setting DESCFORM_F will "double
 space" between every grouping of items. To change the order of object listing,
 add something like the following to SetupGlobalsandFillArrays:
 
-	DescribePlaceArray[0] = &ParentofPlayer,
+	DescribePlaceArray[0] = &ParentofPlayerScenery,
 	 &ObjsWithDescs,&ObjsWithoutDescs,
 	&CharsWithDescs, &CharsWithoutDescs,
-	&AttachablesScenery
+	&AttachablesChildren, &ListHeldAttachables
 
 \!
 
-constant DESCFORM_I 4096
+enumerate start = 4096, step * 2
+{
+	DESCFORM_I, DESCFORM_D
+}
+
+#ifset COOL_PARENTS
+global DESCRIBEPLACEFORMAT
+
+enumerate start = 1 , step * 2
+{
+	OVERRIDEHERE_F, ALSO_F
+}
+#endif
 
 ! Roody's note: Here is the routine to replace if you'd like there to
 ! be some instances where pronouns are not set to room objects. Have
@@ -11766,10 +12036,42 @@ routine AssignPronounsToRoom
 		return false
 }
 
+#ifset COOL_PARENTS
+! Roody's note:  This routine establishes the "rules" for when DescribePlace
+! should alter text based on the player being in a container or platform
+routine SmartParents(obj)
+{
+!#ifset COOL_PARENTS
+	if player not in location and parent(player) is container
+		return true
+	else
+		return false
+!#endif
+}
+
+! Roody's note:  This routine allows changing the word used for where an object
+! is relative to whatever the player is in.
+routine RelativeText(obj)
+{
+!#ifset COOL_PARENTS
+	if obj = location and player not in location and
+		parent(player) is container
+	{
+		print "outside ";
+	}
+	elseif obj is container
+		print "inside ";
+	else
+		print "on ";
+	The(parent(player))
+!#endif
+}
+#endif
+
 #ifclear NEW_DESCRIBEPLACE
 replace Describeplace(place, long)
 {
-	local obj, count, notlisted, tempformat
+	local obj, count, notlisted, tempformat, charcount
 
 	if not place
 		place = location
@@ -11875,8 +12177,33 @@ replace Describeplace(place, long)
       ! List contents of chair, vehicle, etc. player is in
 		if player not in location
 		{
-			list_nest = 1
-			WhatsIn(Parent(player))
+#ifset COOL_PARENTS
+			if SmartParents(parent(player)) and children(parent(player)) > 1 and
+				player not in place and place = location and
+				not (FORMAT & LIST_F)
+			{
+				tempformat = FORMAT
+				FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
+				DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | OVERRIDEHERE_F
+				if FORMAT & LIST_F
+				{
+					FORMAT = FORMAT & ~LIST_F       ! clear it
+					FORMAT = FORMAT | TEMPLIST_F
+				}
+				list_nest = 0
+				! called WhatsIn and not ListObjects so the parent's listcontents
+				! property will be checked
+				WhatsIn(parent(player))
+				FORMAT = tempformat
+			}
+			else
+			{
+#endif
+				list_nest = 1
+				WhatsIn(Parent(player))
+#ifset COOL_PARENTs
+			}
+#endif
 		}
 
       ! List all characters, if any
@@ -11885,13 +12212,9 @@ replace Describeplace(place, long)
 		{
 			if obj is hidden or obj is not living or
 				player in obj
-			{
 				obj is already_listed
-			}
 			else
-			{
 				obj is not already_listed
-			}
 		}
 		for obj in place
 		{
@@ -11909,16 +12232,21 @@ replace Describeplace(place, long)
 
 		if list_count           ! if characters are to be listed
 		{
+			charcount++
 			tempformat = FORMAT
 			FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
+#ifset COOL_PARENTS
+			if SmartParents
+				DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | OVERRIDEHERE_F
+#endif
 			if list_count > 1
 				FORMAT = FORMAT | USECHARNAMES_F
+			Indent
 			if FORMAT & LIST_F
 			{
 				FORMAT = FORMAT & ~LIST_F       ! clear it
 				FORMAT = FORMAT | TEMPLIST_F
 			}
-			Indent
 			list_nest = 0
 			ListObjects(place)
 			FORMAT = tempformat
@@ -11969,12 +12297,20 @@ replace Describeplace(place, long)
 			list_count = notlisted + count
 			tempformat = FORMAT
 			FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
+#ifset COOL_PARENTS
+			if SmartParents
+			{
+				DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | OVERRIDEHERE_F
+				if charcount
+					DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | ALSO_F
+			}
+#endif
+			Indent
 			if FORMAT & LIST_F
 			{
 				FORMAT = FORMAT & ~LIST_F       ! clear it
 				FORMAT = FORMAT | TEMPLIST_F
 			}
-			Indent
 			list_nest = 0
 			ListObjects(place)
 			FORMAT = tempformat
@@ -12079,14 +12415,13 @@ replace Describeplace(place, long)
 ! adding additional elements into the mix
 #if undefined DESCRIBEPLACE_ELEMENTS
 #ifset NEW_DESC
-	constant DESCRIBEPLACE_ELEMENTS 9
+constant DESCRIBEPLACE_ELEMENTS 9
 #else
-	constant DESCRIBEPLACE_ELEMENTS 7
+constant DESCRIBEPLACE_ELEMENTS 7
 #endif
 #endif
 
 attribute already_printed
-!array DescribePlaceArray[DESCRIBEPLACE_ELEMENTS]
 
 replace Describeplace(place, long)
 {
@@ -12196,7 +12531,20 @@ replace Describeplace(place, long)
 		{
 			need_carriage = call DescribePlaceArray[a](place)
 
-			if (FORMAT & DESCFORM_F)
+			if ((FORMAT & DESCFORM_F) and not a and
+				(not (FORMAT & DESCFORM_D) or (FORMAT & LIST_F)))
+			{
+				for obj in place
+				{
+					if obj is not hidden and
+						(player not in obj or children(obj) > 1)
+					{
+						print ""
+						break
+					}
+				}
+			}
+			elseif (FORMAT & DESCFORM_D) and not (FORMAT & LIST_F)
 			{
 				if need_carriage and didprint
 					""
@@ -12215,10 +12563,11 @@ replace Describeplace(place, long)
 }
 
 ! routine for listing the player's siblings when he or she is in or on an
-! object in the room
-routine ParentofPlayer(place, for_reals)
+! object in the room; also lists children of scenery (hopefully already
+! mentioned in the room's long_desc
+routine ParentofPlayerScenery(place, for_reals)
 {
-	local obj
+	local obj,ret
 	if not for_reals
 	{
 		if player not in place and place = location
@@ -12229,15 +12578,205 @@ routine ParentofPlayer(place, for_reals)
 					return true
 			}
 		}
+		for obj in place
+		{
+			if obj.type = scenery
+			{
+				if player not in obj and
+				(obj is open or obj is not openable or obj is platform or
+				obj is transparent) and obj is not quiet
+				{
+					local a
+					obj is not already_listed
+					for a in obj
+					{
+						if a is not hidden
+						{
+							return true
+						}
+					}
+				}
+			}
+		}
 		return false
 	}
 	else
 	{
-		list_nest = 1
-		if WhatsIn(Parent(player))
-			return true
+#ifset COOL_PARENTS
+		if SmartParents(parent(player)) and children(parent(player)) > 1 and
+			player not in place and place = location and
+			not (FORMAT & LIST_F)
+		{
+			local tempformat
+			tempformat = FORMAT
+			FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
+			DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | OVERRIDEHERE_F
+			list_nest = 2
+			! called WhatsIn and not ListObjects so the parent's listcontents
+			! property will be checked
+			ret = WhatsIn(parent(player))
+			FORMAT = tempformat
+		}
+		else
+		{
+#endif
+			list_nest = 1
+			if player not in place and place = location
+				ret = WhatsIn(Parent(player))
+#ifset COOL_PARENTs
+		}
+#endif
+		local ret2
+		for obj in place
+		{
+			if obj.type = scenery
+			{
+				obj is known
+				if player not in obj and
+					((obj is container and ((obj is openable and obj is open)  or
+					obj is not openable or obj is transparent))  or
+					obj is platform) and obj is not quiet
+				{
+					if not (FORMAT & DESCFORM_D) or FORMAT & LIST_F
+						print newline
+					list_nest = 1
+					if WhatsIn(obj)
+						ret2 = true
+				}
+			}
+			! For scenery-derived objects that may change the type
+			elseif obj is static, hidden
+#ifset MULTI_PCS
+				MakeKnown(obj)
+#else
+				obj is known
+#endif
+		}
+		print newline
+		list_nest = 0
+		return (ret or ret2)
 	}
 }
+
+!\ Roody's note: The above ParentofPlayerScenery clumps the parent's and
+scenery's listing together in "doublespace" mode.  If you'd prefer to keep
+them separate, you can use the routines below.  You'd just need to change
+the DescribePlaceArray to include them, like:
+	DescribePlaceArray[0] = &ParentofPlayer, &SceneryChildren
+	 &ObjsWithDescs,&ObjsWithoutDescs,
+	&CharsWithDescs, &CharsWithoutDescs,
+	&AttachablesChildren, &ListHeldAttachables
+
+	(You might have to define the DESCRIBEPLACE_ELEMENTS constant with a higher
+	number before Roodylib is included, too)
+\!
+
+!routine ParentofPlayer(place, for_reals)
+!{
+!	local obj,ret
+!	if not for_reals
+!	{
+!		if player not in place and place = location
+!		{
+!			for obj in (Parent(player))
+!			{
+!				if obj is not hidden and obj ~= player
+!					return true
+!			}
+!		}
+!		return false
+!	}
+!	else
+!	{
+!#ifset COOL_PARENTS
+!		if SmartParents(parent(player)) and children(parent(player)) > 1 and
+!			player not in place and place = location and
+!			not (FORMAT & LIST_F)
+!		{
+!			local tempformat
+!			tempformat = FORMAT
+!			FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
+!			DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | OVERRIDEHERE_F
+!			list_nest = 2
+!			! called WhatsIn and not ListObjects so the parent's listcontents
+!			! property will be checked
+!			ret = WhatsIn(parent(player))
+!			FORMAT = tempformat
+!		}
+!		else
+!		{
+!#endif
+!			list_nest = 1
+!			if player not in place and place = location
+!				ret = WhatsIn(Parent(player))
+!#ifset COOL_PARENTs
+!		}
+!#endif
+!		print newline
+!		list_nest = 0
+!		return ret
+!	}
+!}
+!
+!routine SceneryChildren(place, for_reals)
+!{
+!	local obj,ret
+!	if not for_reals
+!	{
+!		for obj in place
+!		{
+!			if obj.type = scenery
+!			{
+!            if player not in obj and
+!				(obj is open or obj is not openable or obj is platform or
+!				obj is transparent) and obj is not quiet
+!				{
+!					local a
+!					obj is not already_listed
+!					for a in obj
+!					{
+!						if a is not hidden
+!						{
+!							return true
+!						}
+!					}
+!				}
+!			}
+!		}
+!		return false
+!	}
+!	else
+!	{
+!		for obj in place
+!		{
+!			if obj.type = scenery
+!			{
+!				obj is known
+!				if player not in obj and
+!					((obj is container and ((obj is openable and obj is open)  or
+!					obj is not openable or obj is transparent))  or
+!					obj is platform) and obj is not quiet
+!				{
+!					if not (FORMAT & DESCFORM_D)
+!						print newline
+!					list_nest = 1
+!					if WhatsIn(obj)
+!						ret = true
+!				}
+!			}
+!			! For scenery-derived objects that may change the type
+!			elseif obj is static, hidden
+!#ifset MULTI_PCS
+!				MakeKnown(obj)
+!#else
+!				obj is known
+!#endif
+!		}
+!		print newline
+!		list_nest = 0
+!		return ret
+!	}
+!}
 
 ! routine for listing characters with short_desc descriptions
 routine CharsWithDescs(place, for_reals)
@@ -12273,12 +12812,13 @@ routine CharsWithDescs(place, for_reals)
 				obj is not already_listed
 			}
 		}
-		local ret
+		local ret, count
 		for obj in place
 		{
 			if obj is not already_listed
 			{
-				print newline
+				if count++ and (FORMAT & DESCFORM_D) and not FORMAT & LIST_F
+					""
 				if verbosity ~= 1 or (obj is not moved and &obj.initial_desc)
 					ShortDescribe(obj)
 				if obj is already_listed  ! did we print something?
@@ -12318,13 +12858,9 @@ routine CharsWithNewDescs(place, for_reals)
 		{
 			if obj is hidden or obj is not living or
 				player in obj
-			{
 				obj is already_listed
-			}
 			else
-			{
 				obj is not already_listed
-			}
 		}
 		local ret
 		for obj in place
@@ -12360,14 +12896,29 @@ routine CharsWithoutDescs(place,for_reals)
 			(not &obj.short_desc or
 			(&obj.short_desc  and verbosity = 1)) and
 			obj is not already_printed)
-			{
 				return true
-			}
 		}
 		return false
 	}
 	else
 	{
+#ifset COOL_PARENTS
+		local also_check, a, b, i
+		if not (FORMAT & LIST_F)
+		{
+			for (i=0;i < DescribePlaceArray[] ;i++ )
+			{
+				if DescribePlaceArray[i] = &CharsWithoutDescs
+					a = i
+				elseif DescribePlaceArray[i] = &ObjsWithoutDescs
+					b = i
+				if (a and b) or not DescribePlaceArray[i]
+					break
+			}
+			if b < a and b
+				also_check = call DescribePlaceArray[b](place)
+		}
+#endif
 		for obj in place
 		{
 			if (obj is not hidden and obj is living and
@@ -12387,6 +12938,15 @@ routine CharsWithoutDescs(place,for_reals)
 			list_count = count
 			tempformat = FORMAT
 			FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
+#ifset COOL_PARENTS
+			if SmartParents and not (FORMAT & LIST_F)
+			{
+				DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | OVERRIDEHERE_F
+				if also_check
+					DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | ALSO_F
+			}
+#endif
+			Indent
 			if list_count > 1
 				FORMAT = FORMAT | USECHARNAMES_F
 			if (FORMAT & LIST_F)
@@ -12394,7 +12954,6 @@ routine CharsWithoutDescs(place,for_reals)
 				FORMAT = FORMAT & ~LIST_F       ! clear it
 				FORMAT = FORMAT | TEMPLIST_F
 			}
-			Indent
 			list_nest = 0
 			ListObjects(place)
 			FORMAT = tempformat
@@ -12433,9 +12992,7 @@ routine ObjsWithDescs(place, for_reals)
          ! ...And don't list identical objects yet, either
 
 				if (obj.identical_to).type = identical_class
-				{
 					obj is already_listed
-				}
 				else
 				{
 #endif
@@ -12452,6 +13009,7 @@ routine ObjsWithDescs(place, for_reals)
 	}
 	else
 	{
+		local count
 		for obj in place
 		{
 			if player not in obj
@@ -12459,6 +13017,8 @@ routine ObjsWithDescs(place, for_reals)
 				if obj is not already_listed and
 					obj is not hidden and obj is not already_printed
 				{
+					if count++ and (FORMAT & DESCFORM_D) and not (FORMAT & LIST_F)
+						""
 					if verbosity ~= 1 or (verbosity = 1 and
 						(obj is not moved and &obj.initial_desc))
 						ShortDescribe(obj)
@@ -12565,6 +13125,23 @@ routine ObjsWithoutDescs(place, for_reals)
 	}
 	else
 	{
+#ifset COOL_PARENTS
+		local also_check, a, b, i
+		if not FORMAT & LIST_F
+		{
+			for (i=0;i < DescribePlaceArray[] ;i++ )
+			{
+				if DescribePlaceArray[i] = &CharsWithoutDescs
+					a = i
+				elseif DescribePlaceArray[i] = &ObjsWithoutDescs
+					b = i
+				if (a and b) or not DescribePlaceArray[i]
+					break
+			}
+			if b > a and a
+				also_check = call DescribePlaceArray[a](place)
+		}
+#endif
 		for obj in place
 		{
 #ifset USE_ATTACHABLES
@@ -12589,12 +13166,20 @@ routine ObjsWithoutDescs(place, for_reals)
 			list_count = count
 			tempformat = FORMAT
 			FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
+			Indent
 			if FORMAT & LIST_F
 			{
 				FORMAT = FORMAT & ~LIST_F       ! clear it
 				FORMAT = FORMAT | TEMPLIST_F
 			}
-			Indent
+#ifset COOL_PARENTS
+			if SmartParents and not (FORMAT & TEMPLIST_F)
+			{
+				DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | OVERRIDEHERE_F
+				if also_check
+					DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | ALSO_F
+			}
+#endif
 			list_nest = 0
 			ListObjects(place)
 			FORMAT = tempformat
@@ -12605,99 +13190,51 @@ routine ObjsWithoutDescs(place, for_reals)
 }
 
 ! routine for listing attachables and contents of scenery objects
-routine AttachablesScenery(place, for_reals)
+routine AttachablesChildren(place, for_reals)
 {
-	local obj, ret
+#ifclear NO_OBJLIB
+	local obj, ret,count
 	if not for_reals
 	{
 #ifset USE_ATTACHABLES
 		for obj in place
 		{
 			! Print attachables last
-			if obj.type = attachable and obj is not hidden
+			if obj.type = attachable and obj is not hidden and
+				obj is not already_printed
 			{
 				obj is not already_listed
 				ret = true
 			}
 		}
 #endif
-		for obj in place
-		{
-			if obj.type = scenery
-			{
-            if player not in obj and
-           !    (obj is open or obj is not openable)
-			!	((obj is container and (obj is open or obj is transparent))  or
-			!	obj is platform) and obj is not quiet
-				(obj is open or obj is not openable or obj is platform or
-				obj is transparent) and obj is not quiet
-				{
-					local a
-					obj is not already_listed
-					for a in obj
-					{
-						if a is not hidden
-						{
-								ret = true
-								break
-						}
-					}
-				}
-			}
-		}
 		return ret
 	}
 	else
 	{
-#ifclear NO_OBJLIB
 #ifset USE_ATTACHABLES
 		for obj in place
 		{
 			! Print attachables last
-			if obj.type = attachable and obj is not hidden
+			if obj.type = attachable and obj is not hidden and
+				obj is not already_printed
 			{
+				if count++ and FORMAT & DESCFORM_D and not (FORMAT & LIST_F)
+					""
 				ShortDescribe(obj)
 				if obj is not already_listed
 					Message(&DescribePlace, 2, obj)
-				obj = already_printed
+				obj is already_printed
 				ret = true
 			}
 		}
 #endif
-		print newline
-		override_indent = false
 
-		! Finally, list contents of scenery objects (unless we've
-		! already done so as the parent of the player)
-		!
-		for obj in place
-		{
-			if obj.type = scenery
-			{
-				obj is known
-				if player not in obj and
-					((obj is container and (obj is open or obj is transparent))  or
-					obj is platform) and obj is not quiet
-				{
-					list_nest = 1
-					if WhatsIn(obj)
-						ret = true
-				}
-			}
-
-			! For scenery-derived objects that may change the type
-			elseif obj is static, hidden
-#ifset MULTI_PCS
-				MakeKnown(obj)
-#else
-				obj is known
-#endif
-		}
 		print newline
 		override_indent = false
 		return ret
-#endif  ! ifclear NO_OBJLIB
 	}
+#endif  ! ifclear NO_OBJLIB
 }
 
 routine ListHeldAttachables(place, for_realz)
@@ -12775,18 +13312,19 @@ routine ListHeldAttachables(place, for_realz)
 		}
 	}
 	print newline
+	return count
 #endif
 }
 
 #ifclear NEW_DESC
-array DescribePlaceArray[DESCRIBEPLACE_ELEMENTS] = &ParentofPlayer, \
+array DescribePlaceArray[DESCRIBEPLACE_ELEMENTS] = &ParentofPlayerScenery, \
 	&CharsWithDescs, &CharsWithoutDescs, &ObjsWithDescs, \
-	&ObjsWithoutDescs, &AttachablesScenery, &ListHeldAttachables
+	&ObjsWithoutDescs, &AttachablesChildren, &ListHeldAttachables
 #else
-array DescribePlaceArray[DESCRIBEPLACE_ELEMENTS] = &ParentofPlayer, \
+array DescribePlaceArray[DESCRIBEPLACE_ELEMENTS] = &ParentofPlayerScenery, \
 	&CharsWithDescs,	&CharsWithNewDescs,	&CharsWithoutDescs, \
 	&ObjsWithDescs, &objsWithNewDescs, &ObjsWithoutDescs, \
-	&AttachablesScenery, &ListHeldAttachables
+	&AttachablesChildren, &ListHeldAttachables
 #endif
 
 #endif
@@ -12874,35 +13412,37 @@ it calls DoPushDirTo.
 #ifclear NO_OBJLIB
 routine DoPushDir
 {
-	local a,m
-
-	! the for loop finds the last word before the direction
-	! which should be the object's noun
-	for (a=2; ; a=a+1)
-	{
-		if ObjWord(word[a],object) = noun
-			break
-	}
-	! Let's add one to find the direction words
-	a = a + 1
-
-	! Let's identify what we've got and point to the right direction object
-	select word[a]
-		case "north", "n":      m = n_obj
-		case "south", "s":      m = s_obj
-		case "east", "e":       m = e_obj
-		case "west", "w":       m = w_obj
-		case "northwest", "nw": m = nw_obj
-		case "northeast", "ne": m = ne_obj
-		case "southeast", "se": m = se_obj
-		case "southwest", "sw": m = sw_obj
-		case "up", "u":         m = u_obj
-		case "down", "d":       m = d_obj
-		case "in", "inside":    m = in_obj
-		case "out", "outside":  m = out_obj
-
-	! Let's run it
-	return Perform(&DoPushDirTo, object, m)
+!	local a,m
+!
+!	! the for loop finds the last word before the direction
+!	! which should be the object's noun
+!	for (a=2; ; a=a+1)
+!	{
+!		if ObjWord(word[a],object) = noun
+!			break
+!	}
+!	! Let's add one to find the direction words
+!	a = a + 1
+!
+!	! Let's identify what we've got and point to the right direction object
+!	select word[a]
+!		case "north", "n":      m = n_obj
+!		case "south", "s":      m = s_obj
+!		case "east", "e":       m = e_obj
+!		case "west", "w":       m = w_obj
+!		case "northwest", "nw": m = nw_obj
+!		case "northeast", "ne": m = ne_obj
+!		case "southeast", "se": m = se_obj
+!		case "southwest", "sw": m = sw_obj
+!		case "up", "u":         m = u_obj
+!		case "down", "d":       m = d_obj
+!		case "in", "inside":    m = in_obj
+!		case "out", "outside":  m = out_obj
+!
+!	! Let's run it
+!	return Perform(&DoPushDirTo, object, m)
+	SetupDirectionObjects
+	return Perform(&DoPushDirTo, object, xobject)
 }
 #endif
 
@@ -12992,8 +13532,11 @@ routine DoPushDirTo
 		if not object.pushstart and player in location
 		{
 			RLibMessage(&DoPushDirTo,3) ! "You push the object over to the..."
-			move object to k
+!			move object to location
+			object is hidden
 		}
+		if FORMAT & DESCFORM_I
+			""
 	}
 
 	! If DoGo works, then move the object to the location and print
@@ -13002,6 +13545,8 @@ routine DoPushDirTo
 	{
 		print ""
 		move object to location
+		object is moved
+		object is not hidden
 		if not object.pushend
 			RLibMessage(&DoPushDirto,4) ! "The [x] slows to a stop."
 		return true
@@ -13905,8 +14450,10 @@ routine HiddenPause
 {
 	local key
 
-	if betalib is skip_pauses
+#ifset DEBUG
+	if (debug_flags & D_PLAYBACK_HELPER) and betalib is playback_on
 		return
+#endif
 	key = system(11) ! READ_KEY
 	if system_status or system(61) ! MINIMAL_INTERFACE
 	{
@@ -13965,6 +14512,7 @@ routine MakePlayer(player_object, playerperson)
 	if not player_object
 		return  ! just to avoid setting the player as the nothing object or
 			     ! some other nonsense
+#ifclear NO_OBJLIB
 #ifset DEBUG
 	if player_object.type ~= player_character
 	{
@@ -14019,6 +14567,9 @@ routine MakePlayer(player_object, playerperson)
 				}
 			}
 	}
+#else
+	player = player_object
+#endif
 }
 
 ! Roody's note: This is based on Kent Tessman's PauseForKey routine where
@@ -14364,6 +14915,249 @@ routine IsTimeLonger(first, second)
 		return false
 }
 #endif ! #ifset USE_TIME_SYSTEM
+
+!----------------------------------------------------------------------------
+!* CONFIGURATION FILE HANDLER
+!----------------------------------------------------------------------------
+
+! Roody's note:
+! This configuration file manager exists so that a game that uses several
+! different systems saving information to a configuration file (like, say,
+! colorlib.h, music settings, and whatever else a game may need to save) can
+! easily write all of these things without a big headache to the author.
+!
+! Just declare a DATA_FILE constant before roodylib is included. This is the
+! data file that will be created:
+!
+!constant DATA_FILE "nddata" ! creates a "nddata file"
+
+! Example configuration saving thingie:
+!\
+
+property play_music ! just a property for us to save/load today
+
+object jukebox_config "Next Day Jukebox v1"
+{
+	in config_instructions
+	name_sum 0  ! we don't need a value here but we need the slot
+	play_music 1
+	first_time 1 ! set true if you want something to check for on the first play
+	load_info
+	{
+		self.play_music = readval
+!		self.first_time = readval  ! uncomment if you want the setup to run only
+                                 ! the first time ever
+	}
+	save_info
+	{
+		writeval self.play_music
+!		writeval self.first_time   ! uncomment if you want the setup to run only
+                                 ! the first time ever
+	}
+	setup
+	{
+		if self.first_time
+		{
+			self.first_time = 0
+			print "Do you want to play this game with music? ";
+			self.play_music = YesOrNo
+			return true ! returning true will cause InitScreen to be called
+		}
+	}
+}
+\!
+!----------------------------------------------------------------------------
+#ifset USE_CONFIG_SYSTEM
+
+!\ FILE_CHECK_START - a "file start" version of FILE_CHECK. Is the first thing
+written to a data file, so LoadSettings can check for it and cut out early if
+it's not there.
+\!
+constant FILE_CHECK_START     4659
+
+!\ configlib is an init_instructions object that calls each configuration file's
+setup property. This allows pre-game questions like, "Do you want color?" and so
+on. Have the setup property return true if InitScreen should be called
+afterward.
+
+	It also goes through all of the configuration objects and determines their
+	names' StringSum values, saving them in their name_sum properties.
+\!
+
+property name_sum alias size
+property load_info alias ne_to
+! A save_info property already exists, thanks to RoodyLib
+!property save_info alias e_to
+property setup alias se_to
+property first_time alias s_to
+
+time_object before_save
+{}
+
+time_object after_save
+{}
+
+time_object time_diff
+{}
+
+object configlib
+{
+	in init_instructions
+	execute
+	{
+		local i, l
+
+		if not child(config_instructions)
+			return
+		if not CheckWordSetting("undo") and not CheckWordSetting("restore")
+		{
+			for i in config_instructions
+			{
+				l = string(_temp_string, i.name)
+				i.name_sum = StringSum(_temp_string)
+			}
+		}
+		if not CheckWordSetting("undo")
+		{
+			LoadConfigSettings
+			if not CheckWordSetting("restore")
+			{
+				for i in config_instructions
+				{
+					if i.setup
+						InitScreen
+				}
+				if not CheckTerpConfigAbility
+					Config_Error
+			}
+		}
+	}
+}
+
+routine CheckTerpConfigAbility
+{
+	local x
+	GetCurrentTime(before_save)
+	SaveConfigSettings
+	GetCurrentTime(after_save)
+	readfile DATA_FILE
+	{
+		x = readval
+		x = readval
+		before_save.tm_year = readval
+		before_save.tm_month = readval
+		before_save.tm_day = readval
+		before_save.tm_hour = readval
+		before_save.tm_minute = readval
+		before_save.tm_second = readval
+	}
+	CalculateTimeDifference(after_save, before_save, time_diff)
+	x = SecondsSince(time_diff)
+	if x < 0 or x > 5
+		return false
+	return true
+}
+
+routine Config_Error
+{}
+
+!\ config_instructions is an object for holding all of the configuration file
+objects \!
+
+object config_instructions
+{
+	type settings
+}
+
+object config_config "Config File Terp Check v1"
+{
+	in config_instructions
+	name_sum 0  ! we don't need a value here but we need the slot
+	load_info
+	{
+		before_save.tm_year = readval
+		before_save.tm_month = readval
+		before_save.tm_day = readval
+		before_save.tm_hour = readval
+		before_save.tm_minute = readval
+		before_save.tm_second = readval
+	}
+	save_info
+	{
+		writeval before_save.tm_year
+		writeval before_save.tm_month
+		writeval before_save.tm_day
+		writeval before_save.tm_hour
+		writeval before_save.tm_minute
+		writeval before_save.tm_second
+	}
+}
+
+routine LoadConfigSettings
+{
+	readfile DATA_FILE
+	{
+		local a, i
+		while true
+		{
+			a = readval
+			if a++ ~= FILE_CHECK_START
+			{
+				break
+			}
+			for i in config_instructions
+			{
+				a = readval
+				if a ~= i.name_sum
+					break
+				else
+					run i.load_info
+			}
+			a = readval
+			break
+		}
+		if a ~= FILE_CHECK
+			return false
+		else
+			return true
+	}
+}
+
+routine SaveConfigSettings
+{
+	if not child(config_instructions)
+		return
+
+	writefile DATA_FILE
+	{
+		local i
+		writeval FILE_CHECK_START
+		for i in config_instructions
+		{
+			writeval i.name_sum
+			run i.save_info
+		}
+		writeval FILE_CHECK
+	}
+	return (not system_status) ! I don't think this actually works but oh well
+}
+
+!\ StringSum adds up the ASCII value of a string. This extension uses
+it to differentiate one configuration file object from another. \!
+
+routine StringSum(arr)
+{
+	local i, sum
+
+	while (array arr[i] and i < array arr[])
+	{
+		sum += array arr[i]
+		i++
+	}
+
+	return sum
+}
+#endif
 
 !----------------------------------------------------------------------------
 !* DoVersion system

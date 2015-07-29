@@ -310,11 +310,13 @@ xverb "score"
 !#set _HUGOFIX_G
 !#endif	! _HUGOFIX_G
 
+#ifclear NO_OBJLIB
 xverb "scope"
 	*                 DoScope
 
 xverb "scope"
 	* "rooms"         DoScopeRooms
+#endif
 
 xverb "verbtest"
 	*	object         DoVerbTest
@@ -432,6 +434,8 @@ xverb "$pc"
 xverb "$pm"
 	*                                       DoHugoFix
 
+xverb "$rp"
+	*					DoHugoFix
 xverb "$rr"
 	*					DoHugoFix
 
