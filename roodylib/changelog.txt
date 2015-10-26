@@ -10,8 +10,22 @@ TO DO LIST (for future versions):
 * make HugoFix parser-checking output prettier?
 * might integrate other libraries into Roodylib, like follow,h, opportune.h, and newcango
 
+v 4.1.1 * updated - BeforeRoutines, AfterRoutines, RepaintScreen, DoInventory
+	* some additional HugoFix object tree organization, a HugoFix recording playback helper, $mp tweak
+	* made automatic-door-opening look nicer
+	* if a key_object is set quiet, it won't automatically open a door until after it has been explicitly used
+	* USE_SCOPE_REACT for checking react_before/after of scope objects
+	* changed PreParseError to BeforeParseError
+	* changed USE_SMART_PARENTS to SMART_PARENT_DIRECTIONS
+	* attachable behavior improved, especially with regards to pushable things
+	* USE_JUKEBOX, USE_CONFIG_SYSTEM added
+	* better DescribePlace configuration support
+	* cleaned up some rollable-objects code
+	* reworked how some FORMAT & LIST_F and indentation stuff works
+	* updated documentation
+
 v 4.0 - * Added some new constants for some new FindObject/Parse stuff
-	* Incorporated cheaplib.h, beta.h, footnotes.h, scorenotify.h, newboxdraw.h, into Roodylib
+	* Incorporated cheaplib.h, beta.h, footnotes.h, scorenotify.h, newboxdraw.h into Roodylib
 	* Updated AnyVerb, AssignPronoun, CenterTitle, YesOrNo, HugoFix stuff, EndGame, DoMoveInVehicle, DoOpen
 	* Updated DoLook to clear already_listed from children of parents and WhatsIn to have an option to be called so it doesn't clear already_listed
 	* Added QuitGameText routine

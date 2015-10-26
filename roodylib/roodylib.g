@@ -3,7 +3,7 @@
 !::
 
 #ifset VERSIONS
-#message "roodylib.g Grammar Version 3.9"
+#message "roodylib.g Grammar Version 4.1.1"
 #endif
 
 #ifclear _ROODYLIB_G
@@ -310,10 +310,10 @@ xverb "score"
 !#set _HUGOFIX_G
 !#endif	! _HUGOFIX_G
 
-#ifclear NO_OBJLIB
 xverb "scope"
 	*                 DoScope
 
+#ifclear NO_OBJLIB
 xverb "scope"
 	* "rooms"         DoScopeRooms
 #endif

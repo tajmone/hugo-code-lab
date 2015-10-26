@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------------
 !#set HUGOFIX             ! Compile with HugoFix Debugging Library
                           !    commands available   (type $? in game)
-!#set VERSIONS            ! Have compiler list library versions
+#set VERSIONS            ! Have compiler list library versions
 
 !----------------------------------------------------------------------------
 !*Hugolib inclusions
@@ -25,7 +25,7 @@
 !----------------------------------------------------------------------------
 !* Configuration file inclusions
 !----------------------------------------------------------------------------
-!#set USE_CONFIG_SYSTEM   ! Include for the configuration file manager
+
 !#set USE_COVERART        ! Use the "fake cover art" extension.
 !#set USE_COLORLIB        ! Compile with colorlib, a library for
                           !  font-color-intensive games
@@ -106,6 +106,10 @@
                                ! the turn being processed
 !#set SKIP_DOORS               ! Player can walk through closed, unlocked doors
                                !  without opening them, just like NPCs
+!#set SMART_PARENT_DIRECTIONS  ! Trying to go in an invalid direction while
+                               !  in an enterable object gives "You can't go
+                               !  that way." instead of "You'll have to get
+                               !  up/out."
 !#set USE_AFTER_UNDO           ! Use after_undo array to call routines
                                !  after successful UNDOs
 !#set USE_BOXDRAW              ! Use quote box code
@@ -117,11 +121,11 @@
                                ! libraries
 !#set USE_FOOTNOTES            ! Use footnote code
 !#set HITCHHIKER_STYLE         ! All footnotes available all the time
+!#set USE_JUKEBOX              ! Use Roodylib music player manager
+!#set USE_RELATIVE_DESCRIPTIONS ! Default room descriptions are different
+                               ! if the player is in an enterable container
 !#set USE_ROLLABLES            ! Include Roodylib's object-rolling code
-!#set USE_SMART_PARENTS        ! Trying to go in an invalid direction while
-                               !  in an enterable object gives "You can't go
-                               !  that way." instead of "You'll have to get
-                               !  up/out."
+!#set USE_SCOPE_REACT          ! Check react_before/react_after of scope objects
 !#set USE_STRING_MANIPULATION  ! Include string manipulation routines
 !#set USE_SUPERCONTAINER       ! Use supercontainer object class
 !#set USE_TIME_SYSTEM          ! Enable time-tracking routines

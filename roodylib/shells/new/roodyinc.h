@@ -33,10 +33,6 @@
 #include "pasttense.h"
 #endif
 
-#ifset USE_CONFIG_SYSTEM
-#include "config_sys.h"
-#endif
-
 #ifset USE_COVERART
 #include "coverartlib.h"
 #endif

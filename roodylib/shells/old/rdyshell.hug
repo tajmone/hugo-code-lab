@@ -20,7 +20,7 @@
 !#set USE_ROLLABLES       ! Allow the pushing of mobile objects (needs Roodylib)
 #set USE_ROODYLIB
 !#set USE_VEHICLES        ! Use vehicle objects
-!#set VERSIONS            ! Print library versions at compile time
+#set VERSIONS            ! Print library versions at compile time
 
 !:: switches              ! example how one can add compiler switches to source
 !#switches -ls            ! print compilation stats to .LST file

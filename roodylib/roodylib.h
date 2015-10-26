@@ -5,11 +5,11 @@
 #ifclear _ROODYLIB_H
 #set _ROODYLIB_H
 
-constant ROODYBANNER "RoodyLib Version 4.0.1"
-constant ROODYVERSION "4.0.1"
+constant ROODYBANNER "RoodyLib Version 4.1.1"
+constant ROODYVERSION "4.1.1"
 
 #ifset VERSIONS
-#message "roodylib.h version 4.0.1"
+#message "roodylib.h version 4.1.1"
 #endif
 
 #ifset USE_CONFIG_SYSTEM
@@ -431,9 +431,7 @@ replace Activate(a, set)                ! <set> is for fuses only
 	local err, b
 
 	if a.type = fuse
-	{
 		b = "fuse"
-	}
 	else
 		b = "daemon"
 	if not player
@@ -1108,6 +1106,7 @@ object darkness "Darkness"
 replace DarkWarning
 {
 	RLibMessage(&DescribePlace,1,darkness)
+	Indent
 	print CThe(player); " stumble"; MatchSubject(player); \
 		" around in the dark."
 }
@@ -1371,13 +1370,13 @@ replace ListObjects(thisobj, conjunction)
 				if count + pluralcount > 1
 					print " "; ARE_WORD;
 				else:  print " "; IS_WORD;
-#ifset COOL_PARENTS
+#ifset USE_RELATIVE_DESCRIPTIONS
 				if not (DESCRIBEPLACEFORMAT & OVERRIDEHERE_F)  or
 				((DESCRIBEPLACEFORMAT & OVERRIDEHERE_F) and
 				thisobj = parent(player))
 #endif
 					print " "; HERE_WORD;
-#ifset COOL_PARENTS
+#ifset USE_RELATIVE_DESCRIPTIONS
 				if DESCRIBEPLACEFORMAT & OVERRIDEHERE_F
 				{
 					if DESCRIBEPLACEFORMAT & ALSO_F
@@ -1619,7 +1618,7 @@ replace WhatsIn(obj,dont_flush)
 		{
 			if FORMAT & LIST_F
 				RLibMessage(&WhatsIn, 1 )  !  ":"
-#ifset COOL_PARENTS
+#ifset USE_RELATIVE_DESCRIPTIONS
 			FORMAT = FORMAT & ~FIRSTCAPITAL_F
 			FORMAT = FORMAT & ~ISORAREHERE_F
 			DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT & ~ OVERRIDEHERE_F
@@ -1645,7 +1644,7 @@ replace WhatsIn(obj,dont_flush)
 				if FORMAT & LIST_F
 					RLibMessage(&WhatsIn, 1 )  !  ":"
 			}
-#ifset COOL_PARENTS
+#ifset USE_RELATIVE_DESCRIPTIONS
 			elseif not (DESCRIBEPLACEFORMAT & OVERRIDEHERE_F)
 #else
 			else
@@ -2514,7 +2513,6 @@ replace HugoFixAudit
 	Font(DEFAULT_FONT)
 }
 
-#ifclear NO_OBJLIB
 !\ DoScope and DoScopeRooms - Here are two debugging routines for reminding you
 what objects are in scope of various rooms. "SCOPE" will just list the items
 in scope of the current location, while "SCOPE ROOMS" will list all objects
@@ -2528,18 +2526,21 @@ routine DoScope
 	print "Total objects: "; number objects
 	print "Highest object number: "; number (objects - 1)
 	"Objects in scope:"
-	local a, b
+	local a
 	for (a=player ; a< objects ; a=a+1)
 	{
-		b = (a.type = room)
-		if FindObject(a,location) and not b
+		if a ~= location
 		{
-			print "\_  ";
-			print a.name
+			if FindObject(a,location)
+			{
+				print "\_  ";
+				print a.name
+			}
 		}
 	}
 }
 
+#ifclear NO_OBJLIB
 routine DoScopeRooms
 {
 	local a, b, c
@@ -3130,7 +3131,11 @@ replace EndGame(end_type)
 		{
 			if display.needs_repaint
 			{
-				RepaintScreen
+				if RepaintScreen
+				{
+					InitScreen
+					PrintStatusLine
+				}
 				n = 0
 			}
 			if word[1] and word[1] = SpecialKey(end_type) or not n
@@ -3159,7 +3164,7 @@ routine ProcessKey(entry,end_type)
 	! we do SpecialKey first since options like RESTART can clear word[1]
 	! and trigger SpecialKey (which sometimes equals false)
 		case SpecialKey(end_type)
-			SpecialRoutine
+			SpecialRoutine(end_type)
 		case "restart", "r"
 		{
 #ifclear NO_XVERBS
@@ -3222,8 +3227,11 @@ routine SpecialKey(end_type)   ! this routine exists to be replaced
 !	return 0
 }
 
-routine SpecialRoutine  ! also exists to be replace
+routine SpecialRoutine(end_type)  ! also exists to be replace
 {
+!	You most likely won't need the end_type argument but it's there in case
+!	 you want additional responses besides the winning condition
+
 !	ShowPage(amusing_list) ! example of using newmenu's ShowPage routine
 }
 
@@ -4059,13 +4067,14 @@ replace MovePlayer(loc, silent, ignore)
 			if ret : break
 			ret = real_loc.before
 			if ret : break
-!        local i
-!			for i in location
-!			{
-!				ret = i.react_before
-!				if ret
-!					break
-!			}
+			local i
+			for i in location
+			{
+				if i ~= player
+					ret = i.react_before
+				if ret
+					break
+			}
 #ifset USE_SCOPE_REACT
 			if ret : break
 			ret = ScopeReactBefore
@@ -4109,16 +4118,16 @@ replace MovePlayer(loc, silent, ignore)
 			ret = player.after
 			if not ret
 				ret = location.after
-!			if not ret
-!			{
-!				for i in location
-!				{
-!					if i is static
-!						ret = i.react_after
-!					if ret
-!						break
-!				}
-!			}
+			if not ret
+			{
+				for i in location
+				{
+					if i ~= player
+						ret = i.react_after
+					if ret
+						break
+				}
+			}
 #ifset USE_SCOPE_REACT
 			if not ret
 				ret = ScopeReactAfter
@@ -4143,16 +4152,6 @@ replace MovePlayer(loc, silent, ignore)
 	actor = act
 
 	return ret
-}
-
-! Roody's note: This only exists here to have a NewParseError replacement
-! routine all set up to be copied and pasted into your ParseError-replacing
-! game
-replace NewParseError(errornumber,obj)
-{
-	select errornumber
-		case else : return false
-	return true
 }
 
 global NEW_PARSE
@@ -4445,9 +4444,7 @@ replace Parse
 			number_pronouns--
 
 		if number_pronouns > 0
-		{
 			PrintReplacedPronouns(number_pronouns)
-		}
 #endif
 
 #ifset USE_PLURAL_OBJECTS
@@ -4682,7 +4679,7 @@ replace ParseError(errornumber, obj)
 	NEW_PARSE = (NEW_PARSE & ~WORDSSAVED_F)
 
 	local r
-	r = PreParseError(errornumber,obj)
+	r = BeforeParseError(errornumber,obj)
 	if word[1] = "*"
 	{
 		if betalib is special
@@ -5123,10 +5120,20 @@ replace ParseError(errornumber, obj)
 	return true                             ! message already printed
 }
 
-!\ Roody's note - PreParseError is a routine solely for being replaced.
+! Roody's note: This only exists here to have a NewParseError replacement
+! routine all set up to be copied and pasted into your ParseError-replacing
+! game
+replace NewParseError(errornumber,obj)
+{
+	select errornumber
+		case else : return false
+	return true
+}
+
+!\ Roody's note - BeforeParseError is a routine solely for being replaced.
 Use it for any code you want to run before parser error messages are printed.
 \!
-routine PreParseError(errornumber,obj)
+routine BeforeParseError(errornumber,obj)
 {}
 
 ! Roody's note: Removes the jump command... just because.
@@ -6755,8 +6762,9 @@ object main_instructions
 \!
 
 #ifset USE_FOOTNOTES
+
 #if undefined MAXFOOTNOTES
-	constant MAXFOOTNOTES 10
+constant MAXFOOTNOTES 10
 #endif
 
 ! if roodylib.h has been included before footnotes.h, nothing needs to be
@@ -7018,14 +7026,7 @@ routine ScoreNotify
 
 }
 
-! routine to call for the last score of a game (after the winning move), as
-! main is not called again
-routine LastScore(a)
-{
-	score += a
-}
-
-! otherwise, call this routine to add to the game score
+! call this routine to add to the game score
 routine AddScore(a)
 {
 	scorenotifylib.points += a
@@ -7216,9 +7217,7 @@ routine Box(quotefile, pauseflag,force_simple)
 		locate 1, current_pos
 	FONT(DEFAULT_FONT)
 	if pauseflag
-	{
 		CoolPause(0,1)
-	}
 	nextepigram = 0
 }
 
@@ -7684,7 +7683,11 @@ object parse_redraw
 	type settings
 	execute
 	{
-		RedrawScreen
+		if display.needs_repaint
+		{
+			if RepaintScreen
+				RedrawScreen
+		}
 		return false
 	}
 }
@@ -7701,11 +7704,10 @@ routine RedrawScreen
 	! print the player's command, and redraw the status line before
 	! proceeding to interpret the command
 
-	if display.needs_repaint
-	{
-		RepaintScreen
-		ShowCommand
-	}
+	InitScreen
+	PrintStatusLine
+	ShowCommand
+
 }
 
 !\ Roody's note: Split the screen-clearing stuff into another routine
@@ -7717,13 +7719,13 @@ constant REPAINT_TIME 30
 
 routine RepaintScreen
 {
+	display.needs_repaint = false
 #ifset CHEAP
 !\ This little section is a little useless since it really only applies to
 	non-simple interpreters with cheap mode turned on for testing purposes. \!
 	if (cheap & CHEAP_ON)
 	{
 		CenterTitle(CheapTitle,0,1)
-		display.needs_repaint = false
 		return
 	}
 #endif ! CHEAP
@@ -7742,9 +7744,7 @@ routine RepaintScreen
 			a++
 		}
 	}
-	InitScreen
-	PrintStatusLine
-	display.needs_repaint = false
+	return true
 }
 
 !\ Roody's note: ShowCommand retypes the typed (valid)  command after the
@@ -8710,7 +8710,7 @@ replace vehicle
 	{
 		parent(player) DoGo
 		{
-#ifset USE_SMART_PARENTS
+#ifset SMART_PARENT_DIRECTIONS
 			local a
 			a = CanGoDir
 			if not a
@@ -9211,12 +9211,12 @@ replace ParsePluralObjects
 				pobj_number = k
 			}
 
-!			if WordisNumber(word[w-1])>=1   ! "two of the three"
-!			{
-!				pobj_number = WordisNumber(word[w-1])
-!				DeleteWord(w-1)
-!				w--
-!			}
+			if WordisNumber(word[w-1])>=1   ! "two of the three"
+			{
+				pobj_number = WordisNumber(word[w-1])
+				DeleteWord(w-1)
+				w--
+			}
 		}
 
 	! Remove a preceding "all" or "any"; i.e. "all things" is the same as "things"
@@ -9582,6 +9582,11 @@ replace ObjectisAttached(obj, oldloc, newloc)
 !----------------------------------------------------------------------------
 !* REPLACED RESOURCE.H CODE
 !----------------------------------------------------------------------------
+#ifset USE_JUKEBOX
+#set USE_TIME_SYSTEM
+#include "resource.h"
+#endif
+
 #ifset _RESOURCE_H
 !\ Roody's note: We replace some of the resource.h routines so multimedia is
 never played under "minimal" glk interpreters like Gargoyle. Now, our
@@ -9688,13 +9693,24 @@ replace PlayMusic(resfile, song, volume, loop, force)
 	{
 		music 0
 		audio.current_music = 0
+		audio is not special
 	}
 	else
 	{
 		if not loop
+		{
 			music resfile, song, vol
+#ifset USE_JUKEBOX
+			if not system_status
+				GetCurrentTime(song_start)
+#endif
+			audio is not special
+		}
 		else
+		{
 			music repeat resfile, song, vol
+			audio is special
+		}
 		audio.current_music = song
 		audio.current_music_looping = loop
 	}
@@ -10373,7 +10389,7 @@ constant non_door_portal 3
 
 replace DoGo
 {
-	local moveto, JumpToEnd, skip_ahead, vehicle_check
+	local moveto, JumpToEnd, skip_ahead ! , vehicle_check
 #ifset NO_OBJLIB
 	local wordnum, m
 #endif
@@ -10409,7 +10425,7 @@ replace DoGo
 
 		if	not a and not b
 		{
-#ifset USE_SMART_PARENTS
+#ifset SMART_PARENT_DIRECTIONS
 			if not CanGoDir
 				VMessage(&DoGo, 2)      ! "You can't go that way."
 			else
@@ -10603,8 +10619,8 @@ if not JumpToEnd
 		exit_type = 0
 		return true                     ! (moveto is never 1)
 	}
-	elseif player not in location and           ! sitting on or in an obj.
-		not vehicle_check  ! make sure it's not a vehicle that can go through
+	elseif player not in location ! and           ! sitting on or in an obj.
+!		not vehicle_check  ! make sure it's not a vehicle that can go through
 		                   ! this door
 	{
 		exit_type = 0
@@ -11671,8 +11687,12 @@ replace DoWait(count)                   ! count argument is from DoWaitUntil
 !----------------------------------------------------------------------------
 !* REPLACED VERBSTUB.H ROUTINES
 !----------------------------------------------------------------------------
+#ifclear _VERBSTUB_H
+! Roody's note: SEARCH is a pretty common verb. Roodylib adds it regardless.
+routine DoSearch
+{}
+#endif
 ! Roody's note: Fixes some pronoun stuff. Suggested by Mike Snyder.
-#ifset _VERBSTUB_H
 replace DoSearch
 {
 	if object = player
@@ -11706,42 +11726,6 @@ replace DoSearch
 	}
 	return true
 }
-#else
-! Roody's note: SEARCH is a pretty common verb. Roodylib adds it regardless.
-routine DoSearch
-{
-	if object = player
-	{
-		"Search ";
-		The(player)
-		" indeed."
-	}
-	elseif object is container and child(object)
-		Perform(&DoLookIn, object)
-	elseif object is living
-	{
-		print CThe(object); MatchPlural(object, "doesn't", "don't");
-		" let ";
-		The(player)
-		if object.pronouns
-		{
-			" search ";
-			if object.pronouns #2
-				print object.pronouns #2;
-			else
-				print object.pronoun;
-		}
-		print "."
-	}
-	else
-	{
-		CThe(player)
-		MatchPlural(player, "doesn't", "don't")
-		" find anything new."
-	}
-	return true
-}
-#endif
 
 ! Roody's note: Applies "DoListen" logic to DoSmell. Makes it a standard verb.
 #ifclear _VERBSTUB_H
@@ -12008,7 +11992,7 @@ enumerate start = 4096, step * 2
 	DESCFORM_I, DESCFORM_D
 }
 
-#ifset COOL_PARENTS
+#ifset USE_RELATIVE_DESCRIPTIONS
 global DESCRIBEPLACEFORMAT
 
 enumerate start = 1 , step * 2
@@ -12036,12 +12020,12 @@ routine AssignPronounsToRoom
 		return false
 }
 
-#ifset COOL_PARENTS
+#ifset USE_RELATIVE_DESCRIPTIONS
 ! Roody's note:  This routine establishes the "rules" for when DescribePlace
 ! should alter text based on the player being in a container or platform
-routine SmartParents(obj)
+routine RelativeParent(obj)
 {
-!#ifset COOL_PARENTS
+!#ifset USE_RELATIVE_DESCRIPTIONS
 	if player not in location and parent(player) is container
 		return true
 	else
@@ -12053,7 +12037,7 @@ routine SmartParents(obj)
 ! is relative to whatever the player is in.
 routine RelativeText(obj)
 {
-!#ifset COOL_PARENTS
+!#ifset USE_RELATIVE_DESCRIPTIONS
 	if obj = location and player not in location and
 		parent(player) is container
 	{
@@ -12177,8 +12161,8 @@ replace Describeplace(place, long)
       ! List contents of chair, vehicle, etc. player is in
 		if player not in location
 		{
-#ifset COOL_PARENTS
-			if SmartParents(parent(player)) and children(parent(player)) > 1 and
+#ifset USE_RELATIVE_DESCRIPTIONS
+			if RelativeParent(parent(player)) and children(parent(player)) > 1 and
 				player not in place and place = location and
 				not (FORMAT & LIST_F)
 			{
@@ -12201,7 +12185,7 @@ replace Describeplace(place, long)
 #endif
 				list_nest = 1
 				WhatsIn(Parent(player))
-#ifset COOL_PARENTs
+#ifset USE_RELATIVE_DESCRIPTIONS
 			}
 #endif
 		}
@@ -12235,8 +12219,8 @@ replace Describeplace(place, long)
 			charcount++
 			tempformat = FORMAT
 			FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
-#ifset COOL_PARENTS
-			if SmartParents
+#ifset USE_RELATIVE_DESCRIPTIONS
+			if RelativeParent
 				DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | OVERRIDEHERE_F
 #endif
 			if list_count > 1
@@ -12297,8 +12281,8 @@ replace Describeplace(place, long)
 			list_count = notlisted + count
 			tempformat = FORMAT
 			FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
-#ifset COOL_PARENTS
-			if SmartParents
+#ifset USE_RELATIVE_DESCRIPTIONS
+			if RelativeParent
 			{
 				DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | OVERRIDEHERE_F
 				if charcount
@@ -12602,8 +12586,8 @@ routine ParentofPlayerScenery(place, for_reals)
 	}
 	else
 	{
-#ifset COOL_PARENTS
-		if SmartParents(parent(player)) and children(parent(player)) > 1 and
+#ifset USE_RELATIVE_DESCRIPTIONS
+		if RelativeParent(parent(player)) and children(parent(player)) > 1 and
 			player not in place and place = location and
 			not (FORMAT & LIST_F)
 		{
@@ -12623,7 +12607,7 @@ routine ParentofPlayerScenery(place, for_reals)
 			list_nest = 1
 			if player not in place and place = location
 				ret = WhatsIn(Parent(player))
-#ifset COOL_PARENTs
+#ifset USE_RELATIVE_DESCRIPTIONS
 		}
 #endif
 		local ret2
@@ -12688,8 +12672,8 @@ the DescribePlaceArray to include them, like:
 !	}
 !	else
 !	{
-!#ifset COOL_PARENTS
-!		if SmartParents(parent(player)) and children(parent(player)) > 1 and
+!#ifset USE_RELATIVE_DESCRIPTIONS
+!		if RelativeParent(parent(player)) and children(parent(player)) > 1 and
 !			player not in place and place = location and
 !			not (FORMAT & LIST_F)
 !		{
@@ -12709,7 +12693,7 @@ the DescribePlaceArray to include them, like:
 !			list_nest = 1
 !			if player not in place and place = location
 !				ret = WhatsIn(Parent(player))
-!#ifset COOL_PARENTs
+!#ifset USE_RELATIVE_DESCRIPTIONS
 !		}
 !#endif
 !		print newline
@@ -12902,7 +12886,7 @@ routine CharsWithoutDescs(place,for_reals)
 	}
 	else
 	{
-#ifset COOL_PARENTS
+#ifset USE_RELATIVE_DESCRIPTIONS
 		local also_check, a, b, i
 		if not (FORMAT & LIST_F)
 		{
@@ -12938,8 +12922,8 @@ routine CharsWithoutDescs(place,for_reals)
 			list_count = count
 			tempformat = FORMAT
 			FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
-#ifset COOL_PARENTS
-			if SmartParents and not (FORMAT & LIST_F)
+#ifset USE_RELATIVE_DESCRIPTIONS
+			if RelativeParent and not (FORMAT & LIST_F)
 			{
 				DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | OVERRIDEHERE_F
 				if also_check
@@ -13125,7 +13109,7 @@ routine ObjsWithoutDescs(place, for_reals)
 	}
 	else
 	{
-#ifset COOL_PARENTS
+#ifset USE_RELATIVE_DESCRIPTIONS
 		local also_check, a, b, i
 		if not FORMAT & LIST_F
 		{
@@ -13172,8 +13156,8 @@ routine ObjsWithoutDescs(place, for_reals)
 				FORMAT = FORMAT & ~LIST_F       ! clear it
 				FORMAT = FORMAT | TEMPLIST_F
 			}
-#ifset COOL_PARENTS
-			if SmartParents and not (FORMAT & TEMPLIST_F)
+#ifset USE_RELATIVE_DESCRIPTIONS
+			if RelativeParent and not (FORMAT & TEMPLIST_F)
 			{
 				DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | OVERRIDEHERE_F
 				if also_check
@@ -13193,10 +13177,10 @@ routine ObjsWithoutDescs(place, for_reals)
 routine AttachablesChildren(place, for_reals)
 {
 #ifclear NO_OBJLIB
+#ifset USE_ATTACHABLES
 	local obj, ret,count
 	if not for_reals
 	{
-#ifset USE_ATTACHABLES
 		for obj in place
 		{
 			! Print attachables last
@@ -13207,12 +13191,10 @@ routine AttachablesChildren(place, for_reals)
 				ret = true
 			}
 		}
-#endif
 		return ret
 	}
 	else
 	{
-#ifset USE_ATTACHABLES
 		for obj in place
 		{
 			! Print attachables last
@@ -13228,12 +13210,12 @@ routine AttachablesChildren(place, for_reals)
 				ret = true
 			}
 		}
-#endif
 
 		print newline
 		override_indent = false
 		return ret
 	}
+#endif  ! ifset USE_ATTACHABLES
 #endif  ! ifclear NO_OBJLIB
 }
 
@@ -13889,6 +13871,10 @@ routine SORT_RANDOM(obj1, obj2)
 
 	Read their individual descriptions for usage info.
 \!
+
+#ifset USE_JUKEBOX
+#set OBJECT_SORTING
+#endif
 
 #ifset OBJECT_SORTING
 object temp_bowl
@@ -14633,6 +14619,17 @@ class time_object
 	tm_second 0
 }
 
+#ifset _RESOURCE_H
+time_object song_start
+{}
+
+time_object current_time
+{}
+
+time_object time_difference
+{}
+#endif
+
 ! Roody's note: Sets the current time to a time_object provided as an argument.
 routine GetCurrentTime(current)
 {
@@ -14916,6 +14913,151 @@ routine IsTimeLonger(first, second)
 }
 #endif ! #ifset USE_TIME_SYSTEM
 
+!----------------------------------------------------------------------------
+!* Music Jukebox
+!----------------------------------------------------------------------------
+
+! Roody's note: Most of this code is from Kent Tessman's Future Boy! with
+! just a couple of additions of my own. Now, Hugo doesn't do real-time games
+! (like Infocom's Border Zone), but it can catch the current time and the
+! following code allows for figuring out the time difference betwen this
+! or that time (useful for music jukebox extensions or other misc uses).
+!
+! Since it's rare for games to use this, set the #USE_TIME_SYSTEM flag
+! to enable it.
+!----------------------------------------------------------------------------
+#ifset USE_JUKEBOX
+object jukebox "music manager"
+{}
+
+time_object current_song_length
+{}
+
+global current_song
+
+property length alias u_to
+property file alias d_to
+property artist alias s_to
+
+class song
+{}
+
+routine PlayJukebox
+{
+	local a,success_play, retry
+	while true
+	{
+		a = child(jukebox)
+		if not a or retry > 5
+		{
+			current_song = 0
+			music 0
+			audio.current_music = 0
+			audio is not special
+			jukebox is not switchedon
+			return
+		}
+		current_song_length.tm_minute = a.length
+		current_song_length.tm_second = a.length #2
+#if defined MUSIC_RESOURCE_FILE
+		success_play = PlayMusic(MUSIC_RESOURCE_FILE, a.file,100,0,1)
+#endif
+#if undefined MUSIC_RESOURCE_FILE
+		success_play = PlayMusic(0, a.file,100,0,1)
+#endif
+		move a to jukebox
+		if success_play
+		{
+			current_song = a
+			jukebox is switchedon
+			break
+		}
+		else
+			retry++
+	}
+}
+
+routine StopJukebox
+{
+	current_song = 0
+	music 0
+	audio.current_music = 0
+	audio is not special
+	jukebox is not switchedon
+}
+
+routine PlaySong(songfile,loop)
+{
+	local success_play
+	if not loop
+	{
+		current_song_length.tm_minute = songfile.length
+		current_song_length.tm_second = songfile.length #2
+	}
+#if defined MUSIC_RESOURCE_FILE
+	success_play = PlayMusic(MUSIC_RESOURCE_FILE, songfile.file,100,loop,true)
+#endif
+#if undefined MUSIC_RESOURCE_FILE
+	success_play = PlayMusic(0, songfile.file,100,loop,true)
+#endif
+	if not success_play
+	{
+		current_song = 0
+		music 0
+		audio.current_music = 0
+		audio is not special
+	}
+	else
+		current_song = songfile
+}
+
+routine CheckSongEnd
+{
+	GetCurrentTime(current_time)
+	CalculateTimeDifference(current_time, song_start, time_difference)
+	if IsTimeLonger(time_difference, current_song_length)
+	{
+		audio.current_music = 0
+		audio is not special
+	}
+}
+
+routine NowPlaying
+{
+	CheckSongEnd
+	if not audio.current_music
+	{
+		if jukebox is switchedon
+			PlayJukebox
+	}
+	if not audio.current_music
+		"There is no song currently playing."
+	else
+	{
+		if current_song.artist
+			print "\"";
+		print current_song.name;
+		if current_song.artist
+		{
+			print "\" by ";
+			print current_song.artist;
+		}
+		print " is currently playing."
+	}
+}
+
+object jukebox_player
+{
+	in main_instructions
+	execute
+	{
+		if audio.current_music
+			CheckSongEnd
+		if not audio.current_music and jukebox is switchedon
+			PlayJukebox
+	}
+}
+#endif ! USE_JUKEBOX
 !----------------------------------------------------------------------------
 !* CONFIGURATION FILE HANDLER
 !----------------------------------------------------------------------------
