@@ -2,23 +2,21 @@
 ! New Game (Shell)
 !::
 constant GAME_TITLE "NEW MENU SAMPLE GAME"
-
+$MAXROUTINES = 340
 !:: Flags
 !#set BETA                ! Compile with the comments-in-transcripts library
-                          !   addition (requires "beta.h")
-#set CHEAP
 #set HUGOFIX             ! Compile with HugoFix Debugging Library commands
                           !   available (type $? in game)
-!#set PRECOMPILED_LIBRARY ! Use a precompiled header library (see manual)
 #set VERBSTUBS           ! Include the grammar and routines from verbstubs.g
                           !   and verbstubs.h, respectively
 !#set USE_ATTACHABLES     ! Use attachable items
 !#set USE_PLURAL_OBJECTS  ! Use plural objects
 !#set USE_VEHICLES        ! Use vehicle objects
 !$set VERSIONS            ! Print library versions at compile time
-#set USE_DEFAULT_MENU
-!:: switches              ! example how one can add compiler switches to source
-!#switches -ls            ! print compilation stats to .LST file
+#set USE_ROODYLIB
+!#set USE_DEFAULT_MENU
+!#set NO_ACCESSIBILITY
+
 
 #ifset HUGOFIX
 #set DEBUG
@@ -43,17 +41,17 @@ xverb "test"
 xverb "test2"
 	*                    DoTest2
 
-!#ifset CHEAP
-!#include "cheaplib.g"
-!#endif
-
+#ifset USE_ROODYLIB
 #include "roodylib.g"
+#endif
 ! new grammar needs to be defined before the including verblib
 #include "verblib.g"        ! Verb Library
 
 #include "hugolib.h"        ! Standard  Hugo Library
 
+#ifset USE_ROODYLIB
 #include "roodylib.h"         ! Hugo  Library Updates
+#endif
 
 #include "newmenu.h"
 
@@ -66,10 +64,15 @@ routine init
 !: First Things First
 	SetGlobalsAndFillArrays
 !: Screen clear section
+#ifclear _ROODYLIB_H
+	CenterTitle("Hugo Interactive Fiction")
+	cls
+#else
 	SimpleIntro
 	InitScreen
 !: Set up any special libries
 	Init_Calls
+#endif
 !: Game opening
 	IntroText
 	MovePlayer(location)
@@ -101,17 +104,24 @@ routine SetGlobalsAndFillArrays
 }
 
 !::	Main game loop
-routine	main
+routine main
 {
-	counter = counter +	1
+	counter	= counter + 1
 	run location.each_turn
 	runevents
 	RunScripts
-	if speaking not in location
+#ifset _ROODYLIB_H
+	SpeakerCheck
+#else
+	if parent(speaking) ~= location
 		speaking = 0
+#endif
 	PrintStatusLine
+#ifset _ROODYLIB_H
 	Main_Calls
+#endif
 }
+
 
 routine IntroText
 {
@@ -129,10 +139,7 @@ room STARTLOCATION "Start Location"
 {
 	long_desc
 	{
-!		color BGCOLOR, BGCOLOR
 		"This is the Start Location."
-!		color TEXTCOLOR, BGCOLOR
-!		CoolPause
 	}
 	e_to eastroom
 }
@@ -147,6 +154,7 @@ room eastroom "East Room"
 	}
 }
 
+#if defined SpecialKey
 replace SpecialKey(end_type)
 {
 	if end_type = 1 and word[1] = "a"
@@ -159,6 +167,7 @@ replace SpecialRoutine
 {
 	ShowPage(studiopass_hints)
 }
+#endif
 
 routine DoAbout
 {
@@ -172,10 +181,11 @@ routine DoHints
 }
 
 #ifclear USE_DEFAULT_MENU
-menu_category main_menu "TITLE OF YOUR MAIN MENU"
+replace main_menu "TITLE OF YOUR MAIN MENU"
 {
 	title_gap 1
 	options_gap 1
+	inherits menu_category
 }
 #endif
 
@@ -192,16 +202,46 @@ option contact_choice "Contact"
 	priority 3
 }
 
-option submenu_choice "Choice Leading To Your Submenu"
+! How to put a blank spot in your menu
+!  (won't show up in glk interpreters)
+option blank_spot ""
 {
-	priority -1
-	in main_menu
-	menu_link	hint_menu
+	nearby
+	option_available
+	{
+		if not CheapOrSimple
+			return true
+		else
+			return false
+	}
+	priority 2
 }
 
-menu_category hint_menu "WHOA IT'S A HINT MENU"
+option after_choice "After Break"
 {
-	title_gap {return main_menu.title_gap}
+	alt_title "How To Contact Me"
+	in main_menu    ! which menu it is
+	menu_text
+	{
+!		""
+		Indent
+		"Feel free to send me your thoughts and suggestions at roody.yogurt@gmail.com! What an amazing discourse we will have!"
+	}
+	priority 2
+}
+
+!option submenu_choice
+!{
+!	priority -1
+!	in main_menu
+!	menu_link	hint_menu
+!}
+
+menu_category hint_menu "Choice Leading To Your Submenu"
+{
+	alt_title "WHOA IT'S A HINT MENU"
+	in main_menu
+	title_gap 2 ! {return main_menu.title_gap}
 	page_text_color BRIGHT_WHITE ! LIGHT_RED
 	page_bg_color BLACK ! GREEN
 	title_color YELLOW ! LIGHT_BLUE

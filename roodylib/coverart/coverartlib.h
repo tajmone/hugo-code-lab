@@ -230,7 +230,7 @@ object coverlib "coverlib v1"
 
 routine CoverArt
 {
-	local a, not_stay
+	local a, not_stay, err
 	not_stay = system(MINIMAL_INTERFACE) or (not display.hasgraphics)
 #ifclear USE_CONFIG_SYSTEM
 	not_stay = not_stay or (not CoverSettings)
@@ -259,26 +259,18 @@ routine CoverArt
 		cls
 		display.needs_repaint = false
 	}
-	if display.screenwidth = lower(display.screenwidth,(display.screenheight*2))
-	{
+	if (display.screenwidth = lower(display.screenwidth,(display.screenheight*2))) or err
 		coverlib.two_box = false
-	}
 	else
 	{
 		if (display.screenheight > MINIMUMHEIGHT) and
 		display.screenwidth > MINIMUMWIDTH
-		{
 			coverlib.two_box = true
-		}
 		else
-		{
 			coverlib.two_box = false
-		}
 	}
 	if coverlib.two_box
-	{
 		a++
-	}
 	run pressakey_window.win_init
 	window
 		{}
@@ -295,13 +287,13 @@ routine CoverArt
 #if defined RESOURCEFILE
 			picture RESOURCEFILE , COVERFILE
 #endif
+			err = system_status
 		}
 		run coverpicture_window.win_end
-		CoverPause
+		if not err
+			CoverPause
 		if not display.needs_repaint
-		{
 			a++
-		}
 		jump STARTOVER
 	}
 	elseif not coverlib.two_box and a
@@ -341,6 +333,7 @@ routine CoverArt
 #if defined RESOURCEFILE
 			picture RESOURCEFILE, COVERFILE
 #endif
+			err = system_status
 		}
 		run coverpicture_window.win_end
 		run cover_text_border_window.win_init
@@ -358,11 +351,10 @@ routine CoverArt
 			CoverText
 		}
 		run cover_text_window.win_end
-		CoverPause
-		if display.needs_repaint
-		{
+		if not err
+			CoverPause
+		if display.needs_repaint or err
 			jump STARTOVER
-		}
 	}
 	window 0
 	cls

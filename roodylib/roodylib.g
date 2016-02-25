@@ -202,7 +202,7 @@ xverb "brief", "normal","superbrief", "short","verbose","long"
 	*                                                 	DoFakeRefuse
 #endif  ! NO_MODE_CHANGE
 
-#ifset CHEAP
+#ifclear NO_ACCESSIBILITY
 xverb "cheap", "cheapmode"
 	*								DoCheapToggle
 xverb "cheap", "cheapmode"
@@ -211,9 +211,27 @@ xverb "cheap", "cheapmode"
 	* "on"/"off"				DoCheapOnOff
 xverb "cheap", "cheapmode"
 	* "mode" "on"/"off"		DoCheapOnOff
+#ifset NEW_MENU
 xverb "cheap","simple"
 	* "menu"/"menus"		DoCheapOnOff
-#endif ! ifset CHEAP
+#endif
+
+xverb "normal"
+	*	              DoAccessibility
+
+xverb "clear","clearscreen"
+	* "never"/"off"/"normal"           DoAccessibility
+
+
+xverb "info"
+	*	DoInfo
+
+xverb "prompt"
+	*	             DoPrompt
+
+xverb "status"
+	*					DoStatus
+#endif
 
 xverb "restore", "resume"
 	*                                                       DoRestore

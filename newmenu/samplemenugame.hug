@@ -5,21 +5,13 @@ constant GAME_TITLE "NEW MENU SAMPLE GAME"
 
 !:: Flags
 !#set BETA                ! Compile with the comments-in-transcripts library
-                          !   addition (requires "beta.h")
-!#set CHEAP
 !#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
                           !   available (type $? in game)
-!#set PRECOMPILED_LIBRARY ! Use a precompiled header library (see manual)
 #set USE_DEFAULT_MENU
 #set VERBSTUBS
-!#set USE_ATTACHABLES     ! Use attachable items
-!#set USE_PLURAL_OBJECTS  ! Use plural objects
-!#set USE_ROODYLIB
-!#set USE_VEHICLES        ! Use vehicle objects
-!#set VERSIONS            ! Print library versions at compile time
 
-!:: switches              ! example how one can add compiler switches to source
-!#switches -ls            ! print compilation stats to .LST file
+!#set USE_ROODYLIB
+
 
 #ifset HUGOFIX
 #set DEBUG
@@ -52,13 +44,7 @@ verb "about"
 #include "newmenu.h"
 
 !::	Other Library Inclusions
-#ifset BETA
-#include "beta.h"
-#endif
 
-#ifset CHEAP
-#include "cheaplib.h"
-#endif
 
 !:: Other constants and global variables
 !constant IFID "put-IFID here"
@@ -95,7 +81,6 @@ routine SetGlobalsAndFillArrays
 	MAX_RANK = 4  \!
 	verbosity = 2
 	counter = -1                    ! 1 turn before turn 0
-	!ask_color = 0
 	STATUSTYPE = 1   ! 1 = score/turns, 2 = time, 3 = moves: score:
 	TEXTCOLOR = DEF_FOREGROUND
 	BGCOLOR = DEF_BACKGROUND
@@ -164,7 +149,9 @@ player_character you "you"
 room STARTLOCATION "Start Location"
 {
 	long_desc
+	{
 		"This is the Start Location."
+	}
 }
 
 routine DoAbout
@@ -180,18 +167,14 @@ option contact_choice "Contact"
 	{
 			""
 		"\_ Feel free to send me your thoughts and suggestions at roody.yogurt@gmail.com! What an amazing discourse we will have!"
-!		CoolPause(1)
 	}
 }
 
-option submenu_choice "Choice Leading To Your Submenu"
+
+menu_category hint_menu "Choice Leading To Your Submenu"
 {
 	in main_menu
-	menu_link	hint_menu
-}
-
-menu_category hint_menu "WHOA IT'S A HINT MENU"
-{
+	alt_title "WHOA IT'S A HINT MENU"
 	title_gap
 	{
 		return main_menu.title_gap

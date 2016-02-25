@@ -1,11 +1,12 @@
 !::
-! NEWMENU.H  Version 3.4 by Roody Yogurt
+! NEWMENU.H  Version 3.5 by Roody Yogurt
 !::
 !\
 
 	For a nice overview of this contribution, check out:
 	http://hugo.gerynarsabode.org/index.php?title=NewMenu.h
 
+   version 3.5 - cleaned up some code, added automatic mouseclick support
 	version 3.4 - got rid of the array usage for setting up menus (a legacy
 	              from the original menu routines). now it's completely based
                  on object hierarchy. added some stuff to sort menus by priority
@@ -91,9 +92,8 @@ Differences in this version:
 - Has built-in support for Guilty Bastards style hints
 
 As it is based on the original menu routine and Guilty Bastards hint routine,
-this extension draws on those two things a fair amount, despite having been
-worked around, si this thing couldn't have been written without Kent's original
-work.
+this extension draws on those two things a fair amount so this thing couldn't
+have been written without Kent's original work.
 
 First things first-
 Include this file after "hugolib.h".
@@ -104,6 +104,14 @@ provided by newmenu.h, but if you need to replace it, do the following:
 replace main_menu "TITLE OF YOUR MAIN MENU"
 {
 	inherits menu_category
+}
+
+Any additional menus are of the menu_category class.
+
+menu_category how_play "How To Play Interactive Fiction"
+{
+	in main_menu
+	priority 8
 }
 
 Now, calling MakeMenu from a DoAbout or DoHelp routine will automaticaly bring
@@ -149,12 +157,28 @@ option helicopter_choice "Whoa, a Helicopter!"
 	}
 }
 
-If you want an option to lead to *another* menu, give it a menu_link property:
+Since menu options are listed by object hierarchy, it's possible that you'll
+occasionally want to rearrange them.  For this reason, options are given a
+"priority" property.  Higher priority values are listed first.
 
-option submenu_choice "CHOICE LEADING TO SUBMENU"
+If you want an option to lead to *another* menu, just put a menu_category
+object in that menu_object:
+
+menu_category submenu_choice "CHOICE LEADING TO SUBMENU"
 {
 	in main_menu
-	menu_link  [submenu menucategory object]
+}
+
+And then put option objects in that menu just as you would normally do.
+
+You can even give that submenu a different title than its link.  The name
+property automatically is used as the link text, but you can add an alt_name
+propety:
+
+menu_category submenu_choice "NAME OF LINK TO SUBMENU"
+{
+	alt_name "ACTUAL NAME OF SUBMENU"
+	in main_menu
 }
 
 Hints!
@@ -197,11 +221,12 @@ hint_option studiopass_hints "How do I get on the studio lot?"
                                  Roody Yogurt
                                  roody.yogurt@gmail.com
 \!
+
 #ifclear _NEWMENU_H
 #set _NEWMENU_H
 
 #ifset VERSIONS
-#message "NewMenu.h Version 3.4"
+#message "NewMenu.h Version 3.5"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
@@ -209,7 +234,7 @@ hint_option studiopass_hints "How do I get on the studio lot?"
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include
 it first!"
 #endif
-version_obj newmenu_version "NewMenu Version 3.4"
+version_obj newmenu_version "NewMenu Version 3.5"
 {
 	in included_extensions
 	desc_detail
@@ -265,18 +290,6 @@ property usage_desc alias short_desc ! some text describing what commands turn
                                      ! a library's function on/off
                                      ! (ex: CHEAPMODE ON)
 #endif
-!routine MenuInit
-!{
-!	local i
-!	for i in init_instructions
-!	{
-!		if &i.usage_desc
-!		{
-!			move special_choice to main_menu
-!			break
-!		}
-!	}
-!}
 
 #if undefined TOTAL_COMMANDS
 constant TOTAL_COMMANDS 16
@@ -317,7 +330,6 @@ property title_bg  alias capacity
 ! option/hint_option properties
 
 property menu_text alias long_desc
-property menu_link alias door_to
 property hint1 alias n_to
 property hint2 alias ne_to
 property hint3 alias e_to
@@ -352,6 +364,7 @@ class menu_category
 	page_text_color 0
 	title_color 0
 	title_bg 0
+	priority 0
 }
 
 class option
@@ -370,21 +383,16 @@ option hint_option "(hint_option)"
 	hints_revealed 0
 }
 
-routine MakeMenu(menu_title, recurse)
+routine MakeMenu(menu_title, width, recurse)
 {
-	local glktest, count, category, old_category, cos
- 	local simple_port
+	local category, old_category, cos
+ 	local simple_port !, glktest
 
 	cos = CheaporSimple
 	if not menu_title
 		menu_title = main_menu
-	if not cos
-		SetPageColors(menu_title)
 
-	if display.windowlines > (display.screenheight + 100)
-		glktest = true
-
-	if not glktest and system(61)
+	if not (display.windowlines > (display.screenheight + 100)) and system(61)
 		simple_port = true
 
 	if not recurse
@@ -394,37 +402,22 @@ routine MakeMenu(menu_title, recurse)
 		MenuOpen(menu_title)
 	}
 
-	local revisit
+!	local revisit
    while true
 	{
-		if not cos and revisit
+		if not cos ! and category ! revisit
 			SetPageColors(menu_title)
-		revisit++
-		if not cos
-			color MENU_TEXTCOLOR, MENU_BGCOLOR
 
-		count = 0
-		local c
-!		for category in menu_title
-!		{
-!			if category.option_available
-!			{
-!				menuitem[++count] = category !.name
-!				if category.priority
-!					c = true
-!			}
-!		}
 		for category in menu_title
 		{
 			if category.option_available
 			{
-				++count
 				if category.priority and menu_title is not sorted
-					c = true
+					break
 			}
 		}
 
-		if c
+		if category ! c
 			SortMenu(menu_title)
 
 		if not (cos = 2 or simple_port)
@@ -432,37 +425,17 @@ routine MakeMenu(menu_title, recurse)
 			window 0
 			cls
 		}
-!		menuitem[0] = menu_title
-		category = Menu(menu_title, count, 0, old_category,menu_title.title_gap,menu_title.options_gap)
+		category = Menu(menu_title, width, old_category)
 		old_category = category
 		if category
 		{
-			local chosen, n = 1
-			chosen = child(menu_title)
-			while not chosen.option_available
-			{
-				chosen = younger(chosen)
-			}
-			while true
-			{
-				if n = category
-					break
-				else
-				{
-					chosen = younger(chosen)
-					if chosen.option_available
-						n++
-				}
-			}
-			if chosen.type = menu_category
-				MakeMenu(chosen,(recurse + 1))
-			elseif chosen.menu_link
-				MakeMenu(chosen.menu_link,(recurse + 1))
+			if category.type = menu_category
+				MakeMenu(category,width,(recurse + 1))
 			else
 			{
 				if not cos
 				{
-					SetPageColors(chosen)
+					SetPageColors(category)
 					color MENU_TEXTCOLOR, MENU_BGCOLOR
 				}
 				do
@@ -478,37 +451,34 @@ routine MakeMenu(menu_title, recurse)
 					if not cos
 						color MENU_BGCOLOR, MENU_BGCOLOR
 					if cos ~= 2
-						MenuMessage(&MakeMenu,3,chosen.name)
+						MenuMessage(&MakeMenu,3,category.name)
 					color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 					if not (cos = 2 or simple_port)! simple_port
 					{
-						if chosen.alt_title
-							CenterTitle(chosen.alt_title)
+						if category.alt_title
+							CenterTitle(category.alt_title)
 						else
-							CenterTitle(chosen.name)
+							CenterTitle(category.name)
 					}
 					else
 					{
 						Indent
 						print "\_  ";
 						Font(BOLD_ON)
-						if chosen.alt_title
-							print chosen.alt_title
+						if category.alt_title
+							print category.alt_title
 						else
-							print chosen.name
+							print category.name
 						Font(BOLD_OFF)
 						""
 					}
-					if not cos
+					if not cos and display.hasvideo
 						locate 1,TopPageMargin
-!					elseif CheapOrSimple = 2
-!						""
-					run chosen.menu_text
+					run category.menu_text
 					print newline
-!					if not (cos = 2 and menuitem[category].type = hint_option)
-						""
-					if chosen.type ~= hint_option
-						MenuPause(chosen)
+					""
+					if category.type ~= hint_option
+						MenuPause(category)
 				}
 				while (display.needs_repaint = true  )
 			}
@@ -519,10 +489,6 @@ routine MakeMenu(menu_title, recurse)
 			{
 				if not (cos = 2 or simple_port)
 				{
-!					color MENU_BGCOLOR, MENU_BGCOLOR
-!					MenuMessage(&MakeMenu,5) ! "[LEAVING MENU]"
-!					if verbroutine ~= &EndGame
-!						""
 #ifset _ROODYLIB_H
 					InitScreen
 #else
@@ -533,11 +499,7 @@ routine MakeMenu(menu_title, recurse)
 #endif
 				}
 				if not verbroutine ~= &EndGame
-				{
-!					if CheapOrSimple = 2
-!						""
 					AfterMenu
-				}
 				else
 					PrintStatusLine
 			}
@@ -557,8 +519,10 @@ routine MenuOpen(menu_title)
 
 routine AfterMenu
 {
-#ifset CHEAP
+#ifset _ROODYLIB_H
+#ifclear NO_ACCESSIBILITY
 	if not (cheap & CHEAP_ON)
+#endif
 #endif
 		PrintStatusline
 	Font(DEFAULT_FONT) ! just in case
@@ -581,20 +545,19 @@ routine TopPageMargin
 		return 2
 }
 
-!#ifset _ROODYLIB_H
-!routine MenuPriority(obj1,obj2)
-!{
-!	return (obj1.priority < obj2.priority)
-!}
-!#endif
-
-replace Menu(menu_par,num, width, selection,titlegap,optionsgap)
+!replace Menu(menu_par,num, width, selection)
+replace Menu(menu_par, width, selection)
 {
-	local i, column, cos ! , oldselection
+	local i, column, cos, mouseclick, titlegap, optionsgap, num
 	local simple_port, glktest,n
 	local sel = 1
-	simple_port = not (display.windowlines > (display.screenheight + 100)) and system(61)
+
+	glktest = display.windowlines > (display.screenheight + 100)
+	simple_port = not glktest and system(61)
 	cos = CheapOrSimple
+	titlegap = menu_par.title_gap
+	optionsgap = menu_par.options_gap
+
 	if system(61)
 	{
 		titlegap = 0
@@ -605,316 +568,285 @@ replace Menu(menu_par,num, width, selection,titlegap,optionsgap)
 	{
 		if i.option_available
 		{
+			num++
 			n = string(_temp_string,i.name)
 			if n > width : width = n
 		}
 	}
-!	for (i=1; i<=num; i++)          ! determine appropriate width
-!	{
-!		n = string(_temp_string, menuitem[i].name)
-!		if n > width:  width = n
-!	}
 
 	if width > (display.linelength-1):  width = display.linelength-1
 
-	! Default selection is 1 if not otherwise given
-	if selection = 0:  selection = 1
-	if selection > num:  selection = num
+	! Default selection is first child if not otherwise given
+	if selection = 0:  selection = child(menu_par)
 
-	glktest = display.windowlines > (display.screenheight + 100)
-	if cos = 2 or
-	( glktest and
-	( num + 5 + titlegap + optionsgap ) >= (display.screenheight/3*2))
+	Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
+	while true
 	{
-		while true
+		if not cos ! system(61)
 		{
-			if not (cos = 2 or simple_port)
-				cls
-			if not simple_port
-				CenterTitle(menu_par.name)
+			color MENU_BGCOLOR, MENU_BGCOLOR
 			if display.needs_repaint
+			{
+				window 0
 				display.needs_repaint = false
-			print newline
-!			if cos = 2
-!				""
-			Indent
-			print "\_  ";
-			Font(BOLD_ON)
-			print menu_par.name
-			Font(BOLD_OFF)
-			""
+			}
+			cls
+		}
+		if cos = 2 or
+		( glktest and
+		( num + 5 + titlegap + optionsgap ) >= (display.screenheight/3*2))
+			return CheapMenu(menu_par,num,cos,simple_port)
+		column = display.linelength/2 - width/2
+		window ( num + 5 + titlegap + optionsgap )
+		{
+			if glktest ! system(61) and not simple_port
+				cls
+
+			! This section "fakes" CenterTitle, so it appears to be
+			! a regular title window, when in actuality, the whole menu
+			! is in the status window
+			if not simple_port
+				locate 1,1
+			Font(PROP_OFF)
+			n = string(_temp_string, menu_par.name)
+			color MENU_SELECTCOLOR, MENU_SELECTBGCOLOR ! shouldn't affect glk
+			print to (display.linelength/2 - n/2);
+			print menu_par.name;
+			print to display.linelength ! make sure we color the line completely
+			for (i=0; i<titlegap;i++)
+			{
+				""
+			}
+			color MENU_TEXTCOLOR, MENU_BGCOLOR
+			! end of fake CenterTitle
+			Font(BOLD_OFF|ITALIC_OFF|UNDERLINE_OFF|PROP_OFF) ! shouldn't affect
+																			 ! glk
+			MenuMessage(&Menu, 1)	! print key commands
+
+			for (i=0; i<optionsgap;i++)
+			{
+				""
+			}
+
+			sel = 1
 			i = child(menu_par)
 			while i
 			{
 				if i.option_available
 				{
-					Indent
-					print number sel++;". ";
-					print i.name
+					if i = selection
+					{
+						if system(61) ! glk or minimum port
+							print to (column - 2);"* ";
+						else
+							locate (column + 1), display.cursor_row
+						color MENU_SELECTCOLOR, MENU_SELECTBGCOLOR  ! shouldn't affect
+																				  ! glk?
+						print i.name; to (column+width)
+						color MENU_TEXTCOLOR, MENU_BGCOLOR
+					}
+					else
+					{
+						locate (column + 1), display.cursor_row !print to column;
+						print i.name ; to (column+width)
+					}
+					sel++
 				}
 				i = younger(i)
 			}
-!			while sel <= num ! menuitem[sel]
-!			{
-!				Indent
-!				print number sel;". ";
-!				print menuitem[sel++].name
-!			}
-			print ""
-			MenuMessage(&Menu, 2)		! "Select the number of your choice"
-!			local numb
-			if num > 9
+		}
+		word[0] = PressKey
+		if word[0] = MOUSE_CLICK and display.pointer_x >= column and
+					display.pointer_x <= column+width
+		{
+			mouseclick = (num + 1) + display.pointer_y
+			i = PickNthChild(mouseclick, menu_par, &IsOptionAvailable )
+			if i.name
 			{
-				GetInput
-				if word[1] = "q"
-				{
-					""
-					return 0
-				}
-				if word[1]
-					selection = StringToNumber(word[1])
-				else
-					selection = StringToNumber(parse$)
+					selection = i
+					word[0] = ENTER_KEY
 			}
-			else
+			mouseclick = 0
+		}
+		elseif word[0] = MOUSE_CLICK
+		{
+			if (display.pointer_y + num + 5 + titlegap + optionsgap ) = 3 + titlegap
 			{
-				pause
-				if word[0] = 'q','Q', '0', ESCAPE_KEY
-				{
-					printchar word[0]
-					print newline
-					if not (cos = 2 or simple_port)
-						cls
-					""
-					return 0
-				}
-				else
-					selection = word[0] - 48
+				if display.pointer_x >= (display.screenwidth - 10)
+					word[0] = ESCAPE_KEY
+				elseif display.pointer_x <= 11
+					word[0] = 'n'
 			}
-
-			if selection>0 and (selection <= num) ! sel)
+			elseif (display.pointer_y + num + 5 + titlegap + optionsgap ) = 4 + titlegap
 			{
-				if num <= 9
+				if display.pointer_x >= (display.screenwidth - 16)
+					word[0] = ENTER_KEY
+				elseif display.pointer_x <= 15
+					word[0] = 'p'
+			}
+		}
+		if word[0] >= '0' and word[0] <= '9'
+		{
+			i = word[0] - '0'
+			if i = 0:  i = 10
+			if i <= num
+			{
+				i = PickNthChild(i, menu_par, &IsOptionAvailable )
+				if i.name
+					selection = i
+			}
+		}
+		select word[0]
+			case 'N', 'n', DOWN_ARROW, RIGHT_ARROW
+			{
+				while true
 				{
-					printchar word[0]
-					print newline
+					if not younger(selection)
+						selection = child(menu_par)
+					else
+						selection = younger(selection)
+					if selection.option_available and selection.name ~= ""
+						break
 				}
-				""
-				if not (cos = 2 or simple_port)
-					cls
+			}
+			case 'P', 'p', UP_ARROW, LEFT_ARROW
+			{
+				while true
+				{
+					if not elder(selection)
+						selection = youngest(menu_par)
+					else
+						selection = elder(selection)
+					if selection.option_available and selection.name ~= ""
+						break
+				}
+			}
+			case 'Q', 'q', ESCAPE_KEY
+			{
+				if not cos ! system(61)
+				{
+					window !0
+					{cls}
+				}
+				return 0
+			}
+			case ENTER_KEY
+			{
+				if not cos ! system(61)
+				{
+					window !0
+					{cls}
+				}
 				return selection
 			}
-			else
-			{
-				if num <= 9
-				{
-					printchar word[0]
-					print newline
-				}
-				"\nNot a valid option.\n"
-			}
-		}
 	}
-	else
+!	}
+}
+#if undefined PickNthChild
+routine PickNthChild(num, par, qualify_routine)
+{
+	local x, n, qual
+	x = child(par)
+	while x
 	{
-		Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
-		while true
+		if qualify_routine
 		{
-			local selected
-			column = display.linelength/2 - width/2
-			if not system(61)
-			{
-				color MENU_BGCOLOR, MENU_BGCOLOR
-				if display.needs_repaint
-				{
-					window 0
-					display.needs_repaint = false
-				}
-				cls
-			}
-			window ( num + 5 + titlegap + optionsgap )
-			{
-				if glktest ! system(61) and not simple_port
-					cls
-
-!				local m
-				! This section "fakes" CenterTitle, so it appears to be
-				! a regular title window, when in actuality, the whole menu
-				! is in the status window
-				if not simple_port
-					locate 1,1
-				Font(PROP_OFF)
-				n = string(_temp_string, menu_par.name)
-				color MENU_SELECTCOLOR, MENU_SELECTBGCOLOR ! shouldn't affect glk
-				print to (display.linelength/2 - n/2);
-				print menu_par.name;
-				print to display.linelength ! make sure we color the line completely
-				for (i=0; i<titlegap;i++)
-				{
-					""
-				}
-				color MENU_TEXTCOLOR, MENU_BGCOLOR
-				! end of fake CenterTitle
-				Font(BOLD_OFF|ITALIC_OFF|UNDERLINE_OFF|PROP_OFF) ! shouldn't affect
-																				 ! glk
-				MenuMessage(&Menu, 1)	! print key commands
-
-				for (i=0; i<optionsgap;i++)
-				{
-					""
-				}
-
-!				if selection ~= oldselection		!	glk code that *shouldn't*
-!				{										!  affect normal execution
-!					if oldselection ~= 0				!  (hopefully)
-!						selection = oldselection
-!				}
-				sel = 1
-				i = child(menu_par)
-				while i
-				{
-					if i.option_available
-					{
-						if sel = selection
-						{
-							selected = i
-							if system(61) ! glk or minimum port
-								print to (column - 2);"* ";
-							else
-								locate (column + 1), display.cursor_row
-							color MENU_SELECTCOLOR, MENU_SELECTBGCOLOR  ! shouldn't affect
-																					  ! glk?
-							print i.name; to (column+width) !;
-							color MENU_TEXTCOLOR, MENU_BGCOLOR
-						}
-						else
-						{
-							locate (column + 1), display.cursor_row !print to column;
-							print i.name ; to (column+width)
-						}
-						sel++
-					}
-					i = younger(i)
-				}
-!				for (i=1; i<=num ; i++)
-!				{
-!					if i = selection
-!					{
-!						if system(61) ! glk or minimum port
-!							print to (column - 2);"* ";
-!						else
-!							locate (column + 1), display.cursor_row
-!						color MENU_SELECTCOLOR, MENU_SELECTBGCOLOR  ! shouldn't affect
-!																				  ! glk?
-!						print menuitem[selection].name; to (column+width) !;
-!						color MENU_TEXTCOLOR, MENU_BGCOLOR
-!					}
-!					else
-!					{
-!						locate (column + 1), display.cursor_row !print to column;
-!						print menuitem[i].name ; to (column+width)
-!					}
-!				}
-			}
-			word[0] = PressKey
-			select word[0]
-				case 'N', 'n', DOWN_ARROW, RIGHT_ARROW
-				{
-					while true
-					{
-						if not younger(selected)
-						{
-							selection = 1
-							break
-						}
-						else
-						{
-							selected = younger(selected)
-							selection++
-							if selected.name ~= ""
-								break
-						}
-					}
-!					if menuitem[++selection].name = ""
-!						++selection
-!					if selection > num : selection = 1
-				}
-				case 'P', 'p', UP_ARROW, LEFT_ARROW
-				{
-					while true
-					{
-						if not elder(selected)
-						{
-							selection = num
-							break
-						}
-						else
-						{
-							selected = elder(selected)
-							selection--
-							if selected.name ~= ""
-								break
-						}
-					}
-!					if menuitem[--selection].name = ""
-!						--selection
-!					if selection < 1 : selection = num
-				}
-				case 'Q', 'q', ESCAPE_KEY
-				{
-					if not cos ! system(61)
-					{
-						window !0
-						cls
-					}
-					return 0
-				}
-				case ENTER_KEY
-				{
-					if not cos ! system(61)
-					{
-						window !0
-						cls
-					}
-					return selection
-				}
-
-				if word[0] >= '0' and word[0] <= '9'
-				{
-					i = word[0] - '0'
-					if i = 0:  i = 10
-!					oldselection = selection
-					if selection ~= i and i <= num
-					{
-						selected = child(menu_par)
-						selection = 1
-						while true
-						{
-							if selection = i and selected.name ~= ""
-								break
-							if younger(selected)
-							{
-								selected = younger(selected)
-								selection++
-							}
-!							else
-!							{
-!								selection = oldselection
-!								break
-!							}
-						}
-					}
-!					selection = 1
-!					while --i
-!					{
-!						selection++
-!						if menuitem[selection].name = ""
-!							selection++
-!					}
-!					if selection > num or menuitem[selection].name = ""
-!						selection = oldselection
-				}
+			qual = call qualify_routine(x)
+			if qual
+				n++
 		}
+		else
+			n++
+		if n = num
+			return x
+		x = younger(x)
+	}
+	return false
+}
+#endif
+
+routine IsOptionAvailable(obj)
+{
+	if obj.option_available
+		return true
+	return false
+}
+
+routine CheapMenu(menu_par,num,cos,simple_port)
+{
+	Font(PROP_ON)
+	local sel,i
+	while true
+	{
+		if not (cos = 2 or simple_port)
+			cls
+		if not simple_port
+			CenterTitle(menu_par.name)
+		if display.needs_repaint
+			display.needs_repaint = false
+		print newline
+		Indent
+		print "\_  ";
+		Font(BOLD_ON)
+		print menu_par.name
+		Font(BOLD_OFF)
+		""
+		sel = 1
+		i = child(menu_par)
+		while i
+		{
+			if i.option_available
+			{
+				Indent
+				print number sel++;". ";
+				print i.name
+			}
+			i = younger(i)
+		}
+		print ""
+		MenuMessage(&Menu, 2)		! "Select the number of your choice"
+		if num > 9
+		{
+			GetInput
+			if word[1] = "q"
+			{
+				""
+				return 0
+			}
+			if word[1]
+				sel = StringToNumber(word[1])
+			else
+				sel = StringToNumber(parse$)
+		}
+		else
+		{
+			pause
+			if word[0] = 'q','Q', '0', ESCAPE_KEY
+			{
+				printchar word[0]
+				print newline
+				if not (cos = 2 or simple_port)
+					cls
+				""
+				return 0
+			}
+			else
+				sel = word[0] - 48
+		}
+		if num <= 9
+		{
+			printchar word[0]
+			print newline
+		}
+		""
+		if sel > 0 and (sel <= num) ! sel)
+		{
+			if not (cos = 2 or simple_port)
+				cls
+			return PickNthChild(sel, menu_par, &IsOptionAvailable)
+		}
+		else
+			"Not a valid option.\n"
 	}
 }
 
@@ -930,19 +862,20 @@ routine MenuPause(page,no_newline)
 		MenuMessage(&MenuPause,2,page) ! "\Ipress a key to continue\i"
 	PressKey
 	Font(DEFAULT_FONT)
-!	print newline
 	if not no_newline
 		""
 }
 
 routine CheaporSimple
 {
-#ifset CHEAP
-if cheap
-	return 2
+#ifset _ROODYLIB_H
+#ifclear NO_ACCESSIBILITY
+	if cheap
+		return 2
 #endif
-if system(61)
-	return 3
+#endif
+	if system(61)
+		return 3
 }
 
 routine Help_Hints(obj)
@@ -954,7 +887,6 @@ routine Help_Hints(obj)
 			""
 		run obj.(hint1+i)
 		print newline
-!		""
 	}
 	""
 	while &obj.(hint1+i) ~= 0 ! i.e., no more topics
@@ -1043,12 +975,7 @@ routine ShowPage(page)
 		{
 			color BGCOLOR, BGCOLOR
 			MenuMessage(&MakeMenu,4) ! "[WINDOW RESIZED]"
-!			color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 			""
-!		if not (cos = 2 or simple_port)
-!			color BGCOLOR, BGCOLOR
-!		if cos ~= 2
-!			MenuMessage(&MakeMenu,3,page.name)
 		}
 		display.needs_repaint = false
 		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
@@ -1059,7 +986,7 @@ routine ShowPage(page)
 			else
 				CenterTitle(page.name)
 		}
-		if not cos
+		if not cos and display.hasvideo
 			locate 1,TopPageMargin
 		elseif cos = 2
 		{
@@ -1083,10 +1010,6 @@ routine ShowPage(page)
 
 	if not (cos = 2 or simple_port)
 	{
-!		color BGCOLOR, BGCOLOR
-!		MenuMessage(&ShowPage,2) ! "[CLOSING PAGE]"
-!		if verbroutine ~= &EndGame
-!			""
 #ifset _ROODYLIB_H
 		InitScreen
 #else
@@ -1284,8 +1207,8 @@ routine NewMenuMessages(r, num, a, b)
 	return true ! this line is only reached if we replaced something
 }
 
-object menu_bowl
-{}
+!object menu_bowl
+!{}
 
 routine SortMenu(menu_title)
 {
@@ -1307,19 +1230,19 @@ routine SortMenu(menu_title)
 		return
 	while child(menu_title)
 	{
-		move child(menu_title) to menu_bowl
+		move child(menu_title) to display
 	}
-	while child(menu_bowl)
+	while child(display)
 	{
 		prio = 0
-		x = child(menu_bowl)
+		x = child(display)
 		while x
 		{
 			if x.priority and x.priority > prio
 				 prio = x.priority
 			x = younger(x)
 		}
-		x = child(menu_bowl)
+		x = child(display)
 		if prio
 		{
 			while x
@@ -1336,8 +1259,8 @@ routine SortMenu(menu_title)
 		{
 			while x
 			{
-				move child(menu_bowl) to menu_title
-				x = child(menu_bowl)
+				move child(display) to menu_title
+				x = child(display)
 			}
 		}
 	}
@@ -1408,15 +1331,6 @@ menu_category how_play "How To Play Interactive Fiction"
 	priority 8
 }
 
-!option if_choice "How To Play Interactive Fiction"
-!{
-!	in main_menu
-!#ifset _ROODYLIB_H
-!	priority 9
-!#endif
-!	menu_link how_play
-!}
-
 option where_choice "Where To Get More IF"
 {
 	in main_menu
@@ -1451,19 +1365,28 @@ option special_choice "Special Commands"
 	in main_menu ! (should be added to main_menu by menulib object
 	menu_text
 	{
-		Indent
-		"\BAdditional commands:\b\n"
+#if set NO_ACCESSIBILITY
+		local cheap
+#endif
+		if not cheap
+		{
+			Indent
+			"\BAdditional commands:\b\n"
+		}
 		SpecialCommands
 	}
 }
 
 routine SpecialCommands
 {
-	local i, sum, nl
+	local i, sum, nl, skip
+#ifclear NO_ACCESSIBILITY
+	skip = cheaplib
+#endif
 	i = child(init_instructions)
 	while i
 	{
-		if &i.usage_desc
+		if &i.usage_desc and i ~= skip
 		{
 			if nl
 			{
@@ -1480,6 +1403,24 @@ routine SpecialCommands
 		}
 		i = younger(i)
 	}
+	if skip
+	{
+!		Indent
+!		Font(BOLD_ON)
+!		if sum
+!		{
+!			print "\nAdditionally, if you are playing with a screen reader or
+!			simple console window interpreter, the following commands may help:"
+!		}
+!		else
+!			print "The following commands exist to help gameplay with screen
+!			readers and simple console window interpreters:"
+!		Font(BOLD_OFF)
+		if nl
+			""
+		run skip.usage_desc
+		sum++
+	}
 	if not sum
 	{
 		Indent
@@ -1488,9 +1429,6 @@ routine SpecialCommands
 	}
 }
 #endif
-
-!menu_category how_play "How To Play Interactive Fiction"
-!{}
 
 option what_is "What is \"interactive fiction\"?"
 {

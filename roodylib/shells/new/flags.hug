@@ -74,7 +74,6 @@
 !#set AUTOMATIC_EXAMINE        ! un-examined items are examined when picked up
 !#set BETA                     ! Compile with the comments-in-transcripts
                                ! library addition
-!#set CHEAP                    ! Compile with cheaplib
 !#set FORCE_DEFAULT_MESSAGE    ! Containers with no long_desc get old descs
 !#set LIST_CLOTHES_FIRST       ! List worn items first in inventories and
                                ! examining characters (see documentation)
@@ -87,6 +86,7 @@
 !#set NEW_ROOMS                ! Undoing after the first turn in a room shows
                                ! the initial_desc, not the long_desc
 !#set NEW_STYLE_PRONOUNS       ! Use New Style Pronouns (see roodylib comments)
+!#set NO_ACCESSIBILITY         ! Disallow accessibility mode options
 !#set NO_AUTOMATIC_DOOR_UNLOCK ! Don't allow automatic door-unlocking
 !#set NO_DISAMB_HELP           ! Don't use parser disambiguation helper
 !#set NO_FANCY_STUFF           ! Don't use word-array game-state saving or

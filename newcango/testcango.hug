@@ -7,8 +7,7 @@ constant GAME_TITLE	"GAME TITLE"
 !#set BETA                ! Compile with the comments-in-transcripts library
 #set USE_ROODYLIB                          !   addition (requires "beta.h")
 #set OBJECT_SORTING
-!#set LIST_KNOWN_ROOMS
-!#set CHEAP
+#set LIST_KNOWN_ROOMS
 #set HUGOFIX             ! Compile with HugoFix Debugging Library commands
                           !   available (type $? in game)
 

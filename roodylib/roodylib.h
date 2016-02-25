@@ -5,11 +5,11 @@
 #ifclear _ROODYLIB_H
 #set _ROODYLIB_H
 
-constant ROODYBANNER "RoodyLib Version 4.1.1"
-constant ROODYVERSION "4.1.1"
+constant ROODYBANNER "RoodyLib Version 4.1.2"
+constant ROODYVERSION "4.1.2"
 
 #ifset VERSIONS
-#message "roodylib.h version 4.1.1"
+#message "roodylib.h version 4.1.2"
 #endif
 
 #ifset USE_CONFIG_SYSTEM
@@ -21,7 +21,7 @@ constant ROODYVERSION "4.1.1"
 
 constant LAST_TURN 31 ! used by SaveSettings/LoadSettings to keep track of
                       ! what xverb is being used
-#ifset CHEAP
+#ifclear NO_ACCESSIBILITY
 constant CHEAP_ON 1
 constant CHEAP_MENUS 2
 #endif
@@ -724,10 +724,10 @@ routine CenterTitle(a, lines,force)
 
 replace CenterTitle(a, lines,force)
 {
-#ifset CHEAP
+#ifclear NO_ACCESSIBILITY
 	if cheap and not force
 		return
-#endif !ifset CHEAP
+#endif !ifclear NO_ACCESSIBILITY
 	local l, g, b, c, s ! (simple port)
 	g = IsGlk
 	s = (not g and system(61))
@@ -2948,7 +2948,7 @@ routine HugoFixInit
 				case 6: OnOrOff(D_PARSE_RANK,1)
 				case 7: OnOrOff(D_PLAYBACK_HELPER,1)
 			window 0 ! only to draw a line in simple interpreters
-#ifset CHEAP
+#ifclear NO_ACCESSIBILITY
 			cheap_mode = cheap
 #endif
 			if not (cheap_mode or simple_port)
@@ -3238,10 +3238,14 @@ routine SpecialRoutine(end_type)  ! also exists to be replace
 ! Roody's note: A routine for text to be used both by Endgame and DoQuit.
 routine QuitGameText
 {
+#ifset NO_ACCESSIBILITY
+	local cheap
+#endif
 	""
 	RLibMessage(&QuitGameText) ! "Thanks for playing!"
 	""
-	display.title_caption = PRESS_ANY_KEY
+	if not cheap
+		display.title_caption = PRESS_ANY_KEY
 	if not system(61) ! if not simple port
 	{
 		print PRESS_ANY_KEY  ! was PRESS_ANY_KEY; but that doesn't show up in DOS
@@ -6216,10 +6220,12 @@ object statuslinelib "statuslinelib"
 replace PrintStatusline
 {
 	local newstatusheight, window_top
-#ifclear CHEAP
+#ifset NO_ACCESSIBILITY
 	local cheap
 #endif
 
+	! have to redraw the "cheap" statusline each time just in case
+	! the screensize has changed
 	if cheap = 1 and printstatuslib.terp_type ~= SIMPLE_TERP
 	{
 		CenterTitle(CheapTitle,0,1)
@@ -6554,24 +6560,21 @@ routine SaveWordSetting(w,start_val)
 
 routine LoadSettings
 {
-	local i, n, v
+	local i, n, v, s
 	for i in init_instructions
 	{
-		v = CheckWordSetting(i.name, (30 - n))
+		v = CheckWordSetting(i.name, s)
 		if v
 		{
 			run i.execute
-			while (30 - v) ~= n
-			{
-				n++
-				word[(30 - n)] = ""
-			}
-			n++
-			word[v] = ""
+			s = v - 1
 		}
 	}
-	if word[LAST_TURN]
-		word[LAST_TURN] = ""
+	n = LAST_TURN
+	while word[n] ~= ""
+	{
+		word[n--] = ""
+	}
 }
 
 routine CheckWordSetting(w,start_val)
@@ -7126,6 +7129,10 @@ routine QuoteboxPosition
 routine Box(quotefile, pauseflag,force_simple)
 {
 	local a,i, l, lng, pos_start, pos_end, start_row, old_lng, current_pos
+#ifclear NO_ACCESSIBILITY
+	if not force_simple
+		force_simple = (cheap = 1)
+#endif
 	if system(61) or force_simple
 	{
 		a = quotefile.#line
@@ -7268,21 +7275,27 @@ routine SimpleIntro
 routine InitScreen
 {
 	local simple_port
-#ifclear CHEAP
+#ifset NO_ACCESSIBILITY
 	local cheap
 #endif
-
+#ifclear NO_ACCESSIBILITY
+	if cheaplib is not special
+	{
+		run cheaplib.execute
+		cheaplib is special
+	}
+#endif
 	color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 	Font(DEFAULT_FONT)
 	simple_port = (not IsGlk and system(61)) ! non-glk simple port
 	if not system(61)
 		window 0
-#ifset CHEAP
-	if not cheap
+#ifclear NO_ACCESSIBILITY
+	if not cheap and location is not visited
 	{
 		local a
 		a = CheckWordSetting("cheap")
-		select word[(a+1)]
+		select word[(a+2)]
 			case "off" : cheap = 0
 			case "on" : cheap = 1
 			case "menus" : cheap = 2
@@ -7299,7 +7312,7 @@ routine InitScreen
 		CenterTitle("",0,1) ! Draw an empty window
 	else
 		CenterTitle(CheapTitle,0,1) ! See CheapTitle routine
-#ifset CHEAP
+#ifclear NO_ACCESSIBILITY
 	if not system(61) and not (cheap & CHEAP_ON)
 		locate 1, LinesFromTop
 	elseif (cheap & CHEAP_ON) or simple_port ! non-glk simple port
@@ -7344,13 +7357,14 @@ routine IsGlk
 routine ClearWindow
 {
 	local a
-#ifset CHEAP
+#ifclear NO_ACCESSIBILITY
 	a = cheap
 #endif
-	if not a
+	if not (a = 1)
 	{
 		cls
-		locate 1, LinesFromTop
+		if display.hasvideo
+			locate 1, LinesFromTop
 	}
 }
 
@@ -7469,7 +7483,7 @@ routine BetaInit
 ! "cheap on" stops the statusline from print altogether, while "cheap menus"
 ! forces only newmenu's simple menu printing system.
 
-#ifset CHEAP
+#ifclear NO_ACCESSIBILITY
 global cheap
 
 object cheaplib "cheap"
@@ -7478,40 +7492,126 @@ object cheaplib "cheap"
 	in init_instructions
 	save_info
 	{
+		local a
 		select cheap
-			case 0 : SaveWordsetting("off")
-			case 1 : SaveWordSetting("on")
-			case 2 : SaveWordSetting("menus")
+			case 0 : a = SaveWordsetting("off")
+			case 1 : a = SaveWordSetting("on")
+			case 2 : a = SaveWordSetting("menus")
+		word[(a-1)] = prompt
 		return true
 	}
 	execute
 	{
-		if word[LAST_TURN] ~= "undo","restart"
-		{
+!		if word[LAST_TURN] ~= "undo","restart"
+!		{
 			local a,b
 			b = cheap
 			a = CheckWordSetting("cheap")
-			select word[(a+1)]
-				case "off" : cheap = 0
-				case "on" : cheap = 1
-				case "menus" : cheap = 2
-		}
-		if (cheap & CHEAP_ON) and not b and word[LAST_TURN] ~= "restart"
+			if a
+			{
+				if word[(a+1)]
+					prompt = word[(a + 1)]
+				select word[(a+2)]
+					case "off" : cheap = 0
+					case "on" : cheap = 1
+					case "menus" : cheap = 2
+			}
+!		}
+		if (cheap & CHEAP_ON) and not b ! and word[LAST_TURN] ~= "restart"
 			DrawCheap
 	}
 #ifset USE_DEFAULT_MENU
 	usage_desc
 	{
+		local simple_port
+		simple_port = (not IsGlk and system(61)) ! non-glk simple port
+		if simple_port
+		{
+			"\BPROMPT\b - Toggles between the > prompt and a \"What now? \"
+			prompt."
+			"\BSTATUS\b - Prints the information in the status bar in the main
+			window."
+			return
+		}
 		Indent
-		"\BCHEAP/CHEAPMODE ON\b- Turns \"cheap mode\" on. \"Cheap mode\" is a
-		no-frills layout meant for interpreters with limited display
-		capabilities."
+		"\BPROMPT\b - Toggles between the > prompt and a \"Your command... \"
+		prompt."
 		Indent
-		"\BCHEAP/CHEAPMODE OFF\b- Turns \"cheap mode\" off."
+		"\BSTATUS\b - Prints the information in the status bar in the main
+		window."
+	#ifset NEWMENU
+		Indent
+		"\BSIMPLE MENUS\b - Displays in-game menus as numerical lists in the
+		main window. All other behavior (screen clearing, status lines) are the
+		same."
+	!	"The following commands automatically display menus as numerated lists:"
+	#endif
+		Indent
+		"\BCLEARSCREEN OFF\b - Any in-game screen-clearing is ignored. This
+		might work with some screen readers and also targets console interpreters
+		where screen clearing doesn't work well anyway. Menu options are
+		numbered."
+		Indent
+		"\BNORMAL\b - Reverts to allow in-game screen sclearing."
+
 	}
 #endif ! USE_DEFAULT_MENU
 }
 
+
+routine DoAccessibility
+{
+	local b, simple_port
+	b = cheap
+	simple_port = (not IsGlk and system(61)) ! non-glk simple port
+	if simple_port
+	{
+		"Hugo detects that this is a simple interpreter. As such, screen
+		clearing is already turned off and menus (if any exist) are written
+		as numerical lists."
+		return
+	}
+	select word[1]
+		case "normal"
+		{
+			if cheap
+			{
+				cheap = false
+				RLibMessage(&DoAccessibility, 1) ! "Cheap mode off."
+				if (b & CHEAP_ON)
+					PrintStatusLine
+			}
+			else
+				RLibMessage(&DoAccessibility, 2) ! "Cheap mode already off."
+		}
+		case "clear","clearscreen"
+		{
+			select word[2]
+				case "normal"
+				{
+					if cheap
+					{
+						cheap = false
+						RLibMessage(&DoAccessibility, 1) ! "Cheap mode off."
+						if (b & CHEAP_ON)
+							PrintStatusLine
+					}
+					else
+						RLibMessage(&DoAccessibility, 2) ! "Cheap mode already off."
+				}
+				case "never","off"
+				{
+					if not (cheap & CHEAP_ON)
+					{
+						cheap = true
+						RLibMessage(&DoAccessibility, 3) ! "Cheap mode on."
+						DrawCheap
+					}
+					else
+						RLibMessage(&DoAccessibility, 4) ! "Cheap mode already on."
+				}
+		}
+}
 
 routine DoCheapOnOff
 {
@@ -7549,12 +7649,12 @@ routine DoCheapOnOff
 				if cheap ~= CHEAP_MENUS
 				{
 					cheap = CHEAP_MENUS
-					"Cheap menus on."
+					RLibMessage(&DoCheapOnOff, 5) !"Cheap menus on."
 					if b
 						PrintStatusLine
 				}
 				else
-					"Cheap menus already on."
+					RLibMessage(&DoCheapOnOff, 6) !"Cheap menus already on."
 			}
 		a++
 	}
@@ -7595,6 +7695,135 @@ routine DrawCheap ! this is basically InitScreen, slightly modified
 	CenterTitle(CheapTitle,0,1) ! See RoodyLib's CheapTitle routine
 }
 
+routine DoInfo
+{
+	DoAccessibilityHelp
+}
+
+routine DoAccessibilityHelp
+{
+	local simple_port
+	simple_port = (not IsGlk and system(61)) ! non-glk simple port
+	if simple_port
+	{
+		"Hugo detects that this is a simple interpreter. As such, screen
+		clearing is already turned off and menus (if any exist) are written
+		as numerical lists.\n"
+		"The following commands may still be useful:\n"
+	"\BPROMPT\b - Toggles between the > prompt and a \"What now? \" prompt."
+	"\BSTATUS\b - Prints the information in the status bar in the main
+	window."
+		return
+	}
+	"The following commands exist to make playing this game with screen
+	readers or in console windows more convenient:\n"
+	Indent
+	"\BPROMPT\b - Toggles between the > prompt and a \"Your command... \" prompt."
+	Indent
+	"\BSTATUS\b - Prints the information in the status bar in the main
+	window."
+#ifset NEWMENU
+	Indent
+	"\BSIMPLE MENUS\b - Displays in-game menus as numerical lists in the
+	main window. All other behavior (screen clearing, status lines) are the
+	same."
+!	"The following commands automatically display menus as numerated lists:"
+#endif
+	Indent
+	"\BCLEARSCREEN OFF\b - Any in-game screen-clearing is ignored. This
+	might work with some screen readers and also targets console interpreters
+	where screen clearing doesn't work well anyway. Menu options are numbered."
+
+	"\nTo revert back to regular screen-clearing and menus, type \BNORMAL\b."
+}
+
+!\ Roody's note: DoPrompt exists so that players using screenreaders can
+change the prompt to something that sounds better when spoken aloud. \!
+
+global promptbackup
+
+routine DoPrompt
+{
+	if not promptbackup
+		promptbackup = prompt
+	"Prompt toggled."
+	if prompt = "Your command... "
+		prompt = promptbackup
+	else
+		prompt = "Your command... "
+}
+
+!\ Roody's note: DoStatus is a command to relay the information in the
+status line to the player; it's functionality has the vision-impaired and
+people using limited-function interpreters where status lines are bothersome
+or not printed.
+
+You may very well want to replace this routine and write some better sounding
+text that suits your game. \!
+
+routine DoStatus
+{
+	print "You are in the location, \"";
+	print location.name;
+#ifset AMERICAN_ENGLISH
+	print ".\"";
+#else
+	print "\".";
+#endif
+	if STATUSTYPE or max_score
+		print AFTER_PERIOD;
+	if statustype
+	{
+		if STATUSTYPE = 2, 16,18
+		{
+			print "It is ";
+			HoursMinutes(counter)
+			if MAX_SCORE
+			{
+				if (STATUSTYPE & MILITARY_TIME)
+					print ".";
+				print AFTER_PERIOD ; "You ";
+			}
+			elseif (STATUSTYPE & MILITARY_TIME)
+				print "."
+			else
+				""
+		}
+		elseif STATUSTYPE = 1,9,8
+		{
+			print "In "; number counter; " turn";
+			if counter ~= 1
+				print "s";
+			print ", you ";
+		}
+		if MAX_SCORE or (STATUSTYPE = 1,9,8)
+		{
+			print "have scored "; number score; " point";
+			if score ~= 1
+				print "s";
+			"."
+		}
+	}
+	elseif MAX_SCORE
+	{
+		print AFTER_PERIOD;
+		print "Your score is "; number score;"."
+	}
+	else
+	{
+		print AFTER_PERIOD;
+		print "There ";
+		if counter ~= 1
+			print "have";
+		else
+			print "has";
+		print " been "; number counter; " move";
+		if counter ~= 1
+			print "s";
+		print "."
+	}
+	print newline
+}
 #endif
 !----------------------------------------------------------------------------
 !* PREPARSE CODE
@@ -7720,7 +7949,7 @@ constant REPAINT_TIME 30
 routine RepaintScreen
 {
 	display.needs_repaint = false
-#ifset CHEAP
+#ifclear NO_ACCESSIBILITY
 !\ This little section is a little useless since it really only applies to
 	non-simple interpreters with cheap mode turned on for testing purposes. \!
 	if (cheap & CHEAP_ON)
@@ -7783,10 +8012,15 @@ object scope_objects
 
 routine OrganizeScopeObjects
 {
-	local i
+	local i, n
 	for (i=1;i<=objects ;i++ )
 	{
-		if i.#found_in or i.#in_scope
+#ifset USE_PLURAL_OBJECTS
+		n = 0
+		if i.type = plural_class, identical_class
+			n = 1
+#endif
+		if i.#found_in or i.#in_scope and not n
 		{
 			if i.type ~= i and parent(i) = nothing and i.type ~= fuse and
 				i.type ~= daemon
@@ -8903,15 +9137,16 @@ replace plural_class "(plural_class)"
 			{
 				if self.plural_of #i and self.plural_of #i is workflag
 				{
-					obj = self.plural_of #i
-					AssignPronoun(obj)
-					n++
+					if ++n = 1
+						obj = self.plural_of #i
+!					AssignPronoun(obj)
+!					n++
 				}
 			}
 
 			if n > 1:  AssignPronoun(self)
-
-			if n = 0
+			elseif n = 1 : AssignPronoun(obj)
+			else ! n = 0
 			{
 				! "There are none..."
 !				OMessage(plural_class, 1)
@@ -11318,7 +11553,10 @@ replace DoRestore
 
 routine RestoreResponse
 {
-	if not system(61)
+#ifset NO_ACCESSIBILITY
+	local cheap
+#endif
+	if not (system(61) or cheap = 1)
 		InitScreen
 	PrintStatusLine
 	VMessage(&DoRestore, 1)         ! "Restored."
@@ -11567,7 +11805,7 @@ routine ContinueUndoCheck
 
 routine UndoResponse
 {
-	local fail
+	local fail, v
 	PrintStatusLine
 #ifset CONTINUE_UNDO
 	while continue_undo
@@ -11597,7 +11835,10 @@ routine UndoResponse
 		""
 #endif
 	NEW_PARSE |= PRONOUNS_SET
+	v = verbroutine
+	verbroutine = &DoLookAround
 	DescribePlace
+	verbroutine = v
 #ifset NEW_FUSE
 	fake_runevents
 #endif
@@ -13877,8 +14118,8 @@ routine SORT_RANDOM(obj1, obj2)
 #endif
 
 #ifset OBJECT_SORTING
-object temp_bowl
-{}
+!object temp_bowl
+!{}
 
 !\ MovePosition - moves object "obj" in parent "par" to position "pos"
 ( pos = 1 makes it the oldest child, bigger numbers make it younger) \!
@@ -13887,18 +14128,18 @@ routine MovePosition(obj,par,pos)
 	local n = 1
 	while child(par)
 	{
-		move child(par) to temp_bowl
+		move child(par) to display
 	}
 
-	while child(temp_bowl)
+	while child(display)
 	{
 		if n++ = pos
 			move obj to par
 		else
 		{
-			if child(temp_bowl) = obj
-				move obj to temp_bowl
-			move child(temp_bowl) to par
+			if child(display) = obj
+				move obj to display
+			move child(display) to par
 		}
 	}
 }
@@ -13910,15 +14151,15 @@ routine MixObjects(par)
 
 	while child(par)
 	{
-		move child(par) to temp_bowl
+		move child(par) to display
 	}
 
-	while child(temp_bowl)
+	while child(display)
 	{
-		n = children(temp_bowl)
+		n = children(display)
 		n = random(n)
 		n--
-		obj = child(temp_bowl)
+		obj = child(display)
 		while n
 		{
 			obj = sibling(obj)
@@ -13943,12 +14184,12 @@ routine ReverseOrder(par)
 {
 	while child(par)
 	{
-		move child(par) to temp_bowl
+		move child(par) to display
 	}
 
-	while child(temp_bowl)
+	while child(display)
 	{
-		move youngest(temp_bowl) to par
+		move youngest(display) to par
 	}
 }
 
@@ -13975,10 +14216,10 @@ routine Float(par,arg)
 	local obj, qualify
 	while child(par)
 	{
-		move child(par) to temp_bowl
+		move child(par) to display
 	}
 
-	obj = youngest(temp_bowl)
+	obj = youngest(display)
 
 	while elder(obj)
 	{
@@ -13986,15 +14227,15 @@ routine Float(par,arg)
 		if qualify
 		{
 			move obj to par
-			obj = youngest(temp_bowl)
+			obj = youngest(display)
 		}
 		else
 			obj = elder(obj)
 	}
 
-	while child(temp_bowl)
+	while child(display)
 	{
-		move child(temp_bowl) to par
+		move child(display) to par
 	}
 }
 
@@ -14265,8 +14506,11 @@ routine CoolPause(pausetext,top_text)
 {
 	local a, save_title
 	local simple_port
+#ifset NO_ACCESSIBILITY
+	local cheap
+#endif
 	simple_port = not (display.windowlines > (display.screenheight + 100)) and system(61)
-	if display.title_caption
+	if display.title_caption and not cheap
 	{
 		save_title = display.title_caption
 		display.title_caption = RLibMessage(&CoolPause,1)
@@ -14280,7 +14524,7 @@ routine CoolPause(pausetext,top_text)
 
 	}
 
-#ifset CHEAP
+#ifclear NO_ACCESSIBILITY
 	if (cheap & CHEAP_ON)
 		top_text = false
 #endif
@@ -14323,11 +14567,11 @@ routine CoolPause(pausetext,top_text)
 	}
 	else
 	{
-#ifset CHEAP
+#ifclear NO_ACCESSIBILITY
 		if (cheap & CHEAP_ON)
 		{
 !			if there is an a value, prints a. otherwise prints default.
-			RlibMessage(&CoolPause,3,a) ! "[PRESS A KEY TO CONTINUE]";
+			RlibMessage(&CoolPause,3,a) ! "[PRESS A KEY TO CONTINUE]" !;
 			pause
 		}
 		else
@@ -14335,9 +14579,9 @@ routine CoolPause(pausetext,top_text)
 #endif
 !			if a exists, prints a. otherwise prints default. text is
 !        italicized
-			RlibMessage(&CoolPause,4,a) ! "press a key to continue";
+			RlibMessage(&CoolPause,4,a) ! "press a key to continue"
 			HiddenPause
-#ifset CHEAP
+#ifclear NO_ACCESSIBILITY
 		}
 #endif
 		Font(DEFAULT_FONT)
@@ -15463,7 +15707,14 @@ routine DemoNotes
 ! Roody's note: This routine exists solely to be replaced, if you'd like other
 ! trailing text to the DoVersion response.
 routine OtherNotes
-{}
+{
+	local a
+#ifclear NO_ACCESSIBILITY
+	a++
+#endif
+	if a
+		"(New players type \"INFO\")"
+}
 #endif ! if defined GAME_TITLE
 #endif ! ifclear NO_VERSION
 
@@ -15526,9 +15777,9 @@ routine RLibMessage(r, num, a, b)
 				{
 					Indent
 					if a
-						print a;
+						print a! ;
 					else
-						print "[PRESS A KEY TO CONTINUE]";
+						print "[PRESS A KEY TO CONTINUE]" !;
 				}
 				case 4  ! default normal "press a key"
 				{
@@ -15600,7 +15851,39 @@ routine RLibMessage(r, num, a, b)
 !			select num
 !			case 1:  print CThe(player); " can't close "; player.pronoun #4; "."
 !		}
-#ifset CHEAP
+#ifclear NO_ACCESSIBILITY
+		case &DoAccessibility
+	{
+		select num
+			case 1
+			{
+				print "Normal screen-clearing";
+#ifset NEW_MENU
+				print " and menus";
+#endif
+				" restored."
+			}
+			case 2
+			{
+				print "Normal screen-clearing";
+#ifset NEW_MENU
+				print " and menus";
+#endif
+				" already set."
+			}
+			case 3
+			{
+				print "Screen-clearing disabled";
+#ifset NEW_MENU
+				print " and simple menus enabled";
+#endif
+				"."
+			}
+			case 4
+			{
+				print "Screen-clearing already disabled."
+			}
+	}
 		case &DoCheapHelp
 		{
 			select num
@@ -15617,11 +15900,29 @@ routine RLibMessage(r, num, a, b)
 				case 1
 					"\"Cheap\" mode on."
 				case 2
-					"\Cheap\" mode already on."
+					"\"Cheap\" mode already on."
 				case 3
-					"\"Cheap\" mode off."
+				{
+					print "Normal screen-clearing";
+#ifset NEW_MENU
+					print " and menus";
+#endif
+					" enabled."
+				}
 				case 4
-					"\"Cheap\" mode already off."
+				{
+					print "Normal screen-clearing";
+#ifset NEW_MENU
+					print " and menus";
+#endif
+					print " already enabled."
+				}
+#ifset NEW_MENU
+				case 5
+					"\"Simple menus\" mode on."
+				case 6
+					"\"Simple Menus\" mode already on."
+#endif
 		}
 		case &DoCheapToggle
 		{
