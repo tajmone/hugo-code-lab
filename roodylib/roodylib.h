@@ -722,15 +722,14 @@ routine CenterTitle(a, lines,force)
 {}
 #endif
 
-replace CenterTitle(a, lines,force)
+replace CenterTitle(a, lines,force, do_not_use_menu_colors)
 {
 #ifclear NO_ACCESSIBILITY
 	if cheap and not force
 		return
 #endif !ifclear NO_ACCESSIBILITY
-	local l, g, b, c, s ! (simple port)
-	g = IsGlk
-	s = (not g and system(61))
+	local l, b, c
+
 	if not lines:  lines = 1
 
 	if not (SL_TEXTCOLOR or SL_BGCOLOR)
@@ -739,7 +738,8 @@ replace CenterTitle(a, lines,force)
 		c = DEF_SL_FOREGROUND
 	}
 #ifclear NO_MENUS
-	elseif (MENU_SELECTCOLOR or MENU_SELECTBGCOLOR)
+	elseif (MENU_SELECTCOLOR or MENU_SELECTBGCOLOR) and
+		not do_not_use_menu_colors
 	{
 		b = MENU_SELECTBGCOLOR
 		c = MENU_SELECTCOLOR
@@ -756,7 +756,7 @@ replace CenterTitle(a, lines,force)
 	if not system(61)
 		window 0                        ! remove previous window
 
-	if g
+	if (TERP & GLK_TERP)
 	{
 		window 1  ! draw an empty window so glk terps determine screenwidth properly
 		{}
@@ -769,7 +769,7 @@ replace CenterTitle(a, lines,force)
 
 	window lines
 	{
-		if not s ! not non-glk simple port
+		if not (TERP & SIMPLE_TERP)
 		{
 			color c,b
 			cls
@@ -783,7 +783,7 @@ replace CenterTitle(a, lines,force)
 	}
 	color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 	FONT(DEFAULT_FONT)
-	if not s and not force ! non-glk simple port
+	if not (TERP & SIMPLE_TERP) and not force
 		cls
 	if not system(61) and not force
 		locate 1, LinesFromTop
@@ -1807,7 +1807,7 @@ replace YesorNo
 #ifset HUGOFIX
 enumerate start = 64, step * 2
 {
-	D_PLAYBACK_HELPER
+	D_PLAYBACK_HELPER, D_OPCODE_MONITOR
 }
 
 replace DoHugoFix
@@ -1832,7 +1832,8 @@ replace DoHugoFix
 
 		"Monitoring:\n\
 		\_    $on - Toggle object numbers"
-
+		if hugor is switchedon
+			"\_    $om - Hugor opcode monitor on/off"
 #ifclear NO_SCRIPTS
 	       "\_    $sc - Script monitor on/off"
 #endif
@@ -1861,6 +1862,7 @@ replace DoHugoFix
 		\_    $ca                - Check articles for all objects\n\
 		\_    $pc [$all] [obj.]  - Check parser conflicts (for <obj.>)\n\
 		\_                         (parse_ranked objects only or all)\n\
+		\_    $pn                - List current pronouns\n\
 		\_    $pr                - parse_rank monitoring\n"
 
 		"Other utilities:"
@@ -2088,6 +2090,16 @@ replace DoHugoFix
 		system(21)
 		"[Random numbers now normalized]"
 	}
+	case "$om"
+	{
+		if hugor is not switchedon
+			"[Hugor not detected. Opcode monitor not turned on.]"
+		else
+		{
+			print "[Hugor opcode monitor";
+			OnorOff(D_OPCODE_MONITOR)
+		}
+	}
 	case "$on"
 	{
 		"[Object numbers";
@@ -2183,6 +2195,41 @@ replace DoHugoFix
 			}
 			if not count
 				"No parser conflicts found."
+		}
+	}
+	case "$pn"
+	{
+		n = 1
+		while n < 5
+		{
+			select n
+				case 1
+				{
+					print "it object: ";
+					i = it_obj
+				}
+				case 2
+				{
+					print "him object: ";
+					i = him_obj
+				}
+				case 3
+				{
+					print "her object: ";
+					i = her_obj
+				}
+				case 4
+				{
+					print "them object: ";
+					i = them_obj
+				}
+			if not i
+				print "unassigned"
+			else
+			{
+				print i.name; " ("; number i; ")"
+			}
+			n++
 		}
 	}
 	case "$rp"
@@ -2888,10 +2935,7 @@ routine DoVerbTest
 
 routine HugoFixInit
 {
-	local simple_port, key
-
-	if not IsGlk and system(61)
-		simple_port = true
+	local key
 
 !	Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
 !	color TEXTCOLOR, BGCOLOR, INPUTCOLOR
@@ -2900,11 +2944,11 @@ routine HugoFixInit
 		local ret
 		while true
 		{
-			if not simple_port
+			if not (TERP & SIMPLE_TERP)
 				cls
 			else
 				""
-			if not simple_port
+			if not (TERP & SIMPLE_TERP)
 				CenterTitle("HugoFix Debugging Options")
 			if display.needs_repaint
 				display.needs_repaint = false
@@ -2927,14 +2971,17 @@ routine HugoFixInit
 			}
 			else
 				numb = key - 48
-			if numb and (numb > 0) and (numb < 8)
+			if numb and (numb > 0) and (numb < 9)
 			{
-				ret = numb
-				break
+				if not (numb = 8 and hugor is not switchedon)
+				{
+					ret = numb
+					break
+				}
 			}
 			""
 		}
-		if not simple_port
+		if not (TERP & SIMPLE_TERP)
 			cls
 		if ret
 		{
@@ -2947,11 +2994,12 @@ routine HugoFixInit
 				case 5: OnOrOff(D_PARSE,1)
 				case 6: OnOrOff(D_PARSE_RANK,1)
 				case 7: OnOrOff(D_PLAYBACK_HELPER,1)
+				case 8: OnOrOff(D_OPCODE_MONITOR,1)
 			window 0 ! only to draw a line in simple interpreters
 #ifclear NO_ACCESSIBILITY
 			cheap_mode = cheap
 #endif
-			if not (cheap_mode or simple_port)
+			if not (cheap_mode or (TERP & SIMPLE_TERP))
 				cls
 		}
 		else
@@ -2961,8 +3009,12 @@ routine HugoFixInit
 
 routine PrintHugoFixOptions
 {
-	local sel = 1
-	while sel < 8
+	local total, sel = 1
+	if hugor is switchedon
+		total = 9
+	else
+		total = 8
+	while sel < total
 	{
 		Indent
 		print number sel; ". ";
@@ -3025,6 +3077,15 @@ routine PrintHugoFixOptions
 			{
 				print "Recording Playback Helper (";
 				if (debug_flags & D_PLAYBACK_HELPER)
+					print "ON";
+				else
+					print "OFF";
+				")"
+			}
+			case 8
+			{
+				print "Hugor Opcode Monitor (";
+				if (debug_flags & D_OPCODE_MONITOR)
 					print "ON";
 				else
 					print "OFF";
@@ -5855,6 +5916,38 @@ it_object them_object "them"
 	nouns "them"
 	misc { return them_obj }
 }
+
+!\ ObjectisLight replacement - Ran into a problem if Hugo thinks the it_object
+  is providing light, so this extra code redirects ObjectisLight to the
+  applicable object. \!
+
+replace ObjectisLight(obj)
+{
+	local nextobj
+
+	if obj = it_object:		obj = it_obj
+	elseif obj = him_object:	obj = him_obj
+	elseif obj = her_object:	obj = her_obj
+	elseif obj = them_object:	obj = them_obj
+
+	if obj is light
+	{
+		light_source = obj
+		return light_source
+	}
+	if obj is not container or
+		(obj is container and obj is not openable) or
+		(obj is container and obj is openable and
+			(obj is open or obj is transparent))
+	{
+		for nextobj in obj
+		{
+			if ObjectisLight(nextobj)
+				return light_source
+		}
+	}
+}
+
 #endif	! NEW_STYLE_PRONOUNS
 
 !----------------------------------------------------------------------------
@@ -6108,8 +6201,8 @@ property bottom_justified alias d_to ! have this return true for status windows
 												!  a window with other information and you
 												!	 want the regular status information to
 												!	 be printed at the bottom of the window
-property terp_type alias w_to   ! this property gets set to the current
-                                !   interpreter type automatically
+!property terp_type alias w_to   ! this property gets set to the current
+!                                !   interpreter type automatically
 property status_override alias nw_to ! status_override - normally, the status
                                      !   window object with the highest
                                      !   find_height number gets drawn (so have
@@ -6125,10 +6218,10 @@ property chosen_window alias nw_to  ! set to the window instructions object
                                     !  whose draw_window property will be
 												!	executed. authors can ignore this.
 
-! "terp_type" values  0, 2, 4
+! "terp_type" values  2, 4, 8
 enumerate step * 2
 {
-    NORMAL_TERP, GLK_TERP = 2, SIMPLE_TERP
+    NORMAL_TERP = 2, GLK_TERP, SIMPLE_TERP
 }
 
 !\ a PrintStatusLine object in which we will put our instruction objects in (by
@@ -6172,7 +6265,7 @@ object printstatuslib
 		run (self.chosen_window).draw_window
 	}
 	chosen_window 0
-	terp_type NORMAL_TERP
+!	terp_type NORMAL_TERP
 	bottom_justified 1
 	status_top 0
 }
@@ -6204,16 +6297,16 @@ object statuslinelib "statuslinelib"
 			display.statusline_height = word[(a+1)]
 #endif
 		}
-		if word[LAST_TURN] ~= "undo"
-		{
-	! set the "terp_type" value
-			if IsGlk
-				printstatuslib.terp_type = GLK_TERP
-			elseif system(61) ! minimal port
-				printstatuslib.terp_type = SIMPLE_TERP
-			else
-				printstatuslib.terp_type = NORMAL_TERP
-		}
+!		if word[LAST_TURN] ~= "undo"
+!		{
+!	! set the "terp_type" value
+!			if IsGlk
+!				printstatuslib.terp_type = GLK_TERP
+!			elseif system(61) ! minimal port
+!				printstatuslib.terp_type = SIMPLE_TERP
+!			else
+!				printstatuslib.terp_type = NORMAL_TERP
+!		}
 	}
 }
 
@@ -6226,13 +6319,14 @@ replace PrintStatusline
 
 	! have to redraw the "cheap" statusline each time just in case
 	! the screensize has changed
-	if cheap = 1 and printstatuslib.terp_type ~= SIMPLE_TERP
-	{
-		CenterTitle(CheapTitle,0,1)
-		display.needs_repaint = false
-		return
-	}
-	elseif cheap = 1
+!	if cheap = 1 and printstatuslib.terp_type ~= SIMPLE_TERP
+!	{
+!		CenterTitle(CheapTitle,0,1,1)
+!		display.needs_repaint = false
+!		return
+!	}
+!	else
+	if cheap = 1
 		return
 
 	! figure out the size our window will be
@@ -6255,11 +6349,11 @@ replace PrintStatusline
 	display.statusline_height = newstatusheight
 
 	Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
-	if printstatuslib.terp_type ~= NORMAL_TERP
+	if not (TERP & NORMAL_TERP)
 	{
 		window display.statusline_height
 		{
-			if printstatuslib.terp_type ~= SIMPLE_TERP
+			if not (TERP & SIMPLE_TERP)
 			{
 				cls
 				locate 1,1
@@ -6272,12 +6366,9 @@ replace PrintStatusline
 		window 1, window_top, display.screenwidth,
 		(display.statusline_height + window_top - 1)
 		{
-			if printstatuslib.terp_type ~= SIMPLE_TERP
-			{
-				color SL_TEXTCOLOR, SL_BGCOLOR
-				cls
-				locate 1,1
-			}
+			color SL_TEXTCOLOR, SL_BGCOLOR
+			cls
+			locate 1,1
 			run printstatuslib.draw_window
 		}
 	}
@@ -6349,7 +6440,7 @@ routine WriteStatus
 {
 	local row,a
 	if printstatuslib.bottom_justified and
-		printstatuslib.terp_type ~= SIMPLE_TERP
+		not (TERP & SIMPLE_TERP)
 	{
 		if display.statusline_height > 1
 			row = display.statusline_height - 1
@@ -6365,12 +6456,12 @@ routine WriteStatus
 		a = display.linelength
 		print to (a - \
 			( statuswindow.counter_length + \
-			(printstatuslib.terp_type = SIMPLE_TERP)* 2 - \
-			(printstatuslib.terp_type = GLK_TERP)));
+			(TERP = SIMPLE_TERP)* 2 - \
+			(TERP = GLK_TERP)));
 	}
 	elseif STATUSTYPE and display.statusline_height = 2
 	{
-		if printstatuslib.terp_type ~= SIMPLE_TERP
+		if not (TERP & SIMPLE_TERP)
 			locate 1, ++row
 		else
 			""
@@ -6470,9 +6561,9 @@ routine PrintStatusType
 #ifset NO_FANCY_STUFF
 replace PrintStatusline
 {
-	local simple, a, g
-	g = isGlk
-	simple = (not g and system(61))
+	local a
+!	g = isGlk
+!	simple = (not g and system(61))
 	if not display.statusline_height
 		display.statusline_height = 1
 
@@ -6480,7 +6571,7 @@ replace PrintStatusline
 	color SL_TEXTCOLOR, SL_BGCOLOR
 	window display.statusline_height
 	{
-		if not simple
+		if not (TERP & SIMPLE_TERP) ! simple
 		{
 			cls
 			locate 1, 1
@@ -6495,7 +6586,7 @@ replace PrintStatusline
 		{
 			print to (display.linelength - \
 			( a + \
-			(simple* 2) - g));
+			((TERP = SIMPLE_TERP)* 2) - (TERP = GLK_TERP)));
 			PrintStatusType
 		}
 	}
@@ -6616,69 +6707,6 @@ object init_instructions
 	in settings
 }
 
-#ifset HUGOFIX
-! Roody's note: Made a HugoFix object so that all monitor commands remain
-! active after a restart
-object hugofixlib "hugofixlib"
-{
-	in init_instructions
-	type settings
-	did_print true
-#ifclear NO_FANCY_STUFF
-	save_info
-	{
-		if debug_flags = 0 ! if absolutely no debug flags are turn on,
-			return          !  just return right away
-		local b
-		if debug_flags & D_FUSES
-			b = SaveWordSetting("fuses",b)
-		if debug_flags & D_OBJNUM
-			b = SaveWordSetting("objnum",b)
-		if debug_flags & D_PARSE
-			b = SaveWordSetting("parse",b)
-		if debug_flags & D_SCRIPTS
-			b = SaveWordSetting("scripts",b)
-		if debug_flags & D_FINDOBJECT
-			b = SaveWordSetting("findobject",b)
-		if debug_flags & D_PARSE_RANK
-			b = SaveWordSetting("parserank",b)
-		if debug_flags & D_PLAYBACK_HELPER
-			b = SaveWordSetting("playbackhelper",b)
-		if b
-			return true
-		else
-			return false
-	}
-#endif
-	execute
-	{
-		if word[LAST_TURN] ~= "undo","restore"
-		{
-#ifclear NO_FANCY_STUFF
-				local a,b
-				a = CheckWordSetting(self.name)
-				while true
-				{
-					select word[(a+1)]
-						case "fuses" : b = D_FUSES
-						case "objnum" : b = D_OBJNUM
-						case "parse" : b = D_PARSE
-						case "scripts" : b = D_SCRIPTS
-						case "findobject" : b = D_FINDOBJECT
-						case "parserank" : b = D_PARSE_RANK
-						case "playbackhelper" : b = D_PLAYBACK_HELPER
-						case else : break
-					debug_flags = debug_flags | b
-					a++
-				}
-#endif
-				OrganizeTree
-				HugoFixInit
-		}
-	}
-}
-#endif
-
 object roodylib "roodylib"
 {
 	in init_instructions
@@ -6730,9 +6758,104 @@ object roodylib "roodylib"
 #ifset USE_SCOPE_REACT
 			OrganizeScopeObjects
 #endif
+			if system(61)
+			{
+				if IsGLK
+					TERP = GLK_TERP
+				else
+					TERP = SIMPLE_TERP
+				hugor is not switchedon
+			}
+			else
+			{
+				local hugor_check
+				TERP = NORMAL_TERP
+				readfile "HrCheck"
+				{
+					hugor_check = readval
+				}
+				if hugor_check
+					hugor is switchedon
+				else
+					hugor is not switchedon
+				if hugor is switchedon
+				{
+					ExecOpcode(getversion)
+					ExecOpcode(get_os)
+					ExecOpcode(full_opacity)
+					self.did_print = 1
+				}
+			}
+		}
+	}
+	did_print 0
+}
+
+#ifset HUGOFIX
+! Roody's note: Made a HugoFix object so that all monitor commands remain
+! active after a restart
+object hugofixlib "hugofixlib"
+{
+	in init_instructions
+	type settings
+	did_print true
+#ifclear NO_FANCY_STUFF
+	save_info
+	{
+		if debug_flags = 0 ! if absolutely no debug flags are turn on,
+			return          !  just return right away
+		local b
+		if debug_flags & D_FUSES
+			b = SaveWordSetting("fuses",b)
+		if debug_flags & D_OBJNUM
+			b = SaveWordSetting("objnum",b)
+		if debug_flags & D_PARSE
+			b = SaveWordSetting("parse",b)
+		if debug_flags & D_SCRIPTS
+			b = SaveWordSetting("scripts",b)
+		if debug_flags & D_FINDOBJECT
+			b = SaveWordSetting("findobject",b)
+		if debug_flags & D_PARSE_RANK
+			b = SaveWordSetting("parserank",b)
+		if debug_flags & D_PLAYBACK_HELPER
+			b = SaveWordSetting("playbackhelper",b)
+		if debug_flags & D_OPCODE_MONITOR
+			b = SaveWordSetting("opcodemonitor",b)
+		if b
+			return true
+		else
+			return false
+	}
+#endif
+	execute
+	{
+		if word[LAST_TURN] ~= "undo","restore"
+		{
+#ifclear NO_FANCY_STUFF
+				local a,b
+				a = CheckWordSetting(self.name)
+				while true
+				{
+					select word[(a+1)]
+						case "fuses" : b = D_FUSES
+						case "objnum" : b = D_OBJNUM
+						case "parse" : b = D_PARSE
+						case "scripts" : b = D_SCRIPTS
+						case "findobject" : b = D_FINDOBJECT
+						case "parserank" : b = D_PARSE_RANK
+						case "playbackhelper" : b = D_PLAYBACK_HELPER
+						case "opcodemonitor" : b = D_OPCODE_MONITOR
+						case else : break
+					debug_flags = debug_flags | b
+					a++
+				}
+#endif
+				OrganizeTree
+				HugoFixInit
 		}
 	}
 }
+#endif
 
 !\ Roody's note: Main_Calls is called last in Roodylib's shell's main
 routines. This is nice for game system messages, like score notifications or
@@ -6747,16 +6870,947 @@ routine Main_Calls
 		run i.execute
 		i = younger(i)
 	}
-!	for i in main_instructions
-!	{
-!		run i.execute
-!	}
 }
 
 object main_instructions
 {
 	in settings
 }
+
+!----------------------------------------------------------------------------
+!* INTERPRETER THINGY
+!----------------------------------------------------------------------------
+global TERP
+
+!routine HugorCheck()
+!{
+!	readfile "HrCheck"
+!	{
+!		return readval = 16962
+!	}
+!}
+
+property version alias n_to
+property os alias ne_to
+
+object hugor "Hugor interpreter monitor"
+{
+	os 0
+	version 0 0 0
+	type settings
+}
+
+property opcode_results
+property opcode_value alias size
+
+class opcode
+{
+	type opcode
+	execute 0
+	opcode_value 0
+}
+
+opcode getversion "hugor version opcode"
+{
+	in hugor
+	opcode_value 100
+	save_info
+	{
+		hugor.version = readval
+		hugor.version #2 = readval
+		hugor.version #3 = readval
+	}
+}
+
+opcode get_os "hugor OS opcode"
+{
+	nearby
+	opcode_value 200
+	save_info
+		hugor.os = readval
+}
+
+opcode op_abort "hugor op abort"
+{
+	nearby
+	opcode_value 300
+}
+
+property block alias n_to ! (true to stop action, false: code continues while
+                          !  running)
+property duration alias ne_to ! in milliseconds
+property start_opacity alias e_to ! -1 -> 255 (-1 to keep at current opacity)
+property end_opacity alias se_to ! 0... 255
+
+opcode fade_screen "hugor fade screen opcode"
+{
+	nearby
+	opcode_value 400
+	block 1
+	duration 0
+	start_opacity -9999
+	end_opacity -9999
+	execute
+	{
+		! This just checks to make sure that somebody didn't accidentally
+		! run ExecOpcode on this class object as it would hide all text on
+		! the screen
+		if self = fade_screen
+		{
+#ifset DEBUG
+			if debug_flags & D_OPCODE_MONITOR
+			{
+				print "[Do not execute opcode
+				\""; self.name;"\" itself. Create a fade_screen
+				object with timing and fade values you want. Fade canceled.]"
+			}
+#endif
+			return
+		}
+		local start_alpha
+		start_alpha = self.start_opacity
+		if self.start_opacity < 0
+			start_alpha = -9999
+		writeval self.duration , start_alpha, self.end_opacity, self.block
+	}
+}
+
+fade_screen full_opacity "restore full opacity opcode"
+{
+	in fade_screen
+	block 1
+	duration 1
+	start_opacity 255
+	end_opacity 255
+}
+
+opcode open_URL "hugor open URL opcode"
+{
+	in hugor
+	opcode_value 500
+}
+
+opcode fullscreen "hugor fullscreen opcode"
+{
+	nearby
+	opcode_value 600
+	execute
+		writeval 1
+}
+
+opcode windowed "hugor windowed opcode"
+{
+	nearby
+	opcode_value 600
+	execute
+		writeval 0
+}
+
+opcode clipboard "hugor clipboard opcode"
+{
+	nearby
+	opcode_value 700
+}
+
+opcode is_music_playing "hugor music detector"
+{
+	nearby
+	opcode_value 800
+	save_info
+	{
+		local ret
+		ret = readval
+#ifset _RESOURCE_H
+		if audio.current_music and not ret
+		{
+			audio.current_music = 0
+			audio.current_music_resfile = 0
+			audio.current_music_looping = 0
+		}
+#endif
+		return ret
+	}
+}
+
+opcode is_sample_playing "hugor sample detector"
+{
+	nearby
+	opcode_value 900
+	save_info
+	{
+		local ret
+		ret = readval
+#ifset _RESOURCE_H
+		if audio.current_sound and not ret
+		{
+			audio.current_sound = 0
+			audio.current_sound_resfile = 0
+			audio.current_sound_looping = 0
+		}
+#endif
+		return ret
+	}
+}
+
+routine ExecOpcode(op_file,str)
+{
+	if op_file.type ~= opcode
+	{
+#ifset DEBUG
+		if debug_flags & D_OPCODE_MONITOR
+		{
+			print "[ExecOpcode run with non-opcode type object
+			\""; op_file.name;"\"]"
+		}
+#endif
+		return
+	}
+	writefile "HrCtlAPI"
+	{
+		writeval op_file.opcode_value
+		if str
+			writeval str
+		if &op_file.execute
+			run op_file.execute
+	}
+	local failure, result
+	readfile "HrCtlAPI"
+	{
+		failure = readval
+		if failure
+		{
+#ifset DEBUG
+			if debug_flags & D_OPCODE_MONITOR
+			{
+				select failure
+					case 10 : print "[Incorrect number of parameters for \
+					opcode "; op_file.name; " ["; number op_file;"]"
+					case 20 : print "[Hugor returned unexpected byte count \
+					for opcode "; op_file.name; " ["; number op_file;"]"
+					case 30
+					{
+						local num, i
+						num = readval
+						print "[unrecognized opcode "; number num ; \
+						" attempted";
+						num = readval
+						if num
+						{
+							" with ";
+							print number num; " argument";
+							if num > 1
+								print "s";
+							print " (";
+							for (i=1;i<=num ;i++ )
+							{
+								failure = readval
+								print number failure;
+								if failure < num
+									print ",";
+							}
+							print ")";
+						}
+						print "]"
+					}
+			}
+#endif
+			return
+		}
+#ifset DEBUG
+		if debug_flags & D_OPCODE_MONITOR
+			print "[\""; op_file.name;"\" success.]"
+#endif
+		if &op_file.save_info
+			result = op_file.save_info
+	}
+	return result
+}
+
+!----------------------------------------------------------------------------
+!* NEW MENU
+!----------------------------------------------------------------------------
+
+#ifset USE_NEWMENU
+object menulib "menu"
+{
+	type settings
+	in init_instructions
+	execute
+	{
+		local i
+
+		if word[LAST_TURN] ~= "undo","restore"
+		{
+			for (i=(menu_category + 1);i<=objects ;i++ )
+			{
+				if i.type = menu_category and parent(i) = nothing and
+				i ~= menu_category
+					move i to menu_pages
+			}
+		}
+	}
+}
+
+! menu_category properties
+property title_gap alias initial_desc
+property options_gap alias reach
+property page_text_color alias holding
+property page_bg_color alias exclude_from_all
+property title_color alias list_contents
+property title_bg  alias capacity
+property menu_link alias door_to
+
+! option/hint_option properties
+
+property menu_text alias long_desc
+property hint1 alias n_to
+property hint2 alias ne_to
+property hint3 alias e_to
+property hint4 alias se_to
+property hint5 alias s_to
+property hint6 alias sw_to
+property hint7 alias w_to
+property hint8 alias nw_to
+property hint9 alias u_to
+property hint10 alias d_to
+property alt_title alias misc
+property alt_name alias misc ! just because I think I'm going to forget the
+                             ! name of the property from time to time
+
+property option_available alias in_to
+property hints_available alias in_to
+property hints_revealed alias out_to
+
+object menu_pages
+{}
+
+class menu_category
+{
+	type menu_category
+	title_gap  0 ! lines between menu title and "[N]ext key"
+	options_gap 1 ! lines between "[N]ext key" and menu options
+	option_available true
+	page_bg_color 0
+	page_text_color 0
+	title_color 0
+	title_bg 0
+}
+
+class option
+{
+	type option
+	option_available true
+}
+
+option hint_option "(hint_option)"
+{
+	type hint_option
+	menu_text
+		Help_Hints(self)
+	hints_available 1
+	hints_revealed 0
+}
+
+routine MakeMenu(menu_title, width, recurse)
+{
+	local category, old_category, testlink
+#ifset NO_ACCESSIBILITY
+	local cheap
+#endif
+
+	if not menu_title
+		menu_title = child(menu_pages) ! main_menu
+
+	if not recurse
+	{
+		if verbroutine = &EndGame
+			""
+		if not (system(61) or cheap)
+			color BGCOLOR, BGCOLOR
+		RlibMessage(&MakeMenu,1,menu_title) ! "Opening menu..."
+		""
+		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
+	}
+
+   while true
+	{
+		if not (cheap or system(61))
+			SetPageColors(menu_title)
+
+		if not (cheap or (TERP & SIMPLE_TERP))
+		{
+			window 0
+			cls
+		}
+		category = Menu(menu_title, width, old_category)
+		old_category = category
+		testlink = category.menu_link
+		if testlink
+			category = testlink
+!		old_category = category.menu_link
+!		if old_category
+!			category = old_category
+!		else
+!			old_category = category
+		if category
+		{
+			if category.type = menu_category
+				MakeMenu(category,width,(recurse + 1))
+			else
+			{
+				if not (cheap or system(61))
+					color MENU_BGCOLOR, MENU_BGCOLOR
+				if not cheap
+					RlibMessage(&MakeMenu,2,category.name)
+				if not (cheap or system(61))
+				{
+					SetPageColors(category)
+					color MENU_TEXTCOLOR, MENU_BGCOLOR
+				}
+				do
+				{
+					if display.needs_repaint and not cheap
+					{
+						color MENU_BGCOLOR, MENU_BGCOLOR
+						RlibMessage(&MakeMenu,3) ! "[WINDOW RESIZED]"
+						""
+						RlibMessage(&MakeMenu,2,category.name)
+						color TEXTCOLOR, BGCOLOR, INPUTCOLOR
+					}
+					display.needs_repaint = false
+					color TEXTCOLOR, BGCOLOR, INPUTCOLOR
+					if not (cheap or (TERP & SIMPLE_TERP))! simple_port
+					{
+						if category.alt_title
+							CenterTitle(category.alt_title)
+						else
+							CenterTitle(category.name)
+					}
+					else
+					{
+						Indent
+						print "\_  ";
+						Font(BOLD_ON)
+						if category.alt_title
+							print category.alt_title
+						else
+							print category.name
+						Font(BOLD_OFF)
+						""
+					}
+					if not (cheap or system(61))
+						locate 1,LinesFromTop
+					run category.menu_text
+					print newline
+					""
+					if category.type ~= hint_option
+						CoolPause(0,category)
+				}
+				while (display.needs_repaint = true  )
+			}
+		}
+		else
+		{
+			if not recurse
+			{
+				if not (cheap or (TERP & SIMPLE_TERP))
+					InitScreen
+				if not verbroutine ~= &EndGame
+					AfterMenu
+				else
+					PrintStatusLine
+			}
+			return
+		}
+	}
+}
+
+routine AfterMenu
+{
+#ifclear NO_ACCESSIBILITY
+	if not (cheap & CHEAP_ON)
+#endif
+		PrintStatusline
+	Font(DEFAULT_FONT) ! just in case
+	RlibMessage(&AfterMenu,1) ! "...and now returning to the story."
+	if (FORMAT & DESCFORM_I)
+		""
+	DescribePlace(location, true)
+#ifset NEW_FUSE
+	fake_runevents
+#endif
+}
+
+replace Menu(menu_par, width, selection)
+{
+	local i, column, mouseclick, titlegap, optionsgap, num
+	local n
+	local sel = 1
+
+#ifset NO_ACCESSIBILITY
+	local cheap
+#endif
+
+	titlegap = menu_par.title_gap
+	optionsgap = menu_par.options_gap
+
+	if system(61)
+	{
+		titlegap = 0
+		optionsgap = 1
+	}
+	if width = 0:  width = 20
+	for i in menu_par
+	{
+		if i.option_available
+		{
+			num++
+			n = string(_temp_string,i.name)
+			if n > width : width = n
+		}
+	}
+
+	if width > (display.linelength-1):  width = display.linelength-1
+
+	! Default selection is first child if not otherwise given
+	if selection = 0:  selection = child(menu_par)
+
+	Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
+	while true
+	{
+		if not (cheap or system(61)) ! system(61)
+		{
+			color MENU_BGCOLOR, MENU_BGCOLOR
+			if display.needs_repaint
+			{
+				window 0
+				display.needs_repaint = false
+			}
+			cls
+		}
+		if cheap or (TERP & SIMPLE_TERP) or
+		( (TERP & GLK_TERP) and
+		( num + 5 + titlegap + optionsgap ) >= (display.screenheight/3*2))
+			return CheapMenu(menu_par,num)
+		column = display.linelength/2 - width/2
+		window ( num + 5 + titlegap + optionsgap )
+		{
+			if (TERP & GLK_TERP) ! system(61) and not simple_port
+				cls
+
+			! This section "fakes" CenterTitle, so it appears to be
+			! a regular title window, when in actuality, the whole menu
+			! is in the status window
+			if not (TERP & SIMPLE_TERP)
+				locate 1,1
+			Font(PROP_OFF)
+			n = string(_temp_string, menu_par.name)
+			color MENU_SELECTCOLOR, MENU_SELECTBGCOLOR ! shouldn't affect glk
+			print to (display.linelength/2 - n/2);
+			print menu_par.name;
+			print to display.linelength ! make sure we color the line completely
+			for (i=0; i<titlegap;i++)
+			{
+				""
+			}
+			color MENU_TEXTCOLOR, MENU_BGCOLOR
+			! end of fake CenterTitle
+			Font(BOLD_OFF|ITALIC_OFF|UNDERLINE_OFF|PROP_OFF) ! shouldn't affect
+																			 ! glk
+			RlibMessage(&Menu, 1)	! print key commands
+
+			for (i=0; i<optionsgap;i++)
+			{
+				""
+			}
+
+			sel = 1
+			i = child(menu_par)
+			while i
+			{
+				if i.option_available
+				{
+					if i = selection
+					{
+						if system(61) ! glk or minimum port
+							print to (column - 2);"* ";
+						else
+							locate (column + 1), display.cursor_row
+						color MENU_SELECTCOLOR, MENU_SELECTBGCOLOR  ! shouldn't affect
+																				  ! glk?
+						print i.name; to (column+width)
+						color MENU_TEXTCOLOR, MENU_BGCOLOR
+					}
+					else
+					{
+						locate (column + 1), display.cursor_row !print to column;
+						print i.name ; to (column+width)
+					}
+					sel++
+				}
+				i = younger(i)
+			}
+		}
+		word[0] = HiddenPause
+		if word[0] = MOUSE_CLICK and display.pointer_x >= column and
+					display.pointer_x <= column+width
+		{
+			mouseclick = (num + 1) + display.pointer_y
+			i = PickNthChild(mouseclick, menu_par, &IsOptionAvailable )
+			if i.name
+			{
+					selection = i
+					word[0] = ENTER_KEY
+			}
+			mouseclick = 0
+		}
+		elseif word[0] = MOUSE_CLICK
+		{
+			if (display.pointer_y + num + 5 + titlegap + optionsgap ) = 3 + titlegap
+			{
+				if display.pointer_x >= (display.screenwidth - 10)
+					word[0] = ESCAPE_KEY
+				elseif display.pointer_x <= 11
+					word[0] = 'n'
+			}
+			elseif (display.pointer_y + num + 5 + titlegap + optionsgap ) = 4 + titlegap
+			{
+				if display.pointer_x >= (display.screenwidth - 16)
+					word[0] = ENTER_KEY
+				elseif display.pointer_x <= 15
+					word[0] = 'p'
+			}
+		}
+		if word[0] >= '0' and word[0] <= '9'
+		{
+			i = word[0] - '0'
+			if i = 0:  i = 10
+			if i <= num
+			{
+				i = PickNthChild(i, menu_par, &IsOptionAvailable )
+				if i.name
+					selection = i
+			}
+		}
+		select word[0]
+			case 'N', 'n', DOWN_ARROW, RIGHT_ARROW
+			{
+				while true
+				{
+					if not younger(selection)
+						selection = child(menu_par)
+					else
+						selection = younger(selection)
+					if selection.option_available and selection.name ~= ""
+						break
+				}
+			}
+			case 'P', 'p', UP_ARROW, LEFT_ARROW
+			{
+				while true
+				{
+					if not elder(selection)
+						selection = youngest(menu_par)
+					else
+						selection = elder(selection)
+					if selection.option_available and selection.name ~= ""
+						break
+				}
+			}
+			case 'Q', 'q', ESCAPE_KEY
+			{
+				if not (cheap or system(61))! cos ! system(61)
+				{
+					window !0
+					{cls}
+				}
+				return 0
+			}
+			case ENTER_KEY
+			{
+				if not (cheap or system(61))! cos ! system(61)
+				{
+					window !0
+					{cls}
+				}
+				return selection
+			}
+	}
+!	}
+}
+#if undefined PickNthChild
+routine PickNthChild(num, par, qualify_routine)
+{
+	local x, n, qual
+	x = child(par)
+	while x
+	{
+		if qualify_routine
+		{
+			qual = call qualify_routine(x)
+			if qual
+				n++
+		}
+		else
+			n++
+		if n = num
+			return x
+		x = younger(x)
+	}
+	return false
+}
+#endif
+
+routine IsOptionAvailable(obj)
+{
+	if obj.option_available
+		return true
+	return false
+}
+
+routine CheapMenu(menu_par,num)
+{
+	Font(PROP_ON)
+	local sel,i
+#ifset NO_ACCESSIBILITY
+	local cheap
+#endif
+	while true
+	{
+		if not (cheap or (TERP & SIMPLE_TERP))
+			cls
+		if not (TERP & SIMPLE_TERP)
+			CenterTitle(menu_par.name)
+		if display.needs_repaint
+			display.needs_repaint = false
+		print newline
+		Indent
+		print "\_  ";
+		Font(BOLD_ON)
+		print menu_par.name
+		Font(BOLD_OFF)
+		""
+		sel = 1
+		i = child(menu_par)
+		while i
+		{
+			if i.option_available
+			{
+				Indent
+				print number sel++;". ";
+				print i.name
+			}
+			i = younger(i)
+		}
+		print ""
+		RlibMessage(&Menu, 2)		! "Select the number of your choice"
+		if num > 9
+		{
+			GetInput
+			if word[1] = "q"
+			{
+				""
+				return 0
+			}
+			if word[1]
+				sel = StringToNumber(word[1])
+			else
+				sel = StringToNumber(parse$)
+		}
+		else
+		{
+			pause
+			if word[0] = 'q','Q', '0', ESCAPE_KEY
+			{
+				printchar word[0]
+				print newline
+				if not (cheap or (TERP & SIMPLE_TERP))
+					cls
+				""
+				return 0
+			}
+			else
+				sel = word[0] - 48
+		}
+		if num <= 9
+		{
+			printchar word[0]
+			print newline
+		}
+		""
+		if sel > 0 and (sel <= num) ! sel)
+		{
+			if not (cheap or (TERP & SIMPLE_TERP))
+				cls
+			return PickNthChild(sel, menu_par, &IsOptionAvailable)
+		}
+		else
+			"Not a valid option.\n"
+	}
+}
+
+routine Help_Hints(obj)
+{
+	local i
+#ifset NO_ACCESSIBILITY
+	local cheap
+#endif
+	for (i = 0; i<=obj.hints_revealed; i++)
+	{
+		if i
+			""
+		run obj.(hint1+i)
+		print newline
+	}
+	""
+	while &obj.(hint1+i) ~= 0 ! i.e., no more topics
+	{
+		Font(BOLD_ON)
+		RlibMessage(&Help_Hints,1) ! "[Press 'H' for another hint, or 'Q' to
+										!	quit]";
+		Font(BOLD_OFF)
+		print newline
+		word[0] = HiddenPause
+		if word[0] = 'Q', 'q', ESCAPE_KEY
+			return
+		if word[0] = 'H', 'h'
+		{
+			obj.hints_revealed++
+			run obj.(hint1+i++)
+			print newline
+			""
+		}
+	}
+	Font(BOLD_ON)
+	if not cheap
+	{
+		RlibMessage(&Help_Hints,2) ! "[No more hints.  Press any
+	                           !  key...]";
+		Font(BOLD_OFF)
+		HiddenPause
+	}
+	else
+	{
+		RlibMessage(&Help_Hints,3) ! "[No more hints.  Leaving page.]";
+		Font(BOLD_OFF)
+	}
+
+	return
+}
+
+routine ShowPage(page)
+{
+#ifset NO_ACCESSIBILITY
+	local cheap
+#endif
+ 	local reset_indent
+	if not (cheap or system(61))
+		window 0
+	if verbroutine = &EndGame
+		""
+	if not (cheap or (TERP & SIMPLE_TERP))
+	{
+		color BGCOLOR, BGCOLOR
+		RlibMessage(&ShowPage,1,page) ! "[OPENING PAGE]"
+		""
+		cls
+	}
+	do
+	{
+		if display.needs_repaint and not cheap
+		{
+			color BGCOLOR, BGCOLOR
+			RlibMessage(&MakeMenu,3) ! "[WINDOW RESIZED]"
+			""
+		}
+		display.needs_repaint = false
+		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
+		if not (cheap or (TERP & SIMPLE_TERP))
+		{
+			if page.alt_title
+				CenterTitle(page.alt_title)
+			else
+				CenterTitle(page.name)
+		}
+		if not cheap and not system (61)
+			locate 1,LinesFromTop
+		elseif cheap
+		{
+			if not (FORMAT & NOINDENT_F)
+			{
+				reset_indent = true
+				FORMAT = FORMAT | NOINDENT_F
+			}
+		}
+		run page.menu_text
+		if reset_indent
+			FORMAT = FORMAT & ~NOINDENT_F
+		print newline
+		if not cheap and
+			not (page.type = hint_option and verbroutine = &EndGame)
+			""
+		if page.type ~= hint_option and not (cheap or (TERP & SIMPLE_TERP))
+			CoolPause(0,page,(verbroutine = &EndGame))
+	}
+	while (display.needs_repaint = true  )
+
+	if not (cheap or (TERP & SIMPLE_TERP))
+	{
+		InitScreen
+		if verbroutine ~= &EndGame
+			AfterMenu
+	}
+	else
+		PrintStatusLine
+}
+
+routine SetPageColors(page)
+{
+	if not (menu_category.page_text_color or menu_category.page_bg_color)
+	{
+		if not (MENU_TEXTCOLOR or MENU_BGCOLOR) ! must not have been set
+		{
+			MENU_TEXTCOLOR = TEXTCOLOR
+			MENU_BGCOLOR = BGCOLOR
+		}
+		menu_category.page_text_color = MENU_TEXTCOLOR
+		menu_category.page_bg_color = MENU_BGCOLOR
+	}
+
+	if not (menu_category.title_color or menu_category.title_bg)
+	{
+		if not (MENU_SELECTCOLOR or MENU_SELECTBGCOLOR)
+		{
+			MENU_SELECTCOLOR = SL_TEXTCOLOR
+			MENU_SELECTBGCOLOR = SL_BGCOLOR
+
+		}
+		menu_category.title_color = MENU_SELECTCOLOR
+		menu_category.title_bg = MENU_SELECTBGCOLOR
+	}
+
+	if page.page_text_color or page.page_bg_color
+	{
+		MENU_TEXTCOLOR = page.page_text_color
+		MENU_BGCOLOR = page.page_bg_color
+	}
+	else
+	{
+		MENU_TEXTCOLOR = menu_category.page_text_color
+		MENU_BGCOLOR = menu_category.page_bg_color
+	}
+	if page.title_color or page.title_bg
+	{
+		MENU_SELECTCOLOR = page.title_color
+		MENU_SELECTBGCOLOR = page.title_bg
+	}
+	else
+	{
+		MENU_SELECTCOLOR = menu_category.title_color
+		MENU_SELECTBGCOLOR = menu_category.title_bg
+	}
+}
+#endif ! USE_NEWMENU
 
 !----------------------------------------------------------------------------
 !* FOOTNOTES
@@ -7154,12 +8208,15 @@ routine Box(quotefile, pauseflag,force_simple)
 			Font(quotefile.simplefont * 2)
 		ExtraText(quotefile)
 		if pauseflag
-			CoolPause(0,1)
+		{
+			""
+			CoolPause
+		}
 		return
 	}
 	for (i = 1;i<= quotefile.#line ;i++ )
 	{
-		old_lng = l
+		old_lng = lng
 		l = string(_temp_string, quotefile.line #i )
 		lng = higher(old_lng,l)
 	}
@@ -7207,15 +8264,15 @@ routine Box(quotefile, pauseflag,force_simple)
 		}
 		else
 		{
-			local x
-			for (x = (i+1);x<= quotefile.#line ;x++ )
-			{
-				if quotefile.line #x
-				{
+!			local x
+!			for (x = (i+1);x<= quotefile.#line ;x++ )
+!			{
+!				if quotefile.line #x
+!				{
 					print to pos_end
-					break
-				}
-			}
+!					break
+!				}
+!			}
 		}
 	}
 	color TEXTCOLOR, BGCOLOR
@@ -7224,7 +8281,7 @@ routine Box(quotefile, pauseflag,force_simple)
 		locate 1, current_pos
 	FONT(DEFAULT_FONT)
 	if pauseflag
-		CoolPause(0,1)
+		TopPause
 	nextepigram = 0
 }
 
@@ -7283,6 +8340,8 @@ routine InitScreen
 	{
 		run cheaplib.execute
 		cheaplib is special
+		if cheap = 1
+			return
 	}
 #endif
 	color TEXTCOLOR, BGCOLOR, INPUTCOLOR
@@ -7291,17 +8350,17 @@ routine InitScreen
 	if not system(61)
 		window 0
 #ifclear NO_ACCESSIBILITY
-	if not cheap and location is not visited
-	{
-		local a
-		a = CheckWordSetting("cheap")
-		select word[(a+2)]
-			case "off" : cheap = 0
-			case "on" : cheap = 1
-			case "menus" : cheap = 2
-!		if CheckWordSetting("cheap")
-!			cheap = true
-	}
+!	if not cheap and location is not visited
+!	{
+!		local a
+!		a = CheckWordSetting("cheap")
+!		select word[(a+2)]
+!			case "off" : cheap = 0
+!			case "on" : cheap = 1
+!			case "menus" : cheap = 2
+!!		if CheckWordSetting("cheap")
+!!			cheap = true
+!	}
 	if not simple_port and cheap ~= 1
 		cls
 #else
@@ -7309,9 +8368,9 @@ routine InitScreen
 		cls
 #endif
 	if not system(61) and cheap ~= 1 ! CheckWordSetting("cheap")
-		CenterTitle("",0,1) ! Draw an empty window
+		CenterTitle("",0,1,1) ! Draw an empty window
 	else
-		CenterTitle(CheapTitle,0,1) ! See CheapTitle routine
+		CenterTitle(CheapTitle,0,1,1) ! See CheapTitle routine
 #ifclear NO_ACCESSIBILITY
 	if not system(61) and not (cheap & CHEAP_ON)
 		locate 1, LinesFromTop
@@ -7336,7 +8395,7 @@ routine CheapTitle
 
 routine LinesFromTop
 {
-	if not display.hasvideo
+	if not (display.hasvideo or hugor is switchedon)
 		return display.windowlines
 	else
 		return 2
@@ -7363,7 +8422,7 @@ routine ClearWindow
 	if not (a = 1)
 	{
 		cls
-		if display.hasvideo
+		if (display.hasvideo or hugor is switchedon)
 			locate 1, LinesFromTop
 	}
 }
@@ -7398,7 +8457,6 @@ object betalib "betalib"
 	type settings
 	in init_instructions
 	did_print 0
-#ifset USE_DEFAULT_MENU
 #ifset BETA
 	usage_desc
 	{
@@ -7417,7 +8475,6 @@ object betalib "betalib"
 		 "\B*\b\") to have your comments accepted."
 	}
 #endif ! ifset BETA
-#endif ! ifset USE_DEFAULT_MENU
 	save_info
 	{
 		local a, b,c
@@ -7461,11 +8518,12 @@ routine BetaInit
 			else
 			{
 				betalib is special
-				VMessage(&DoScriptOnOff, 2)      ! "Transcription on."
+				RlibMessage(&BetaInit, 2)      ! "Starting beta transcript for
+				                               !  <GAME TITLE>"
 			}
 		}
 		else
-			RlibMessage(&BetaInit,2) ! "No transcript started."
+			RlibMessage(&BetaInit,3) ! "No transcript started."
 		""
 		CoolPause(0,true)
 		betalib.did_print = true
@@ -7502,25 +8560,21 @@ object cheaplib "cheap"
 	}
 	execute
 	{
-!		if word[LAST_TURN] ~= "undo","restart"
-!		{
-			local a,b
-			b = cheap
-			a = CheckWordSetting("cheap")
-			if a
-			{
-				if word[(a+1)]
-					prompt = word[(a + 1)]
-				select word[(a+2)]
-					case "off" : cheap = 0
-					case "on" : cheap = 1
-					case "menus" : cheap = 2
-			}
-!		}
+		local a,b
+		b = cheap
+		a = CheckWordSetting("cheap")
+		if a
+		{
+			if word[(a+1)]
+				prompt = word[(a + 1)]
+			select word[(a+2)]
+				case "off" : cheap = 0
+				case "on" : cheap = 1
+				case "menus" : cheap = 2
+		}
 		if (cheap & CHEAP_ON) and not b ! and word[LAST_TURN] ~= "restart"
 			DrawCheap
 	}
-#ifset USE_DEFAULT_MENU
 	usage_desc
 	{
 		local simple_port
@@ -7539,13 +8593,13 @@ object cheaplib "cheap"
 		Indent
 		"\BSTATUS\b - Prints the information in the status bar in the main
 		window."
-	#ifset NEWMENU
+#ifset USE_NEWMENU
 		Indent
 		"\BSIMPLE MENUS\b - Displays in-game menus as numerical lists in the
 		main window. All other behavior (screen clearing, status lines) are the
 		same."
 	!	"The following commands automatically display menus as numerated lists:"
-	#endif
+#endif
 		Indent
 		"\BCLEARSCREEN OFF\b - Any in-game screen-clearing is ignored. This
 		might work with some screen readers and also targets console interpreters
@@ -7555,7 +8609,6 @@ object cheaplib "cheap"
 		"\BNORMAL\b - Reverts to allow in-game screen sclearing."
 
 	}
-#endif ! USE_DEFAULT_MENU
 }
 
 
@@ -7621,28 +8674,28 @@ routine DoCheapOnOff
 	while a < 4
 	{
 		select word[a]
-			case "on"
-			{
-				if not (cheap & CHEAP_ON)
-				{
-					cheap = true
-					RLibMessage(&DoCheapOnOff, 1) ! "Cheap mode on."
-					DrawCheap
-				}
-				else
-					RLibMessage(&DoCheapOnOff, 2) ! "Cheap mode already on."
-			}
 			case "off"
 			{
 				if cheap
 				{
 					cheap = false
-					RLibMessage(&DoCheapOnOff, 3) ! "Cheap mode off."
+					RLibMessage(&DoAccessibility, 1) ! "Cheap mode off."
 					if (b & CHEAP_ON)
 						PrintStatusLine
 				}
 				else
-					RLibMessage(&DoCheapOnOff, 4) ! "Cheap mode already off."
+					RLibMessage(&DoAccessibility, 2) ! "Cheap mode already off."
+			}
+			case "on"
+			{
+				if not (cheap & CHEAP_ON)
+				{
+					cheap = true
+					RLibMessage(&DoAccessibility, 3) ! "Cheap mode on."
+					DrawCheap
+				}
+				else
+					RLibMessage(&DoAccessibility, 4) ! "Cheap mode already on."
 			}
 			case "menu","menus"
 			{
@@ -7692,7 +8745,7 @@ routine DrawCheap ! this is basically InitScreen, slightly modified
 		Font(DEFAULT_FONT)
 		window 0
 	}
-	CenterTitle(CheapTitle,0,1) ! See RoodyLib's CheapTitle routine
+	CenterTitle(CheapTitle,0,1,1) ! See RoodyLib's CheapTitle routine
 }
 
 routine DoInfo
@@ -7722,7 +8775,7 @@ routine DoAccessibilityHelp
 	Indent
 	"\BSTATUS\b - Prints the information in the status bar in the main
 	window."
-#ifset NEWMENU
+#ifset USE_NEWMENU
 	Indent
 	"\BSIMPLE MENUS\b - Displays in-game menus as numerical lists in the
 	main window. All other behavior (screen clearing, status lines) are the
@@ -7954,7 +9007,7 @@ routine RepaintScreen
 	non-simple interpreters with cheap mode turned on for testing purposes. \!
 	if (cheap & CHEAP_ON)
 	{
-		CenterTitle(CheapTitle,0,1)
+		CenterTitle(CheapTitle,0,1,1)
 		return
 	}
 #endif ! CHEAP
@@ -9928,7 +10981,6 @@ replace PlayMusic(resfile, song, volume, loop, force)
 	{
 		music 0
 		audio.current_music = 0
-		audio is not special
 	}
 	else
 	{
@@ -9936,16 +10988,12 @@ replace PlayMusic(resfile, song, volume, loop, force)
 		{
 			music resfile, song, vol
 #ifset USE_JUKEBOX
-			if not system_status
+			if not system_status and not hugor is switchedon
 				GetCurrentTime(song_start)
 #endif
-			audio is not special
 		}
 		else
-		{
 			music repeat resfile, song, vol
-			audio is special
-		}
 		audio.current_music = song
 		audio.current_music_looping = loop
 	}
@@ -10893,7 +11941,7 @@ replace DoHit
 		if object = player
 			RlibMessage(&DoHit)   ! "Venting your frustration on yourself..."
 		else
-			VMessage(&DoHit)         ! "You can't drink that."
+			VMessage(&DoHit)         ! "Doesn't accomplish much..."
 	}
 	else
 		return true
@@ -11632,7 +12680,7 @@ replace DoRecordOnOff
 			if not system(61) ! not a minimal port
 			{
 				RLibMessage(&DoRecordOnOff,5) ! "MORE skipping spiel"
-				CoolPause(0,1)
+				TopPause
 				PrintStatusLine
 				""
 			}
@@ -13374,9 +14422,9 @@ routine ObjsWithoutDescs(place, for_reals)
 
 			if obj is living or (obj.type = attachable) or
 				player in obj or (&obj.short_desc and verbosity ~= 1) or
-				obj is already_printed
+				obj is already_printed or obj is hidden
 #else
-			if obj is living or player in obj or (&obj.short_desc and verbosity ~= 1) or obj is already_printed
+			if obj is living or player in obj or (&obj.short_desc and verbosity ~= 1) or obj is already_printed or obj is hidden
 #endif
 				obj is already_listed
 			else
@@ -14002,105 +15050,6 @@ routine RandomDesc(obj)
 #endif ! endif NEW_ROTATE
 
 !----------------------------------------------------------------------------
-!* ARRAY SORTING
-!----------------------------------------------------------------------------
-
-#ifclear NO_SORTING
-!\ Roody's note - SortArray and the comparison routines below were
-written by Christopher Tate \!
-
-!-----------------------------------------------------------------------
-! SortArray() arguments:
-!
-! data = array to sort
-! num = number of elements in the array
-! comp_routine = the address of the comparison routine to use
-! beginn = beginning element to start with (for arrays not starting with 0 )
-
-routine SortArray(data_arr, num, comp_routine,beginn)
-{
-	local i
-	local did_swap
-
-	for (i = beginn; i < (beginn + num); i = i + 1)
-	{
-		local j
-		did_swap = false
-		for (j = (num + beginn - 1); j > i; j = j - 1)
-		{
-			local swap
-			swap = call comp_routine(array data_arr[j-1], array data_arr[j])
-			if swap
-			{
-				local tmp
-				tmp = array data_arr[j]
-				array data_arr[j] = array data_arr[j-1]
-				array data_arr[j-1] = tmp
-				did_swap = true
-			}
-		}
-		! if we didn't swap any elements, then the array is sorted
-		if not did_swap : return
-	}
-}
-
-! SortProp is a version that works off a property array
-!  obj = the object, prp = the property array to be sorted
-!  comp_routine = like above
-routine SortProp(obj, prp, comp_routine)
-{
-	local i
-	local did_swap
-
-	for (i = 1; i <= obj.#prp; i = i + 1)
-	{
-		local j
-		did_swap = false
-		for (j = obj.#prp ; j > i; j = j - 1)
-		{
-			local swap
-			swap = call comp_routine(obj.prp #(j-1), obj.prp #j)
-			if swap
-			{
-				local tmp
-				tmp = obj.prp #j
-				obj.prp #j = obj.prp #(j-1)
-				obj.prp #(j-1) = tmp
-				did_swap = true
-			}
-		}
-		! if we didn't swap any elements, then the array is sorted
-		if not did_swap : return
-	}
-}
-
-!-----------------------------------------------------------------------
-! SORT_ASCENDING() and SORT_DESCENDING()
-!
-! These simple comparison routines are provided to handle the
-! common cases of sorting a numeric array in ascending or
-! descending order.  For example, to sort an entire numeric array
-! called "data_arr" in ascending order, just do this:
-!
-! SortArray(data_arr, data_arr[], &SORT_ASCENDING)
-
-routine SORT_ASCENDING(obj1, obj2)
-{
-	return (obj1 > obj2)
-}
-
-routine SORT_DESCENDING(obj1, obj2)
-{
-	return (obj1 < obj2)
-}
-
-routine SORT_RANDOM(obj1, obj2)
-{
-	return (random(2) - 1)
-}
-#endif ! ifclear NO_SORTING
-
-!----------------------------------------------------------------------------
 !* OBJECT SORTING
 !----------------------------------------------------------------------------
 !\
@@ -14111,6 +15060,11 @@ routine SORT_RANDOM(obj1, obj2)
 	in several ways.
 
 	Read their individual descriptions for usage info.
+
+	NOTE: This section was inspired by Christopher Tate's array sorting
+	routines which were originally included in Roodylib.  As Roodylib
+	has largely moved to object hieararchy based behavior, those
+	routines were moved to the "extraroutines.hug" file
 \!
 
 #ifset USE_JUKEBOX
@@ -14192,6 +15146,53 @@ routine ReverseOrder(par)
 		move youngest(display) to par
 	}
 }
+
+!\ SortChildren- Sorts children of parent "par" by numerical criteria "crit".
+If reverse argument is true, puts them in reverse order (lowest to highest).
+See BySize example after this for example criteria routine (which would be
+called like SortChildren(jellybean_jar, &BySize)
+\!
+
+routine SortChildren(par, crit, reverse)
+{
+	local x, p, next
+	local best_choice = -32767
+	while child(par)
+	{
+		for x in par
+		{
+			p = call array crit(x)
+			if p > best_choice
+				best_choice = p
+		}
+		x = child(par)
+		while x
+		{
+			next = younger(x)
+			if best_choice = call array crit(x)
+				move x to display
+			x = next
+		}
+		best_choice = -32767
+	}
+
+	while child(display)
+	{
+		if reverse
+			move youngest(display) to par
+		else
+			move child(display) to par
+	}
+}
+
+!\
+Example criteria routine
+
+routine BySize(obj)
+{
+	return obj.size
+}
+\!
 
 ! TakeRandom - returns a random child from parent "par"
 routine TakeRandom(par)
@@ -14497,99 +15498,93 @@ routine ClearPronoun(obj)
 
 ! Roody's note: CoolPause is a routine I wrote for newmenu.h, but I find it
 ! so useful that I have decided to add it to Roodylib. Anyhow, it's a routine
-! for doing "press a key" text. Put a true value for the top_text value if
-! you'd like the text in the status bar.
+! for doing "press a key" text. The page and no_newline arguments are mainly
+! for the new menu system so that different pause text can be given to menu
+! pages (and to avoid an extra line if called from EndGame)
 
-! CoolPause("Press a key to continue...",1)
+!\ ALSO: This used to have code by default to change display.title_caption
+ to some pause text. I decided to take that code out and put it into a wrapper
+ routine in "extraroutines.hug" so go look there if you want it. \!
 
-routine CoolPause(pausetext,top_text)
+routine CoolPause(pausetext,page,no_newline)
 {
-	local a, save_title
-	local simple_port
 #ifset NO_ACCESSIBILITY
 	local cheap
 #endif
-	simple_port = not (display.windowlines > (display.screenheight + 100)) and system(61)
-	if display.title_caption and not cheap
-	{
-		save_title = display.title_caption
-		display.title_caption = RLibMessage(&CoolPause,1)
-	}
-	if pausetext
-	{
-		local m
-		m = string(_temp_string, pausetext)
-		if display.screenwidth > m
-			a = pausetext
-
-	}
 
 #ifclear NO_ACCESSIBILITY
 	if (cheap & CHEAP_ON)
-		top_text = false
-#endif
-#ifset NO_STRING_ARRAYS
-	top_text = false
-#endif
-	if top_text
 	{
-		Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
-		if not system(61)
-		{
-			window display.statusline_height
-			{
-				cls
-			}
-		}
-		window  1 ! display.statusline_height
-		{
-			local y
-			y = display.linelength
-			color SL_TEXTCOLOR, SL_BGCOLOR
-			cls			! make sure we've drawn the entire status bar in the
-							!  proper colors
-			locate 1,1
-			text to _temp_string
-			if a
-				print a;
-			else
-				RLibMessage(&CoolPause,2) ! "PRESS A KEY TO CONTINUE";
-			text to 0
-
-			local alength
-			alength = StringLength(_temp_string)
-			print to (display.linelength/2 - alength/2);
-			StringPrint(_temp_string)
-		}
-		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
-		Font(DEFAULT_FONT)
-		HiddenPause ! PauseForKey
+!			if there is a pausetext value, prints pausetext.
+!			 otherwise prints default.
+		RlibMessage(&CoolPause,1,pausetext,page) ! "[PRESS A KEY TO CONTINUE]" !;
+		pause
 	}
 	else
 	{
-#ifclear NO_ACCESSIBILITY
-		if (cheap & CHEAP_ON)
-		{
-!			if there is an a value, prints a. otherwise prints default.
-			RlibMessage(&CoolPause,3,a) ! "[PRESS A KEY TO CONTINUE]" !;
-			pause
-		}
-		else
-		{
 #endif
-!			if a exists, prints a. otherwise prints default. text is
-!        italicized
-			RlibMessage(&CoolPause,4,a) ! "press a key to continue"
-			HiddenPause
+!			if pausetext exists, prints pausetext. otherwise prints default.
+!			 text is italicized
+		RlibMessage(&CoolPause,2,pausetext,page) ! "press a key to continue"
+		HiddenPause
 #ifclear NO_ACCESSIBILITY
-		}
-#endif
-		Font(DEFAULT_FONT)
-		print newline
-		""
 	}
-	if save_title
-		display.title_caption = save_title
+#endif
+!	print newline
+	if not no_newline
+		""
+}
+
+!\Roody's note: TopPause used to be a part of CoolPause (allowing the option
+to put pause text in the status line) but I gave it its own routine just
+for code readability.
+
+(I find it nice sometimes to put the text in the status bar because then the
+pause text does not interrupt game transcripts) \!
+routine TopPause(pausetext)
+{
+	local force_bottom
+#ifclear NO_ACCESSIBILITY
+	if (cheap & CHEAP_ON)
+		force_bottom = true
+#endif
+#ifset NO_STRING_ARRAYS
+	force_bottom = true
+#endif
+	if force_bottom
+		return CoolPause(pausetext)
+
+	Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
+	if not system(61)
+	{
+		window display.statusline_height
+		{
+			cls
+		}
+	}
+	window  1 ! display.statusline_height
+	{
+		local y
+		y = display.linelength
+		color SL_TEXTCOLOR, SL_BGCOLOR
+		cls			! make sure we've drawn the entire status bar in the
+						!  proper colors
+!		locate 1,1
+		text to _temp_string
+		if pausetext
+			print pausetext;
+		else
+			RLibMessage(&TopPause,1) ! "PRESS A KEY TO CONTINUE";
+		text to 0
+
+		local alength
+		alength = StringLength(_temp_string)
+		print to (display.linelength/2 - alength/2);
+		StringPrint(_temp_string)
+	}
+	color TEXTCOLOR, BGCOLOR, INPUTCOLOR
+	Font(DEFAULT_FONT)
+	HiddenPause ! PauseForKey
 }
 
 ! Roody's note: GetNumber just exists so authors don't have to remember
@@ -14685,7 +15680,8 @@ routine HiddenPause
 		return
 #endif
 	key = system(11) ! READ_KEY
-	if system_status or system(61) ! MINIMAL_INTERFACE
+	if system_status or system(61)  or ! MINIMAL_INTERFACE
+	hugor is switchedon
 	{
 		pause
 		key = word[0]
@@ -14699,7 +15695,6 @@ routine HiddenPause
 			system(32) ! PAUSE_100TH_SECOND
 		}
 	}
-
 	return key
 }
 
@@ -15160,15 +16155,6 @@ routine IsTimeLonger(first, second)
 !----------------------------------------------------------------------------
 !* Music Jukebox
 !----------------------------------------------------------------------------
-
-! Roody's note: Most of this code is from Kent Tessman's Future Boy! with
-! just a couple of additions of my own. Now, Hugo doesn't do real-time games
-! (like Infocom's Border Zone), but it can catch the current time and the
-! following code allows for figuring out the time difference betwen this
-! or that time (useful for music jukebox extensions or other misc uses).
-!
-! Since it's rare for games to use this, set the #USE_TIME_SYSTEM flag
-! to enable it.
 !----------------------------------------------------------------------------
 #ifset USE_JUKEBOX
 object jukebox "music manager"
@@ -15197,12 +16183,14 @@ routine PlayJukebox
 			current_song = 0
 			music 0
 			audio.current_music = 0
-			audio is not special
 			jukebox is not switchedon
 			return
 		}
-		current_song_length.tm_minute = a.length
-		current_song_length.tm_second = a.length #2
+		if not hugor is switchedon
+		{
+			current_song_length.tm_minute = a.length
+			current_song_length.tm_second = a.length #2
+		}
 #if defined MUSIC_RESOURCE_FILE
 		success_play = PlayMusic(MUSIC_RESOURCE_FILE, a.file,100,0,1)
 #endif
@@ -15226,7 +16214,6 @@ routine StopJukebox
 	current_song = 0
 	music 0
 	audio.current_music = 0
-	audio is not special
 	jukebox is not switchedon
 }
 
@@ -15249,7 +16236,6 @@ routine PlaySong(songfile,loop)
 		current_song = 0
 		music 0
 		audio.current_music = 0
-		audio is not special
 	}
 	else
 		current_song = songfile
@@ -15257,13 +16243,16 @@ routine PlaySong(songfile,loop)
 
 routine CheckSongEnd
 {
+	if hugor is switchedon
+	{
+		if not ExecOpCode(is_music_playing)
+			audio.current_music = 0
+		return
+	}
 	GetCurrentTime(current_time)
 	CalculateTimeDifference(current_time, song_start, time_difference)
 	if IsTimeLonger(time_difference, current_song_length)
-	{
 		audio.current_music = 0
-		audio is not special
-	}
 }
 
 routine NowPlaying
@@ -15621,6 +16610,17 @@ routine DoVersion
 	OtherNotes
 }
 
+routine HugorInfo
+{
+	if hugor is not switchedon
+		return
+!	select hugor.os
+!		case 1 : print "Windows ";
+!		case 2 : print "MacOS ";
+!		case 3 : print "Linux ";
+	print "Hugor v"; number hugor.version ;"."; \
+		number hugor.version #2 ; "."; number hugor.version #3
+}
 ! Roody's note: I changed TITLECOLOR to a global. Set it to something else in
 ! SetGlobalsAndFillArrays if you'd like to provide a special title color.
 
@@ -15653,7 +16653,13 @@ routine Copyright
 routine PrintBanner
 {
 	print BANNER; " / ";
-	print "Roodylib "; ROODYVERSION
+	print "Roodylib "; ROODYVERSION ;
+	if hugor is switchedon
+	{
+		print " / Hugor v"; number hugor.version ;"."; \
+			number hugor.version #2 ; "."; number hugor.version #3
+	}
+	print newline
 }
 
 routine ReleaseAndSerialNumber
@@ -15690,7 +16696,9 @@ routine BetaNotes
 	bugs, etc. to \I<";
 	print EMAIL;">\i."
 #endif
-	"\nHI, TESTERS:  Please type \B>SCRIPT ON\b and send in your transcripts."
+	print newline
+	if betalib is not special
+		"HI, TESTERS:  Please type \B>SCRIPT ON\b and send in your transcripts."
 }
 #endif ! ifset BETA
 
@@ -15751,9 +16759,40 @@ routine RLibMessage(r, num, a, b)
 		{
 			select num
 				case 1 : "This is a beta release! If you'd like to start a
-				transcript right away, press \"B\". Otherwise, push any other key
+				transcript right away, press \BB\b. Otherwise, push any other key
 				to begin without starting a transcript."
-				case 2 : "No transcript started."
+				case 2
+				{
+					print "Starting beta transcript";
+#if defined GAME_TITLE
+					print " for "; GAME_TITLE ;
+#endif
+					if (TERP & NORMAL_TERP) and hugor is not switchedon
+					{
+						"."
+						return
+					}
+					print " (";
+					if hugor is switchedon
+					{
+						print "Hugor v"; number hugor.version ;"."; \
+							number hugor.version #2 ; "."; \
+							number hugor.version #3 ; " ";
+						select hugor.version
+							case 0: print "Unknown";
+							case 1: print "Windows";
+							case 2: print "MacOS";
+							case 3: print "Linux";
+					}
+					else
+					{
+						select TERP
+							case SIMPLE_TERP: print "minimal Hugo port";
+							case GLK_TERP : print "glk Hugo port";
+					}
+					print ")"
+				}
+				case 3 : "No transcript started."
 		}
 #endif ! ifset BETA
 		case &CheckReach
@@ -15768,12 +16807,7 @@ routine RLibMessage(r, num, a, b)
 		case &CoolPause
 		{
 			select num
-				case 1  ! display.title_caption text
-					return "[PRESS A KEY TO CONTINUE]"
-				case 2  ! default top "press a key"
-	!				"\_ [PRESS A KEY TO CONTINUE]";
-					print "[PRESS A KEY TO CONTINUE]";
-				case 3  ! default cheapglk "press a key"
+				case 1  ! default cheapglk "press a key"
 				{
 					Indent
 					if a
@@ -15781,7 +16815,7 @@ routine RLibMessage(r, num, a, b)
 					else
 						print "[PRESS A KEY TO CONTINUE]" !;
 				}
-				case 4  ! default normal "press a key"
+				case 2  ! default normal "press a key"
 				{
 					Indent
 					Font(ITALIC_ON)
@@ -15791,6 +16825,11 @@ routine RLibMessage(r, num, a, b)
 						"press a key to continue" ! was ;
 					Font(ITALIC_OFF)
 				}
+		}
+		case &TopPause
+		{
+			select num
+				case 1: print "[PRESS A KEY TO CONTINUE]";
 		}
 		case &DescribePlace
 		{
@@ -15858,7 +16897,7 @@ routine RLibMessage(r, num, a, b)
 			case 1
 			{
 				print "Normal screen-clearing";
-#ifset NEW_MENU
+#ifset USE_NEWMENU
 				print " and menus";
 #endif
 				" restored."
@@ -15866,7 +16905,7 @@ routine RLibMessage(r, num, a, b)
 			case 2
 			{
 				print "Normal screen-clearing";
-#ifset NEW_MENU
+#ifset USE_NEWMENU
 				print " and menus";
 #endif
 				" already set."
@@ -15874,7 +16913,7 @@ routine RLibMessage(r, num, a, b)
 			case 3
 			{
 				print "Screen-clearing disabled";
-#ifset NEW_MENU
+#ifset USE_NEWMENU
 				print " and simple menus enabled";
 #endif
 				"."
@@ -15904,7 +16943,7 @@ routine RLibMessage(r, num, a, b)
 				case 3
 				{
 					print "Normal screen-clearing";
-#ifset NEW_MENU
+#ifset USE_NEWMENU
 					print " and menus";
 #endif
 					" enabled."
@@ -15912,12 +16951,12 @@ routine RLibMessage(r, num, a, b)
 				case 4
 				{
 					print "Normal screen-clearing";
-#ifset NEW_MENU
+#ifset USE_NEWMENU
 					print " and menus";
 #endif
 					print " already enabled."
 				}
-#ifset NEW_MENU
+#ifset USE_NEWMENU
 				case 5
 					"\"Simple menus\" mode on."
 				case 6
@@ -16370,6 +17409,98 @@ routine RLibMessage(r, num, a, b)
 				case 1: print " "; a;
 				case 2: print ":"
 		}
+#ifset USE_NEWMENU
+		case &MakeMenu
+		{
+			select num
+				case 1 : "Opening menu..."
+				case 2
+				{
+					if (TERP & SIMPLE_TERP)
+					{
+						local l,i
+						l = string(_temp_string, a)
+						print to (40 - l/2-1);
+						print "+";
+						for (i=1;i<=l ;i++ )
+						{
+							print "-";
+						}
+						print "+"
+						print to (40 - l/2-1);
+						print "|";
+						print a;
+						print "|"
+						print to (40 - l/2 - 1);
+						print "+";
+						for (i=1;i<=l ;i++ )
+						{
+							print "-";
+						}
+						print "+"
+					}
+					else
+					{
+						Indent
+						print "\_ "; a
+						""
+					}
+				}
+				case 3 : "Window resized. Redrawing screen."
+		}
+		case &Menu
+		{
+			select num
+				case 1
+				{
+					if system(61)
+						locate 2, display.cursor_row
+					else
+						locate 1, display.cursor_row
+					print "[N]ext item"; to (display.linelength - 11); \
+		    				"[Q]uit menu"
+					if system(61)
+						locate 2, display.cursor_row
+					print "[P]revious item"; to (display.linelength - 17);
+					print "[Enter] to select"
+				}
+				case 2
+				{
+					! The CheapGlk version now works off numbers to make
+					! navigation as easy as possible in simple terps
+					print "Select the number of your choice or \"Q\" to exit: ";
+				}
+		}
+		case &Help_Hints
+		{
+			select num
+				case 1
+					"[Press 'H' for another hint, or 'Q' to quit]"; !;
+				case 2
+					print "[No more hints.  Press any key...]";
+				case 3
+					print "[No more hints.  Leaving page.]";
+		}
+		case &ShowPage
+		{
+			select num
+				case 1
+				{
+!					"[OPENING PAGE]"
+					if a.alt_name
+						print "(Opening \""; a.alt_name;"\")"
+					else
+						print "(Opening \""; a.name;"\")"
+				}
+				case 2
+					"[CLOSING PAGE]"
+		}
+		case &AfterMenu
+		{
+			select num
+				case 1: print "\I...and now returning to the story.\i"
+		}
+#endif
 		case &Parse
 		{
 			select num

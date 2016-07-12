@@ -1,0 +1,464 @@
+!\
+Roody's note-
+Treat this as a stub file and change whatever you want to fit your game.
+Include this file after "newmenu.h" (if not using Roodylib) or "roodylib.h"
+If using Roodylib, be sure to #set USE_NEWMENU
+\!
+
+#if undefined menu_category
+#ifset _ROODYLIB_H
+#message error "#set USE_NEWMENU before roodylib.h is included"
+#else
+#message error "newmenu.h must be included before defaultmenu.hug!"
+#endif
+#endif
+
+#ifclear _ROODYLIB_H
+#set NO_ACCESSIBILITY
+#endif
+
+menu_category main_menu
+{
+#if defined GAME_TITLE
+	name GAME_TITLE
+#endif
+#if undefined GAME_TITLE
+	name "Help Menu"
+#endif
+}
+
+option hugo_choice "About Hugo"
+{
+	in main_menu
+!	priority 10
+	menu_text
+	{
+		Indent
+		"Hugo is a system created by Kent Tessman for developing and playing sophisticated computer adventure games (or \"interactive fiction\").\n"
+		Indent
+		"The complete system comprises a high-level programming language, world-simulation library, compiler, runtime engine, debugger, and other tools. Games can be designed for player input keyboard and/or mouse in addition to using Hugo's full-sentence natural-language parsing capabilities, and can make extensive use of graphics, sound, music, and video playback.\n"
+		Indent
+		"Hugo is powerful and versatile enough to have been used not only for games such as ";
+		Font(ITALIC_ON)
+#if defined GAME_TITLE
+		print GAME_TITLE;
+#endif
+#if undefined GAME_TITLE
+		print "Future Boy!";
+#endif
+		Font(ITALIC_OFF)
+		", but also for presentations and tutorials, prototyping, and other applications.\n"
+		Indent
+		"Hugo's cross-platform support is broad, including official implementations for Windows, Macintosh, Linux/Unix, Windows Mobile/Pocket PC, and Palm, with additional versions available for other platforms. The source code for all components is available.\n"
+		Indent
+		"\BHugo's official website:\b"
+		Indent
+		"\Ihttp://www.generalcoffee.com/index_noflash.php?content=hugo\i"
+		""
+		Indent
+		"\BHugo By Example, a Hugo code repository:\b"
+		Indent
+		"\Ihttp://hugo.gerynarsabode.org\i\n"
+		Indent
+		"\BThe joltcountry Hugo forum:\b"
+		Indent
+		"\Ihttp://www.joltcountry.com/phpBB2/viewforum.php?f=8\i\n"
+		Indent
+		"Also! If you are a screenwriter or would like to support
+		Kent Tessman in his current endeavors, check out his fantastic
+		program, Fade In Professional Screenwriting Software ®
+		(\Bhttp://www.fadeinpro.com\b)!"
+	}
+}
+
+menu_category how_play "How To Play Interactive Fiction"
+{
+	in main_menu
+!	priority 8
+}
+
+option where_choice "Where To Get More IF"
+{
+	in main_menu
+!	priority 6
+	menu_text
+	{
+		Indent
+		"\BMore Hugo games can be found at:\b"
+		Indent
+		"\Ihttp://ifarchive.org/indexes/if-archiveXgamesXhugo.html\i"
+		Indent(true)
+		"\BOther sites of interest:\b"
+		Indent
+		"The Brass Lantern (\Ihttp://brasslantern.org/\i)"
+		Indent
+		"The People's Republic of Interactive Fiction
+		(\Ihttp://pr-if.org/play/\i)"
+		Indent
+		"The IF Database (\Ihttp://ifdb.tads.org/\i)"
+		Indent
+		"IF Reviews (\Ihttp://www.ifreviews.org/\i)"
+		Indent
+		"The IF Archive (\Ihttp://ifarchive.org/\i)"
+
+!		"\Ihttp://www.joltcountry.com/phpBB2/viewforum.php?f=8\i\n"
+	}
+}
+
+#ifset _ROODYLIB_H
+option special_choice "Special Commands"
+{
+	in main_menu ! (should be added to main_menu by menulib object
+	menu_text
+	{
+#ifset NO_ACCESSIBILITY
+		local cheap
+#endif
+		if not cheap
+		{
+			Indent
+			"\BAdditional commands:\b\n"
+		}
+		SpecialCommands
+	}
+	option_available
+	{
+		local i
+		for i in init_instructions
+		{
+			if &i.usage_desc
+				break
+		}
+		return i
+	}
+}
+
+routine SpecialCommands
+{
+	local i, sum, nl, skip
+#ifclear NO_ACCESSIBILITY
+	skip = cheaplib
+#endif
+	i = child(init_instructions)
+	while i
+	{
+		if &i.usage_desc and i ~= skip
+		{
+			if nl
+			{
+				""
+				nl = false
+			}
+			if i.usage_desc
+			{
+				nl = true
+				sum++
+			}
+		}
+		i = younger(i)
+	}
+	if skip
+	{
+!		Indent
+!		Font(BOLD_ON)
+!		if sum
+!		{
+!			print "\nAdditionally, if you are playing with a screen reader or
+!			simple console window interpreter, the following commands may help:"
+!		}
+!		else
+!			print "The following commands exist to help gameplay with screen
+!			readers and simple console window interpreters:"
+!		Font(BOLD_OFF)
+		if nl
+			""
+		run skip.usage_desc
+		sum++
+	}
+	if not sum
+	{
+		Indent
+		"Sorry, it appears that there are no special features supported by your
+		interpreter. Try the official Hugo interpreter or Hugor TODAY!"
+	}
+}
+#endif  ! ifset _ROODYLIB_H
+
+option what_is "What is \"interactive fiction\"?"
+{
+	in how_play
+!	priority 10
+	menu_text
+	{
+		Indent
+		"In interactive fiction, you, the player, will be appraised of
+		your surroundings and happenings in the game by largely textual means.
+		You get the chance to interact with these surroundings by typing
+		commands (read the other entries in this menu for examples of the kind
+		of commands that are accepted). Hopefully, you are rewarded for your
+		efforts with engaging puzzles and entertaining prose!"
+	}
+}
+
+option move_around "Moving around"
+{
+	in how_play
+!	priority 8
+	menu_text
+	{
+		Indent
+		"Everything described in your current location should be available to
+		interact with (unless it is explicitly out-of-reach), so rest assured, you
+		should almost never have to \B>WALK OVER TO THING\b. This is a common
+		misunderstanding.\n"
+		Indent
+		"That said, you \Ido\i need to move from room to room. Most of the time,
+		this will involve going in compass directions (\BGO SOUTH. GO NORTHWEST.\b). Such directions can be abbreviated further (\BS. NW.\b).\n"
+		Indent
+		"All in all, eight compass directions are usually accepted (\BNORTH\b, \BNORTHEAST\b, \BEAST\b, \BSOUTHEAST\b, \BSOUTH\b, \BSOUTHWEST\b, \BWEST\b, AND \BNORTHWEST\b), along with the directions \"\BUP\b\",\"\BDOWN\b\",\"\BIN\b\", and \"\BOUT\b\".\n"
+		Indent
+		"Some games will demand shipboard directions like \"\BAFT\b\",\"\BFORE\b\",\"\BSTARBOARD\b\", and \"\BPORT\b\" for certain areas, while some
+		games \Iwill\i accept a simple \B>GO TO <ROOM>\b. In both cases, it is
+		expected that the game will adequately inform you of your options.\n"
+
+		"Sometimes, you'll want to \BENTER\b, \BCLIMB\b, or \BGET ON\b something.
+		Later on, you may want to \BGET OFF\b, \BGET UP\b, or \BEXIT\b \Ithat
+		same object\i!"
+
+	}
+}
+
+option look_around "Looking around"
+{
+	in how_play
+!	priority 6
+	menu_text
+	{
+		Indent
+		"Getting a good look at things is important in interactive fiction. If
+		you've forgotten what the room looks like, you can always \B>LOOK\b or
+		\B>LOOK AROUND\b again to get another peek.\n"
+		Indent
+		"To get a closer look at objects (including yourself), you'll want to
+		\BEXAMINE\b or \BLOOK AT\b the object, like:\n"
+		Indent
+		"\B>EXAMINE FOOTPRINT\b\n"
+		Indent
+		"(To save time, \BEXAMINE\b can be shortened down to \BX\b.)\n"
+		Indent
+		"Some things can be \BSEARCH\bed or \BLOOK\b \BIN\b, too. In tougher
+		games, you may even need to \BLOOK BEHIND\b or \BLOOK UNDER\b something."
+	}
+}
+
+option talk_chars "Talking to characters"
+{
+	in how_play
+!	priority 4
+	menu_text
+	{
+		Indent
+		"In \"traditional\" IF, charactes can be interacted with using four major
+		commands:\n"
+		Indent
+		"\BASK <CHARACTER> ABOUT <SUBJECT>\b"
+		Indent
+		"\BTELL <CHARACTER> ABOUT <SUBJECT>\b"
+		Indent
+		"\BSHOW <OBJECT> TO <CHARACTER>\b"
+		Indent
+		"\BGIVE <OBJECT> TO <CHARACTER>\b\n"
+		Indent
+		"Additionally, sometimes characters can be given commands, using this
+		syntax:\n"
+		Indent
+		"\BDETECTIVE, FOLLOW ME\b"
+		Indent
+		"\BCLOWN, JUMP THROUGH HOOP\b\n"
+		Indent
+		"In newer games, though, it is common that a simple \"\BTALK TO
+		<CHARACTER>\b\" will handle all of your character-interacting needs."
+	}
+}
+
+option manip_objects "Manipulating objects"
+{
+	in how_play
+!	priority 2
+	menu_text
+	{
+		Indent
+		"Knowing how to work with object is very important to IF. To begin with,
+		sometimes your character will start off with objects in his or her
+		possession. To see what items you possess, try \B>TAKE INVENTORY\b. This
+		can be shortened down to \"\BINVENTORY\b\", \"\BINV\b\", or just
+		\"\BI\b\".\n"
+		Indent
+		"Now that you know what items you've got, you want MORE, right? To acquire
+		objects, try \BPICK UP <object>\b or \BGET <object>\b. To let it go, try
+		\BDROP <object>\b. Sometimes you'll even want to \BPUT <object> IN
+		<another object>\b or \BPUT <object> ON <another object>\b. Conversely,
+		you may want to \BTAKE <object> FROM\b or \BEMPTY\b objects.\n"
+		Indent
+		"A well-implemented game might cover lots of sensory verbs (like
+		\BSMELL\b, \BTASTE\b, \BLISTEN TO\b, or even \BTOUCH\b), but that can't
+		always be expected.\n"
+		Indent
+		"Here are some other common commands:\n"
+
+		local a ! ,b
+		while (true  and
+			not ((display.screenheight + 100) < display.windowlines))
+		    ! checking how many possible columns we can write
+		{          ! (although we end up using, at max, 5 since 5 looks nice
+			if a = 5 or (a*12 + INDENT_SIZE) >= display.linelength
+			{
+				break
+			}
+			a++
+		}
+		if not a
+			a = 6
+
+		PrintCommands(verblib,a)
+
+#ifset _VERBSTUB_G
+		Indent
+		"Less commonly, you might use the following:\n"
+		PrintCommands(verbstub,a)
+#endif  ! VERBSTUB_G
+		Indent
+		"Hopefully, that gives you some ideas!"
+	}
+}
+
+property verblib alias n_to
+property verbstub alias ne_to
+
+!\ Roody's note: replace this object and define as you like if you want
+  to change the suggested verbs for your game. \!
+
+object game_commands "game command list"
+{
+#ifset _ROODYLIB_H
+	in settings
+#endif
+	verblib "OPEN","CLOSE","LOCK","UNLOCK", \
+	"WEAR", "REMOVE","TURN ON","TURN OFF", "DRINK",  "EAT", \
+	"SIT" , "MOVE", "INSERT", "SEARCH"
+#ifset _VERBSTUB_G
+	verbstub "PUSH", "PULL", "YELL", "JUMP", \
+	"THROW","SLEEP", "KISS", "WAVE", "CLIMB", "WAKE", "SWIM", \
+	"DIG", "TIE", "BURN", "CUT"
+#endif
+}
+
+routine PrintCommands(prop,columns)
+{
+	local i
+	local n = 1
+
+#ifset NO_ACCESSIBILITY
+	local cheap
+#endif
+	if not cheap
+		Font(BOLD_ON|PROP_OFF)
+
+	while n <= game_commands.#prop
+	{
+		if game_commands.prop #n
+		{
+			if ((display.screenheight + 100) < display.windowlines)
+			{
+				if i++
+					print "\_   ";
+				else
+					Indent
+			}
+			else
+				print to (INDENT_SIZE + i++ * 12);
+			print game_commands.prop #n;
+		}
+		n++
+		if i >= columns
+		{
+			i = 0
+			""
+		}
+	}
+	print newline
+	""
+	Font(BOLD_OFF|PROP_ON)
+}
+
+option do_nothing "Doing nothing at all"
+{
+	in how_play
+!	priority 0
+	menu_text
+	{
+		Indent
+		"Sometimes the best thing to do is to do nothing and watch how things
+		play out. Since game time doesn't pass when one isn't typing commands,
+		you have to type \BWAIT\b. This will automatically make 1-3 turns pass
+		by, depending on what the game defaults to.\n"
+		Indent
+		"Alternatively, you can type \BWAIT <some number>\b to wait a specified
+		number of turns. \BWAIT\b can be shortened to \"\BZ\b\"."
+	}
+}
+
+#ifclear NO_XVERBS
+option saving_loading "Saving, restoring, and other \"meta\" commands"
+{
+	in how_play
+!	priority -2
+	menu_text
+	{
+		Indent
+		"Some commands don't affect the game world itself. They exist solely for
+		playing convenience. Some of them include-\n"
+		Indent
+		"\BSCORE\b- In a score-tracking game, this prints the current score."
+		Indent
+		"\BSAVE\b- Saves the game state to a file."
+		Indent
+		"\BRESTORE\b- Restores a saved game."
+		Indent
+		"\BQUIT\b- Ends a play session."
+		Indent
+		"\BRESTART\b- Restarts the game."
+		Indent
+		"\BUNDO\b- Undoes the previous turn."
+		Indent
+		"\BSCRIPT ON/OFF\b- Writes the prose (with commands) of your game to a
+		text file."
+		Indent
+		"\BRECORD ON/OFF\b- Writes only \Icommands\i to a file."
+		Indent
+		"\BPLAYBACK\b- Inserts commands from a recording (see previous command)
+		into the game."
+		Indent
+		"\BVERBOSE\b- Gives full description every time a room is entered."
+		Indent
+		"\BBRIEF\b- Full room description is only printed on the first visit (or
+		when LOOK is called)."
+		Indent
+		"\BSUPERBRIEF\b- Short room descriptions every time."
+		Indent
+		"\BDISPLAY WIDE/TALL\b- Forces listings (such as inventory) to be wide
+		or tall, depending.\n"
+		Indent
+		"Lastly, if you happen to misspell a word in a command, you can use the
+		\BOOPS\b command to fix it:\n"
+		Font(BOLD_ON)
+		">X MEF"
+		"You don't need to use the word \"mef.\"\n"
+		">OOPS ME"
+		"Looking good.\n"
+		Font(BOLD_OFF)
+		Indent
+		"So, how about that?"
+	}
+}
+#endif ! ifclear NO_XVERBS

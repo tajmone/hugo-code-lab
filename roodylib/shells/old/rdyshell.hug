@@ -10,7 +10,7 @@
 
 !:: Flags
 !#set BETA                ! Compile with the comments-in-transcripts library
-                          !   addition (requires "beta.h")
+                          !   addition
 !#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
                           !   available (type $? in game)
 !#set VERBSTUBS           ! Include the grammar and routines from verbstubs.g
@@ -56,11 +56,6 @@ constant RELEASE "1.0"
 #endif
 
 !::	Other Library Inclusions
-#ifclear USE_ROODYLIB
-#ifset BETA
-#include "beta.h"
-#endif
-#endif
 
 !::	Game Initialization	routine
 routine init

@@ -192,6 +192,19 @@ routine IsYounger(object1, object2)
 	return true
 }
 
+routine IsYoungerThan(obj1,obj2)
+{
+	local x
+	x = obj1
+	while x
+	{
+		x = elder(x)
+		if x = obj2
+			return true
+	}
+	return false
+}
+
 !\ Roody's note: PrintArrayList is like PropertyList except it doesn't
 print the total of objects (and it uses arrays and not property arrays).
 Written by Kent Tessman for Future Boy!
@@ -358,3 +371,403 @@ routine PickAnElement(arr,arg, rand)
 !		case "2": a = PickAnElement(basket_array, &IsEdible, true)
 !	print "The item is "; a.name
 !}
+
+!----------------------------------------------------------------------------
+!* ARRAY SORTING
+!----------------------------------------------------------------------------
+
+!\ Roody's note - SortArray and the comparison routines below were
+written by Christopher Tate.  It used to be a part of Roodylib, but as Roodylib
+has mostly moved on to "object sorting," these routines were moved over here. \!
+
+!-----------------------------------------------------------------------
+! SortArray() arguments:
+!
+! data = array to sort
+! num = number of elements in the array
+! comp_routine = the address of the comparison routine to use
+! beginn = beginning element to start with (for arrays not starting with 0 )
+
+routine SortArray(data_arr, num, comp_routine,beginn)
+{
+	local i
+	local did_swap
+
+	for (i = beginn; i < (beginn + num); i = i + 1)
+	{
+		local j
+		did_swap = false
+		for (j = (num + beginn - 1); j > i; j = j - 1)
+		{
+			local swap
+			swap = call comp_routine(array data_arr[j-1], array data_arr[j])
+			if swap
+			{
+				local tmp
+				tmp = array data_arr[j]
+				array data_arr[j] = array data_arr[j-1]
+				array data_arr[j-1] = tmp
+				did_swap = true
+			}
+		}
+		! if we didn't swap any elements, then the array is sorted
+		if not did_swap : return
+	}
+}
+
+! SortProp is a version that works off a property array
+!  obj = the object, prp = the property array to be sorted
+!  comp_routine = like above
+routine SortProp(obj, prp, comp_routine)
+{
+	local i
+	local did_swap
+
+	for (i = 1; i <= obj.#prp; i = i + 1)
+	{
+		local j
+		did_swap = false
+		for (j = obj.#prp ; j > i; j = j - 1)
+		{
+			local swap
+			swap = call comp_routine(obj.prp #(j-1), obj.prp #j)
+			if swap
+			{
+				local tmp
+				tmp = obj.prp #j
+				obj.prp #j = obj.prp #(j-1)
+				obj.prp #(j-1) = tmp
+				did_swap = true
+			}
+		}
+		! if we didn't swap any elements, then the array is sorted
+		if not did_swap : return
+	}
+}
+
+!-----------------------------------------------------------------------
+! SORT_ASCENDING() and SORT_DESCENDING()
+!
+! These simple comparison routines are provided to handle the
+! common cases of sorting a numeric array in ascending or
+! descending order.  For example, to sort an entire numeric array
+! called "data_arr" in ascending order, just do this:
+!
+! SortArray(data_arr, data_arr[], &SORT_ASCENDING)
+
+routine SORT_ASCENDING(obj1, obj2)
+{
+	return (obj1 > obj2)
+}
+
+routine SORT_DESCENDING(obj1, obj2)
+{
+	return (obj1 < obj2)
+}
+
+routine SORT_RANDOM(obj1, obj2)
+{
+	return (random(2) - 1)
+}
+
+!----------------------------------------------------------------------------
+!* PAUSING WITH TITLE_CAPTION
+!----------------------------------------------------------------------------
+!\ This changes the game's title caption to "press a key to continue" while
+   waiting for a key press. \!
+
+routine PauseWithCaption(pausetext)
+{
+	local save_title
+#ifset NO_ACCESSIBILITY
+	local cheap
+#endif
+	if display.title_caption and not cheap
+	{
+		save_title = display.title_caption
+		display.title_caption = "[PRESS A KEY TO CONTINUE]"
+	}
+	CoolPause(pausetext)
+	if save_title
+		display.title_caption = save_title
+}
+
+routine TopPauseWithCaption(pausetext)
+{
+	local save_title
+#ifset NO_ACCESSIBILITY
+	local cheap
+#endif
+	if display.title_caption and not cheap
+	{
+		save_title = display.title_caption
+		display.title_caption = "[PRESS A KEY TO CONTINUE]"
+	}
+	TopPause(pausetext)
+	if save_title
+		display.title_caption = save_title
+}
+
+!----------------------------------------------------------------------------
+!* EXTRA "NEW_DESCRIBEPLACE" OBJECTS
+!----------------------------------------------------------------------------
+
+!\ This breaks up the ParentofPlayerScenery object into two objects in case
+you need to fine-tune where they are listed. \!
+
+object parentofplayer
+{
+	in describeplace_settings
+	first_pass
+	{
+		local obj,ret
+		if player not in describe_loc and describe_loc = location
+		{
+			for obj in (Parent(player))
+			{
+				if obj is not hidden and obj ~= player
+					return true
+			}
+		}
+		return false
+	}
+	second_pass
+	{
+		local ret
+#ifset USE_RELATIVE_DESCRIPTIONS
+		if RelativeParent(parent(player)) and children(parent(player)) > 1 and
+			player not in describe_loc and describe_loc = location and
+			not (FORMAT & LIST_F)
+		{
+			local tempformat
+			tempformat = FORMAT
+			FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
+			DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | OVERRIDEHERE_F
+			list_nest = 2
+			! called WhatsIn and not ListObjects so the parent's listcontents
+			! property will be checked
+			ret = WhatsIn(parent(player))
+			FORMAT = tempformat
+		}
+		else
+		{
+#endif
+			list_nest = 1
+			if player not in describe_loc and describe_loc = location
+				ret = WhatsIn(Parent(player))
+#ifset USE_RELATIVE_DESCRIPTIONS
+		}
+#endif
+		print newline
+		list_nest = 0
+		return ret
+	}
+}
+
+object SceneryChildren
+{
+	in describeplace_settings
+	first_pass
+	{
+		local obj
+		for obj in describe_loc
+		{
+			if obj.type = scenery
+			{
+            if player not in obj and
+				(obj is open or obj is not openable or obj is platform or
+				obj is transparent) and obj is not quiet
+				{
+					local a
+					obj is not already_listed
+					for a in obj
+					{
+						if a is not hidden
+						{
+							return true
+						}
+					}
+				}
+			}
+		}
+		return false
+	}
+	second_pass
+	{
+		local obj, ret
+		for obj in describe_loc
+		{
+			if obj.type = scenery
+			{
+				obj is known
+				if player not in obj and
+					((obj is container and ((obj is openable and obj is open)  or
+					obj is not openable or obj is transparent))  or
+					obj is platform) and obj is not quiet
+				{
+					if not (FORMAT & DESCFORM_D)
+						print newline
+					list_nest = 1
+					if WhatsIn(obj)
+						ret = true
+				}
+			}
+			! For scenery-derived objects that may change the type
+			elseif obj is static, hidden
+#ifset MULTI_PCS
+				MakeKnown(obj)
+#else
+				obj is known
+#endif
+		}
+		print newline
+		list_nest = 0
+		return ret
+	}
+}
+
+routine ObjsWithNewDescs(place, for_reals)
+{
+	local obj, ret
+	if not for_reals
+	{
+		for obj in place
+		{
+#ifset USE_ATTACHABLES
+		! Exclude all attachables for now (and characters)
+			if obj is not living and not obj.type = attachable and
+				player not in obj and obj is not hidden and
+				(verbosity ~= 1 and obj.new_desc) and
+				obj is not already_printed
+#else
+			if obj is not living and player not in obj and
+				obj is not hidden and
+				(verbosity ~= 1 and obj.new_desc) and
+				obj is not already_printed
+#endif
+			{
+#ifset USE_PLURAL_OBJECTS
+				if (obj.identical_to).type = identical_class
+					obj is already_listed
+				else
+				{
+#endif
+					ret = true
+					obj is not already_listed
+#ifset USE_PLURAL_OBJECTS
+				}
+#endif
+			}
+			else
+				obj is already_listed
+		}
+		return ret
+	}
+	else
+	{
+		for obj in place
+		{
+			if player not in obj
+			{
+				if obj is not already_listed and
+					obj is not hidden and obj is not already_printed
+				{
+					if verbosity ~= 1
+						NewDescribe(obj)
+					if obj is already_listed ! did we print something?
+					{
+						ret = true
+						obj is already_printed
+					}
+				}
+			}
+		}
+		print newline
+		return ret
+	}
+}
+
+routine CharsWithNewDescs(describe_loc, for_reals)
+{
+	local obj
+	if not for_reals
+	{
+		for obj in describe_loc
+		{
+			if (obj is not hidden and obj is living and
+				 obj ~= player and (obj.new_desc and verbosity ~= 1) and
+				obj is not already_printed )
+			{
+				return true
+			}
+		}
+		return false
+	}
+	else
+	{
+		! List all characters, if any
+!		count = 0
+		for obj in describe_loc
+		{
+			if obj is hidden or obj is not living or
+				player in obj
+				obj is already_listed
+			else
+				obj is not already_listed
+		}
+		local ret
+		for obj in describe_loc
+		{
+			if obj is not already_listed
+			{
+!				print newline
+				if verbosity ~= 1
+					NewDescribe(obj)
+				if obj is already_listed  ! did we print something?
+				{
+					ret = true
+					obj is already_printed
+				}
+			}
+		}
+		print newline
+		return ret
+	}
+}
+
+routine NewDescribe(obj)
+{
+	local ListContents
+	obj is known
+
+	if list_nest = 1
+		print newline
+
+	AssignPronoun(obj)
+
+	if (not ListContents)
+	{
+		if verbosity = 1
+			return
+
+		local a
+		a = obj.new_desc
+
+		if a
+		{
+			Indent
+			print a ;
+		}
+		elseif not a
+			return
+	}
+!  "ListContents" section
+	obj is already_listed
+	obj is already_printed
+	AssignPronoun(obj)
+
+	! If INDENT_SIZE is 0, formatting may be thrown off when listing
+	! the contents of an object:
+	if INDENT_SIZE = 0:  need_newline = true
+
+}

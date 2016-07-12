@@ -18,8 +18,6 @@
 !* Library contribution inclusions
 !----------------------------------------------------------------------------
 #set USE_ROODYLIB        ! Compile with Roodylib
-!#set NEW_MENU            ! Compile with newmenu
-!#set USE_DEFAULT_MENU    ! Use newmenu's default menu functionality
 !#set PASTTENSE           ! Compile with "pasttense.h"
 
 !----------------------------------------------------------------------------
@@ -122,6 +120,7 @@
 !#set USE_FOOTNOTES            ! Use footnote code
 !#set HITCHHIKER_STYLE         ! All footnotes available all the time
 !#set USE_JUKEBOX              ! Use Roodylib music player manager
+!#set USE_NEWMENU              ! Use Roodylib's menu system replacement
 !#set USE_RELATIVE_DESCRIPTIONS ! Default room descriptions are different
                                ! if the player is in an enterable container
 !#set USE_ROLLABLES            ! Include Roodylib's object-rolling code

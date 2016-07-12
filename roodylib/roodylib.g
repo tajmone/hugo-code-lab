@@ -424,6 +424,9 @@ xverb "$nr"
 xverb "$nu"
 	* anything                              DoHugoFix
 
+xverb "$om"
+	*                                       DoHugoFix
+
 xverb "$on"
 	*                                       DoHugoFix
 
@@ -451,6 +454,8 @@ xverb "$pc"
 
 xverb "$pm"
 	*                                       DoHugoFix
+xverb "$pn"
+	*				DoHugoFix
 
 xverb "$rp"
 	*					DoHugoFix

@@ -25,10 +25,6 @@
 #include "roodylib.h"
 #endif
 
-#ifset NEW_MENU
-#include "newmenu.h"
-#endif
-
 #ifset PASTTENSE
 #include "pasttense.h"
 #endif
@@ -40,16 +36,6 @@
 #ifset USE_COLORLIB
 #include "colorlib.h"
 #endif
-
-#ifclear USE_ROODYLIB
-#ifset BETA
-#include "beta.h"
-#endif
-
-#ifset CHEAP
-#include "cheaplib.h"
-#endif
-#endif ! ifclear USE_ROODYLIB
 
 #ifset DEBUG
 replace last_library_object
