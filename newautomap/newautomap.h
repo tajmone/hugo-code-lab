@@ -1170,7 +1170,7 @@ routine FindMapHeight
 {
 	local mapping
 	mapping = (automaplib.MAP_ON or automaplib.AUTOMAP_ON or automaplib.FULL_ON )
-	if (printstatuslib.terp_type ~= GLK_TERP) or not mapping
+	if not (TERP & GLK_TERP)or not mapping
 		return 0
 	local a
 	a = statuswindow.find_height
@@ -1189,14 +1189,14 @@ routine DrawMapWindow
 	else
 	{
    !         if FORMAT & DESCFORM_F or (printstatuslib.terp_type = GLK_TERP)
-		if FORMAT & DESCFORM_F or (printstatuslib.terp_type = GLK_TERP)
+		if FORMAT & DESCFORM_F or (TERP & GLK_TERP)
 			print "\_";
 		print capital location.name;
 	}
 	if STATUSTYPE
 	{
 		locate 1, display.windowlines
-		if FORMAT & DESCFORM_F or (printstatuslib.terp_type = GLK_TERP)
+		if FORMAT & DESCFORM_F or (TERP & GLK_TERP)
 			print "\_";
 		StringPrint(_temp_string)
 	}

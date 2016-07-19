@@ -1120,13 +1120,13 @@ replace Indent(newl)
 {
 	local i
 
-	if newl or (display.cursor_column > 1 and FORMAT & LIST_F)
+	if newl or (display.cursor_column > 1 and (FORMAT & LIST_F))
 		print ""
 	if override_indent or display.cursor_column > 1
 		print AFTER_PERIOD;
 	elseif not (FORMAT & NOINDENT_F)
 	{
-		if FORMAT & LIST_F
+		if (FORMAT & LIST_F)
 		{
 			print to 2;
 		}
@@ -1212,14 +1212,14 @@ replace ListObjects(thisobj, conjunction)
 			! May have a leading "is" or "are" that needs to
 			! be printed at the head of the list
 
-			if FORMAT & ISORARE_F
+			if (FORMAT & ISORARE_F)
 			{
 				if list_count = 1 and id_count <= 1 and
 					obj is not plural
 					RLibMessage(&ListObjects,1, IS_WORD) ! "is"
 				else
 					RLibMessage(&ListObjects,1, ARE_WORD) ! "are"
-				if FORMAT & LIST_F
+				if (FORMAT & LIST_F)
 					RLibMessage(&ListObjects,2) ! ":"
 				FORMAT = FORMAT & ~ISORARE_F    ! clear it
 			}
@@ -1259,14 +1259,14 @@ replace ListObjects(thisobj, conjunction)
 			{
 				if id_count = 1
 				{
-					if FORMAT & FIRSTCAPITAL_F or FORMAT & LIST_F
+					if (FORMAT & FIRSTCAPITAL_F) or (FORMAT & LIST_F)
 						CArt(obj)
 					else
 						Art(obj)
 				}
 				else
 				{
-					if FORMAT & FIRSTCAPITAL_F or FORMAT & LIST_F
+					if (FORMAT & FIRSTCAPITAL_F) or (FORMAT & LIST_F)
 						print NumberWord(id_count, true);
 					else
 						print NumberWord(id_count);
@@ -1276,7 +1276,7 @@ replace ListObjects(thisobj, conjunction)
 					{
 						local k
 
-						if FORMAT & LIST_F
+						if (FORMAT & LIST_F)
 							print ":";
 						else
 							print " (";
@@ -1300,11 +1300,11 @@ replace ListObjects(thisobj, conjunction)
 								{
 									print "\n";
 									d = list_nest
-									if (verbroutine ~= &DoInventory, &DoLookIn,&DoLook) and  FORMAT & NOINDENT_F
+									if (verbroutine ~= &DoInventory, &DoLookIn,&DoLook) and  (FORMAT & NOINDENT_F)
 										d--
 									print to ((d ) * 2);	! INDENT_SIZE);
 								}
-								if FORMAT & LIST_F and verbroutine ~= &DoInventory
+								if (FORMAT & LIST_F) and verbroutine ~= &DoInventory
 									CArt(j)
 								else
 									Art(j)
@@ -1323,7 +1323,7 @@ replace ListObjects(thisobj, conjunction)
 				! Regular old non-plural, non-identical
 				! objects get listed here:
 
-				if (FORMAT & FIRSTCAPITAL_F or FORMAT & LIST_F) and
+				if ((FORMAT & FIRSTCAPITAL_F) or (FORMAT & LIST_F)) and
 					verbroutine ~= &DoInventory
 					CArt(obj)
 				else:  Art(obj)
@@ -1341,7 +1341,7 @@ replace ListObjects(thisobj, conjunction)
 		! each object immediately after that object (unless
 		! it is a SpecialDesc-printed description)
 
-		if obj is not hidden and FORMAT & LIST_F
+		if obj is not hidden and (FORMAT & LIST_F)
 		{
 			print newline
 			if children(obj)
@@ -1365,7 +1365,7 @@ replace ListObjects(thisobj, conjunction)
 	{
 		if count
 		{
-			if list_nest = 1 and FORMAT & ISORAREHERE_F
+			if list_nest = 1 and (FORMAT & ISORAREHERE_F)
 			{
 				if count + pluralcount > 1
 					print " "; ARE_WORD;
@@ -1417,7 +1417,7 @@ replace ListObjects(thisobj, conjunction)
 				(obj is not already_listed or
 					thisobj ~= location) and not ClothingCheck(obj)
 			{
-				if FORMAT & TEMPLIST_F
+				if (FORMAT & TEMPLIST_F)
 				{
 					FORMAT = FORMAT | LIST_F & ~TEMPLIST_F
 					i = true
@@ -1537,7 +1537,7 @@ replace WhatsIn(obj,dont_flush)
 	local i, totallisted
 	local initial_list_nest
 
-	if FORMAT & NORECURSE_F
+	if (FORMAT & NORECURSE_F)
 		return
 
 	for i in obj
@@ -1559,7 +1559,7 @@ replace WhatsIn(obj,dont_flush)
 		(obj is container and (obj is not openable or
 			(obj is openable and
 				(obj is open or obj is transparent)))) and
-		(obj ~= player or FORMAT & INVENTORY_F) and obj is not quiet
+		(obj ~= player or (FORMAT & INVENTORY_F)) and obj is not quiet
 	{
 		SpecialDesc(obj)
 
@@ -1578,7 +1578,7 @@ replace WhatsIn(obj,dont_flush)
 
 		if list_count = 0
 		{
-			if FORMAT & INVENTORY_F and not (FORMAT & LIST_F) and
+			if (FORMAT & INVENTORY_F) and not (FORMAT & LIST_F) and
 				list_nest = 0
 			{
 				print newline    ! was ' print "" '
@@ -1596,7 +1596,7 @@ replace WhatsIn(obj,dont_flush)
 
 		initial_list_nest = list_nest
 
-		if FORMAT & LIST_F
+		if (FORMAT & LIST_F)
 		{
 			if list_nest
 			{
@@ -1616,7 +1616,7 @@ replace WhatsIn(obj,dont_flush)
 
 		if obj.contains_desc    ! custom heading
 		{
-			if FORMAT & LIST_F
+			if (FORMAT & LIST_F)
 				RLibMessage(&WhatsIn, 1 )  !  ":"
 #ifset USE_RELATIVE_DESCRIPTIONS
 			FORMAT = FORMAT & ~FIRSTCAPITAL_F
@@ -1628,20 +1628,20 @@ replace WhatsIn(obj,dont_flush)
 		{
 			if obj = player
 			{
-				if FORMAT & LIST_F and list_count < totallisted
+				if (FORMAT & LIST_F) and list_count < totallisted
 					print "\n";
 
 				! "You are carrying..."
 				Message(&WhatsIn, 1, totallisted)
 
-				if FORMAT & LIST_F
+				if (FORMAT & LIST_F)
 					RLibMessage(&WhatsIn, 1 )  !  ":"
 			}
 			elseif obj is living and not obj.prep
 			{
 				! "X has..."
 				Message(&WhatsIn, 2, obj, totallisted)
-				if FORMAT & LIST_F
+				if (FORMAT & LIST_F)
 					RLibMessage(&WhatsIn, 1 )  !  ":"
 			}
 #ifset USE_RELATIVE_DESCRIPTIONS
@@ -1677,7 +1677,7 @@ replace SpecialDesc(obj)
 {
 	local a, c, flag, printed_blankline, d
 
-	if FORMAT & LIST_F
+	if (FORMAT & LIST_F)
 		return
 
 	list_count = 0
@@ -1691,7 +1691,7 @@ replace SpecialDesc(obj)
 		else
 			flag = false
 
-		if FORMAT & INVENTORY_F and obj = player and flag
+		if (FORMAT & INVENTORY_F) and obj = player and flag
 		{
 			if &a.inv_desc
 			{
@@ -1700,7 +1700,7 @@ replace SpecialDesc(obj)
 			}
 			if a.inv_desc
 			{
-				if FORMAT & LIST_F:  print newline
+				if (FORMAT & LIST_F):  print newline
 				AddSpecialDesc(a)
 			}
 		}
@@ -1714,13 +1714,13 @@ replace SpecialDesc(obj)
 			{
 				d++
 #ifset NEW_DESCRIBEPLACE
-				if FORMAT & DESCFORM_D and d > 1
+				if (FORMAT & DESCFORM_D) and d > 1
 					""
 				elseif not (FORMAT & DESCFORM_D)
 #endif
 					print newline
 				override_indent = false
-				if FORMAT & INVENTORY_F and FORMAT & NOINDENT_F and not printed_blankline
+				if (FORMAT & INVENTORY_F) and (FORMAT & NOINDENT_F) and not printed_blankline
 					print ""
 				printed_blankline = true
 				Indent
@@ -1742,7 +1742,7 @@ replace SpecialDesc(obj)
 			not a.list_contents and not ClothingCheck(a)
 			{
 #ifset NEW_DESCRIBEPLACE
-				if FORMAT & DESCFORM_D
+				if (FORMAT & DESCFORM_D)
 					""
 #endif
 				WhatsIn(a)
@@ -1782,7 +1782,7 @@ replace YesorNo
 			case "no", "n": ret = true
 			case else
 			{
-!				if FORMAT & DESCFORM_I and not count
+!				if (FORMAT & DESCFORM_I) and not count
 !					""
 				if ++count < 10
 					RlibMessage(&YesorNo, 1)	! ask "yes" or "no"
@@ -5538,10 +5538,10 @@ replace ShortDescribe(obj)
 	obj is not quiet
 	{
 #ifset NEW_DESCRIBEPLACE
-		if FORMAT & DESCFORM_D and not FORMAT & LIST_F
+		if (FORMAT & DESCFORM_D) and not (FORMAT & LIST_F)
 			""
 #endif
-		list_nest = (LIST_F = FORMAT & LIST_F)
+		list_nest = (LIST_F = (FORMAT & LIST_F))
 !		if FORMAT & LIST_F
 !			list_nest = 1
 !		else
@@ -9850,7 +9850,7 @@ routine ListClothesFirst(char)
 			FORMAT = FORMAT | USECHARNAMES_F
 		RLibMessage(&ListClothesFirst,1,char) ! "You are wearing"
 		ListObjects(char)
-		if FORMAT & USECHARNAMES_F
+		if (FORMAT & USECHARNAMES_F)
 			FORMAT = FORMAT & ~USECHARNAMES_F
 		else
 			FORMAT = FORMAT & ~USECHARNAMES_F
@@ -11434,7 +11434,7 @@ replace DoEnter
 		move player to object
 		if not object.after
 			VMessage(&DoEnter, 4)    ! "You get in..."
-		if FORMAT & DESCFORM_I
+		if (FORMAT & DESCFORM_I)
 			""
 		object is not quiet
 		DescribePlace(location)
@@ -12248,13 +12248,32 @@ still take a turn (so if you DON'T want that, you'll have to replace it).
 Just the same, I decided that with NO_LOOK_TURNS, LOOK IN defaults to
 not-taking-a-turn, so if you want it to take a turn, you'll have to replace it.
 
-Also, non-container, transparent items are now allowed. \!
+Also, non-container, transparent items are now allowed.
+
+The original Hugo routine only allowed "look in" to work on objects within
+reach.  I've added code so ALL transparent objects can be looked in even if
+the player is in an enterable object (like a chair).
+
+Of course, there might be some openable objects that you'd want the player
+to be able to look in even if they're in a parent object.  My best advice is
+to give the object the transparent attribute when it is opened and remove
+the attribute when it's closed.
+
+Conversely, if there's a transparent object you DON'T want the player to be
+able to look inside without being near (like a pool of water several yards
+away), you might want to remove the transparent attribute when the player
+enters a parent object (like a lifeguard chair) and give it back when the
+player exits it.\!
 
 replace DoLookIn
 {
 	local tempformat
 
-	if not CheckReach(object):  return false
+	if object is not transparent
+	{
+		if not CheckReach(object):  return false
+	}
+
 
 	if not light_source
 		VMessage(&DoLook, 1)     ! "It's too dark to see anything."
@@ -12564,7 +12583,7 @@ replace DoRestart
 	else
 	{
 		RlibMessage(&DoRestart, 1) ! "\nContinuing on."
-		if FORMAT & DESCFORM_I
+		if (FORMAT & DESCFORM_I)
 			""
 #ifclear USE_DARK_ROOM
 		elseif not FindLight(location)
@@ -12608,7 +12627,7 @@ routine RestoreResponse
 		InitScreen
 	PrintStatusLine
 	VMessage(&DoRestore, 1)         ! "Restored."
-	if FORMAT & DESCFORM_I
+	if (FORMAT & DESCFORM_I)
 		""
 #ifclear USE_DARK_ROOM
 	elseif not FindLight(location)
@@ -12876,7 +12895,7 @@ routine UndoResponse
 		else
 			word[a] = ""
 	}
-	if FORMAT & DESCFORM_I
+	if (FORMAT & DESCFORM_I)
 		""
 #ifclear USE_DARK_ROOM
 	elseif not FindLight(location)
@@ -13423,7 +13442,7 @@ replace Describeplace(place, long)
 		run place.initial_desc
 	}
 
-	if &place.list_contents and FORMAT & DESCFORM_F
+	if &place.list_contents and (FORMAT & DESCFORM_F)
 		print ""        ! for double-space-after-heading formatting
 
    ! A location may contain an overriding listing routine, as may any
@@ -13434,7 +13453,7 @@ replace Describeplace(place, long)
 		list_nest = 0
 
       ! For double-space-after-heading formatting:
-		if FORMAT & DESCFORM_F
+		if (FORMAT & DESCFORM_F)
 		{
 			for obj in place
 			{
@@ -13458,7 +13477,7 @@ replace Describeplace(place, long)
 				tempformat = FORMAT
 				FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
 				DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | OVERRIDEHERE_F
-				if FORMAT & LIST_F
+				if (FORMAT & LIST_F)
 				{
 					FORMAT = FORMAT & ~LIST_F       ! clear it
 					FORMAT = FORMAT | TEMPLIST_F
@@ -13515,7 +13534,7 @@ replace Describeplace(place, long)
 			if list_count > 1
 				FORMAT = FORMAT | USECHARNAMES_F
 			Indent
-			if FORMAT & LIST_F
+			if (FORMAT & LIST_F)
 			{
 				FORMAT = FORMAT & ~LIST_F       ! clear it
 				FORMAT = FORMAT | TEMPLIST_F
@@ -13579,7 +13598,7 @@ replace Describeplace(place, long)
 			}
 #endif
 			Indent
-			if FORMAT & LIST_F
+			if (FORMAT & LIST_F)
 			{
 				FORMAT = FORMAT & ~LIST_F       ! clear it
 				FORMAT = FORMAT | TEMPLIST_F
@@ -13684,25 +13703,35 @@ replace Describeplace(place, long)
 	}
 }
 #else
-! This constant needs to be declared with something higher if you are
-! adding additional elements into the mix
-#if undefined DESCRIBEPLACE_ELEMENTS
-#ifset NEW_DESC
-constant DESCRIBEPLACE_ELEMENTS 9
-#else
-constant DESCRIBEPLACE_ELEMENTS 7
-#endif
-#endif
-
 attribute already_printed
+property describe_loc alias misc
+
+property first_pass alias long_desc
+property second_pass alias short_desc
+property list_order alias n_to
+
+object describeplace_settings
+{
+	in settings
+	type settings
+	describe_loc 0
+	list_order ListParentofPlayerScenery \
+	           ListCharsWithDescs \
+	           ListCharsWithoutDescs \
+	           ListObjsWithDescs \
+	           ListObjsWithoutDescs \
+	           ListAttachablesChildren \
+	           HeldAttachables
+}
 
 replace Describeplace(place, long)
 {
-	local obj,  didprint
+	local obj,  didprint, i
 	local need_carriage
 
 	if not place
 		place = location
+	describeplace_settings.describe_loc = place
 
 	if AssignPronounsToRoom
 		NEW_PARSE &= ~PRONOUNS_SET
@@ -13796,15 +13825,18 @@ replace Describeplace(place, long)
 	for obj in place
 		obj is not already_printed
 
+	for obj in describeplace_settings
+		obj is not already_printed
+
 	if not place.list_contents
 	{
 		list_nest = 0
 		local a
-		while a < DescribePlaceArray[] and DescribePlaceArray[a]
+		for (i = 1 ;i <= describeplace_settings.#list_order ;i++)
 		{
-			need_carriage = call DescribePlaceArray[a](place)
-
-			if ((FORMAT & DESCFORM_F) and not a and
+			a = describeplace_settings.list_order #i
+			need_carriage = a.first_pass
+			if ((FORMAT & DESCFORM_F) and i=1 and
 				(not (FORMAT & DESCFORM_D) or (FORMAT & LIST_F)))
 			{
 				for obj in place
@@ -13826,9 +13858,9 @@ replace Describeplace(place, long)
 			if need_carriage
 			{
 				need_carriage = false
-				didprint = call DescribePlaceArray[a](place,true)
+				didprint = a.second_pass
+				a is already_printed
 			}
-			a++
 		}
 		print newline
 		need_newline = false
@@ -13838,11 +13870,14 @@ replace Describeplace(place, long)
 ! routine for listing the player's siblings when he or she is in or on an
 ! object in the room; also lists children of scenery (hopefully already
 ! mentioned in the room's long_desc
-routine ParentofPlayerScenery(place, for_reals)
+
+object ListParentofPlayerScenery
 {
-	local obj,ret
-	if not for_reals
+	in describeplace_settings
+	first_pass
 	{
+		local obj,ret, place
+		place = describeplace_settings.describe_loc
 		if player not in place and place = location
 		{
 			for obj in (Parent(player))
@@ -13864,17 +13899,17 @@ routine ParentofPlayerScenery(place, for_reals)
 					for a in obj
 					{
 						if a is not hidden
-						{
 							return true
-						}
 					}
 				}
 			}
 		}
 		return false
 	}
-	else
+	second_pass
 	{
+		local obj, ret, place
+		place = describeplace_settings.describe_loc
 #ifset USE_RELATIVE_DESCRIPTIONS
 		if RelativeParent(parent(player)) and children(parent(player)) > 1 and
 			player not in place and place = location and
@@ -13910,7 +13945,7 @@ routine ParentofPlayerScenery(place, for_reals)
 					obj is not openable or obj is transparent))  or
 					obj is platform) and obj is not quiet
 				{
-					if not (FORMAT & DESCFORM_D) or FORMAT & LIST_F
+					if not (FORMAT & DESCFORM_D) or (FORMAT & LIST_F)
 						print newline
 					list_nest = 1
 					if WhatsIn(obj)
@@ -13931,132 +13966,14 @@ routine ParentofPlayerScenery(place, for_reals)
 	}
 }
 
-!\ Roody's note: The above ParentofPlayerScenery clumps the parent's and
-scenery's listing together in "doublespace" mode.  If you'd prefer to keep
-them separate, you can use the routines below.  You'd just need to change
-the DescribePlaceArray to include them, like:
-	DescribePlaceArray[0] = &ParentofPlayer, &SceneryChildren
-	 &ObjsWithDescs,&ObjsWithoutDescs,
-	&CharsWithDescs, &CharsWithoutDescs,
-	&AttachablesChildren, &ListHeldAttachables
-
-	(You might have to define the DESCRIBEPLACE_ELEMENTS constant with a higher
-	number before Roodylib is included, too)
-\!
-
-!routine ParentofPlayer(place, for_reals)
-!{
-!	local obj,ret
-!	if not for_reals
-!	{
-!		if player not in place and place = location
-!		{
-!			for obj in (Parent(player))
-!			{
-!				if obj is not hidden and obj ~= player
-!					return true
-!			}
-!		}
-!		return false
-!	}
-!	else
-!	{
-!#ifset USE_RELATIVE_DESCRIPTIONS
-!		if RelativeParent(parent(player)) and children(parent(player)) > 1 and
-!			player not in place and place = location and
-!			not (FORMAT & LIST_F)
-!		{
-!			local tempformat
-!			tempformat = FORMAT
-!			FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
-!			DESCRIBEPLACEFORMAT = DESCRIBEPLACEFORMAT | OVERRIDEHERE_F
-!			list_nest = 2
-!			! called WhatsIn and not ListObjects so the parent's listcontents
-!			! property will be checked
-!			ret = WhatsIn(parent(player))
-!			FORMAT = tempformat
-!		}
-!		else
-!		{
-!#endif
-!			list_nest = 1
-!			if player not in place and place = location
-!				ret = WhatsIn(Parent(player))
-!#ifset USE_RELATIVE_DESCRIPTIONS
-!		}
-!#endif
-!		print newline
-!		list_nest = 0
-!		return ret
-!	}
-!}
-!
-!routine SceneryChildren(place, for_reals)
-!{
-!	local obj,ret
-!	if not for_reals
-!	{
-!		for obj in place
-!		{
-!			if obj.type = scenery
-!			{
-!            if player not in obj and
-!				(obj is open or obj is not openable or obj is platform or
-!				obj is transparent) and obj is not quiet
-!				{
-!					local a
-!					obj is not already_listed
-!					for a in obj
-!					{
-!						if a is not hidden
-!						{
-!							return true
-!						}
-!					}
-!				}
-!			}
-!		}
-!		return false
-!	}
-!	else
-!	{
-!		for obj in place
-!		{
-!			if obj.type = scenery
-!			{
-!				obj is known
-!				if player not in obj and
-!					((obj is container and ((obj is openable and obj is open)  or
-!					obj is not openable or obj is transparent))  or
-!					obj is platform) and obj is not quiet
-!				{
-!					if not (FORMAT & DESCFORM_D)
-!						print newline
-!					list_nest = 1
-!					if WhatsIn(obj)
-!						ret = true
-!				}
-!			}
-!			! For scenery-derived objects that may change the type
-!			elseif obj is static, hidden
-!#ifset MULTI_PCS
-!				MakeKnown(obj)
-!#else
-!				obj is known
-!#endif
-!		}
-!		print newline
-!		list_nest = 0
-!		return ret
-!	}
-!}
-
 ! routine for listing characters with short_desc descriptions
-routine CharsWithDescs(place, for_reals)
+object ListCharsWithDescs
 {
-	local obj
-	if not for_reals
+	in describeplace_settings
+	first_pass
 	{
+		local obj,place
+		place = describeplace_settings.describe_loc
 		for obj in place
 		{
 			if (obj is not hidden and obj is living and
@@ -14069,8 +13986,10 @@ routine CharsWithDescs(place, for_reals)
 		}
 		return false
 	}
-	else
+	second_pass
 	{
+		local obj, place
+		place = describeplace_settings.describe_loc
 		! List all characters, if any
 !		count = 0
 		for obj in place
@@ -14090,7 +14009,7 @@ routine CharsWithDescs(place, for_reals)
 		{
 			if obj is not already_listed
 			{
-				if count++ and (FORMAT & DESCFORM_D) and not FORMAT & LIST_F
+				if count++ and (FORMAT & DESCFORM_D) and not (FORMAT & LIST_F)
 					""
 				if verbosity ~= 1 or (obj is not moved and &obj.initial_desc)
 					ShortDescribe(obj)
@@ -14105,63 +14024,14 @@ routine CharsWithDescs(place, for_reals)
 	}
 }
 
-#ifset NEW_DESC
-! routine for listing characters with short_desc descriptions
-routine CharsWithNewDescs(place, for_reals)
-{
-	local obj
-	if not for_reals
-	{
-		for obj in place
-		{
-			if (obj is not hidden and obj is living and
-				 obj ~= player and (obj.new_desc and verbosity ~= 1) and
-				obj is not already_printed )
-			{
-				return true
-			}
-		}
-		return false
-	}
-	else
-	{
-		! List all characters, if any
-!		count = 0
-		for obj in place
-		{
-			if obj is hidden or obj is not living or
-				player in obj
-				obj is already_listed
-			else
-				obj is not already_listed
-		}
-		local ret
-		for obj in place
-		{
-			if obj is not already_listed
-			{
-!				print newline
-				if verbosity ~= 1
-					NewDescribe(obj)
-				if obj is already_listed  ! did we print something?
-				{
-					ret = true
-					obj is already_printed
-				}
-			}
-		}
-		print newline
-		return ret
-	}
-}
-#endif
-
 ! routine for listing characters without short_desc descriptions
-routine CharsWithoutDescs(place,for_reals)
+object ListCharsWithoutDescs
 {
-	local tempformat, count, obj
-	if not for_reals
+	in describeplace_settings
+	first_pass
 	{
+		local obj,place
+		place = describeplace_settings.describe_loc
 		for obj in place
 		{
 			if (obj is not hidden and obj is living and
@@ -14173,23 +14043,18 @@ routine CharsWithoutDescs(place,for_reals)
 		}
 		return false
 	}
-	else
+	second_pass
 	{
+		local tempformat, count, obj, place
+		place = describeplace_settings.describe_loc
 #ifset USE_RELATIVE_DESCRIPTIONS
-		local also_check, a, b, i
+		local also_check
 		if not (FORMAT & LIST_F)
 		{
-			for (i=0;i < DescribePlaceArray[] ;i++ )
-			{
-				if DescribePlaceArray[i] = &CharsWithoutDescs
-					a = i
-				elseif DescribePlaceArray[i] = &ObjsWithoutDescs
-					b = i
-				if (a and b) or not DescribePlaceArray[i]
-					break
-			}
-			if b < a and b
-				also_check = call DescribePlaceArray[b](place)
+			if ListObjsWithoutDescs is already_printed
+				also_check = true
+!			if IsYoungerThan(self, ListObjsWithoutDescs)
+!				also_check = ListObjsWithoutDescs.first_pass
 		}
 #endif
 		for obj in place
@@ -14237,11 +14102,13 @@ routine CharsWithoutDescs(place,for_reals)
 }
 
 ! routine for listing objects with short_desc descriptions
-routine ObjsWithDescs(place, for_reals)
+object ListObjsWithDescs
 {
-	local obj, ret
-	if not for_reals
+	in describeplace_settings
+	first_pass
 	{
+		local obj, ret, place
+		place = describeplace_settings.describe_loc
 		for obj in place
 		{
 	#ifset USE_ATTACHABLES
@@ -14280,9 +14147,11 @@ routine ObjsWithDescs(place, for_reals)
 		}
 		return ret
 	}
-	else
+	second_pass
 	{
-		local count
+		local obj, ret
+		local count, place
+		place = describeplace_settings.describe_loc
 		for obj in place
 		{
 			if player not in obj
@@ -14307,75 +14176,14 @@ routine ObjsWithDescs(place, for_reals)
 	}
 }
 
-#ifset NEW_DESC
-routine ObjsWithNewDescs(place, for_reals)
-{
-	local obj, ret
-	if not for_reals
-	{
-		for obj in place
-		{
-#ifset USE_ATTACHABLES
-		! Exclude all attachables for now (and characters)
-			if obj is not living and not obj.type = attachable and
-				player not in obj and obj is not hidden and
-				(verbosity ~= 1 and obj.new_desc) and
-				obj is not already_printed
-#else
-			if obj is not living and player not in obj and
-				obj is not hidden and
-				(verbosity ~= 1 and obj.new_desc) and
-				obj is not already_printed
-#endif
-			{
-#ifset USE_PLURAL_OBJECTS
-				if (obj.identical_to).type = identical_class
-					obj is already_listed
-				else
-				{
-#endif
-					ret = true
-					obj is not already_listed
-#ifset USE_PLURAL_OBJECTS
-				}
-#endif
-			}
-			else
-				obj is already_listed
-		}
-		return ret
-	}
-	else
-	{
-		for obj in place
-		{
-			if player not in obj
-			{
-				if obj is not already_listed and
-					obj is not hidden and obj is not already_printed
-				{
-					if verbosity ~= 1
-						NewDescribe(obj)
-					if obj is already_listed ! did we print something?
-					{
-						ret = true
-						obj is already_printed
-					}
-				}
-			}
-		}
-		print newline
-		return ret
-	}
-}
-#endif
-
 ! routine for listing objects without short_desc descriptions
-routine ObjsWithoutDescs(place, for_reals)
+object ListObjsWithoutDescs
 {
-	local obj, tempformat, count
-	if not for_reals
+	in describeplace_settings
+	first_pass
 	{
+		local obj, place
+		place = describeplace_settings.describe_loc
 		for obj in place
 		{
 #ifset USE_ATTACHABLES
@@ -14396,23 +14204,18 @@ routine ObjsWithoutDescs(place, for_reals)
 		}
 		return false
 	}
-	else
+	second_pass
 	{
+		local obj, tempformat, count, place
+		place = describeplace_settings.describe_loc
 #ifset USE_RELATIVE_DESCRIPTIONS
 		local also_check, a, b, i
-		if not FORMAT & LIST_F
+		if not (FORMAT & LIST_F)
 		{
-			for (i=0;i < DescribePlaceArray[] ;i++ )
-			{
-				if DescribePlaceArray[i] = &CharsWithoutDescs
-					a = i
-				elseif DescribePlaceArray[i] = &ObjsWithoutDescs
-					b = i
-				if (a and b) or not DescribePlaceArray[i]
-					break
-			}
-			if b > a and a
-				also_check = call DescribePlaceArray[a](place)
+			if ListCharsWithoutDescs is already_printed
+				also_check = true
+!			if IsYoungerThan(self,ListCharsWithoutDescs)
+!				also_check = ListCharsWithoutDescs.first_pass
 		}
 #endif
 		for obj in place
@@ -14440,7 +14243,7 @@ routine ObjsWithoutDescs(place, for_reals)
 			tempformat = FORMAT
 			FORMAT = FORMAT | FIRSTCAPITAL_F | ISORAREHERE_F
 			Indent
-			if FORMAT & LIST_F
+			if (FORMAT & LIST_F)
 			{
 				FORMAT = FORMAT & ~LIST_F       ! clear it
 				FORMAT = FORMAT | TEMPLIST_F
@@ -14463,13 +14266,15 @@ routine ObjsWithoutDescs(place, for_reals)
 }
 
 ! routine for listing attachables and contents of scenery objects
-routine AttachablesChildren(place, for_reals)
+object ListAttachablesChildren
 {
+	in describeplace_settings
 #ifclear NO_OBJLIB
 #ifset USE_ATTACHABLES
-	local obj, ret,count
-	if not for_reals
+	first_pass
 	{
+		local obj, ret, place
+		place = describeplace_settings.describe_loc
 		for obj in place
 		{
 			! Print attachables last
@@ -14482,15 +14287,17 @@ routine AttachablesChildren(place, for_reals)
 		}
 		return ret
 	}
-	else
+	second_pass
 	{
+		local obj, ret, count, place
+		place = describeplace_settings.describe_loc
 		for obj in place
 		{
 			! Print attachables last
 			if obj.type = attachable and obj is not hidden and
 				obj is not already_printed
 			{
-				if count++ and FORMAT & DESCFORM_D and not (FORMAT & LIST_F)
+				if count++ and (FORMAT & DESCFORM_D) and not (FORMAT & LIST_F)
 					""
 				ShortDescribe(obj)
 				if obj is not already_listed
@@ -14508,12 +14315,14 @@ routine AttachablesChildren(place, for_reals)
 #endif  ! ifclear NO_OBJLIB
 }
 
-routine ListHeldAttachables(place, for_realz)
+object HeldAttachables
 {
+	in describeplace_settings
 #ifset USE_ATTACHABLES
-	local i,a,no_good, good, count
-	if not for_realz
+	first_pass
 	{
+		local i,a,no_good, good, place
+		place = describeplace_settings.describe_loc
 		for i in player
 		{
 			no_good = 0
@@ -14545,99 +14354,53 @@ routine ListHeldAttachables(place, for_realz)
 		}
 		return false
 	}
-	for i in player
+	second_pass
 	{
-		no_good = 0
-		good = 0
-		if i.type = attachable
+		local i,a,no_good, good, count, place
+		place = describeplace_settings.describe_loc
+		for i in player
 		{
-			if Inlist(i,attached_to,player)
-				no_good = true
-			if not no_good
+			no_good = 0
+			good = 0
+			if i.type = attachable
 			{
-				for (a=1; a<=i.#attached_to; a++)
+				if Inlist(i,attached_to,player)
+					no_good = true
+				if not no_good
 				{
-					if i.attached_to #a
+					for (a=1; a<=i.#attached_to; a++)
 					{
-						if not Contains(player,i.attached_to #a)
+						if i.attached_to #a
 						{
-							if FindObject(i.attached_to #a,place)
+							if not Contains(player,i.attached_to #a)
 							{
-								good = true
-								break
+								if FindObject(i.attached_to #a,place)
+								{
+									good = true
+									break
+								}
 							}
 						}
 					}
-				}
-				if good
-				{
-					if count++
-						print AFTER_PERIOD;
-					else
-						Indent
-					RLibMessage(&DescribePlace,2, i) ! "The <blank> you are
-																  !  holding is tied to the
-																  !  <blank>."
+					if good
+					{
+						if count++
+							print AFTER_PERIOD;
+						else
+							Indent
+						RLibMessage(&DescribePlace,2, i) ! "The <blank> you are
+																	  !  holding is tied to the
+																	  !  <blank>."
+					}
 				}
 			}
 		}
-	}
-	print newline
-	return count
-#endif
-}
-
-#ifclear NEW_DESC
-array DescribePlaceArray[DESCRIBEPLACE_ELEMENTS] = &ParentofPlayerScenery, \
-	&CharsWithDescs, &CharsWithoutDescs, &ObjsWithDescs, \
-	&ObjsWithoutDescs, &AttachablesChildren, &ListHeldAttachables
-#else
-array DescribePlaceArray[DESCRIBEPLACE_ELEMENTS] = &ParentofPlayerScenery, \
-	&CharsWithDescs,	&CharsWithNewDescs,	&CharsWithoutDescs, \
-	&ObjsWithDescs, &objsWithNewDescs, &ObjsWithoutDescs, \
-	&AttachablesChildren, &ListHeldAttachables
-#endif
-
-#endif
-
-#ifset NEW_DESC
-routine NewDescribe(obj)
-{
-	local ListContents
-	obj is known
-
-	if list_nest = 1
 		print newline
-
-	AssignPronoun(obj)
-
-	if (not ListContents)
-	{
-		if verbosity = 1
-			return
-
-		local a
-		a = obj.new_desc
-
-		if a
-		{
-			Indent
-			print a ;
-		}
-		elseif not a
-			return
+		return count
 	}
-!  "ListContents" section
-	obj is already_listed
-	obj is already_printed
-	AssignPronoun(obj)
-
-	! If INDENT_SIZE is 0, formatting may be thrown off when listing
-	! the contents of an object:
-	if INDENT_SIZE = 0:  need_newline = true
-
-}
 #endif
+}
+#endif  ! NEW_DESCRIBEPLACE
 !----------------------------------------------------------------------------
 !* ADDITIONAL VERB AND UTILITY ROUTINES
 !----------------------------------------------------------------------------
@@ -14806,7 +14569,7 @@ routine DoPushDirTo
 !			move object to location
 			object is hidden
 		}
-		if FORMAT & DESCFORM_I
+		if (FORMAT & DESCFORM_I)
 			""
 	}
 
@@ -15821,6 +15584,51 @@ routine SpeakerCheck
 }
 
 !----------------------------------------------------------------------------
+!* "OPPORTUNITY" SYSTEM
+!----------------------------------------------------------------------------
+
+! Roody's note: Sometimes, it's cute to have special responces to actions or
+! words right after something has happened.  This system is just a simple
+! way of setting up for games that do a lot of this.
+#ifset USE_OPPORTUNE
+global current_opp ! current opportunity
+
+! A fuse so that each question is only answerable for one turn
+! opp_window = short for "opportunity window"
+fuse opp_window "(opp_window fuse)"
+{}
+
+event opp_window
+{
+	if not self.tick
+		current_opp = 0
+}
+
+class Question ! for Ballyhoo "egress" type questions
+{
+	type question
+}
+
+routine NewQuestion(new_question)
+{
+	current_opp = new_question
+	if not new_question.long_desc
+		print new_question.name
+	Activate (opp_window, 2) ! Starts the new timer
+}
+
+routine NewOpp(opportunity)
+{
+	current_opp = opportunity
+	Activate (opp_window, 2)
+}
+
+class opp
+{}
+#endif ! USE_OPPORTUNE
+
+
+!----------------------------------------------------------------------------
 !* TIME-KEEPING RESOURCES
 !----------------------------------------------------------------------------
 
@@ -16644,7 +16452,13 @@ routine GameTitle
 routine Copyright
 {
 #if defined AUTHOR
-	print "Copyright \#169 "; number build_year;
+	print "Copyright \#169 ";
+#if defined FIRST_PUBLICATION
+	print FIRST_PUBLICATION;
+#endif
+#if undefined FIRST_PUBLICATION
+	print number build_year;
+#endif
 	" by ";
 	print AUTHOR
 #endif
@@ -17394,7 +17208,7 @@ routine RLibMessage(r, num, a, b)
 			select num
 				case 1
 				{  ! "You are wearing";
-					if FORMAT & USECHARNAMES_F
+					if (FORMAT & USECHARNAMES_F)
 						print capital a.name;
 					else
 						print capital a.pronoun;

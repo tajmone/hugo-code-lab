@@ -77,8 +77,8 @@
                                ! examining characters (see documentation)
 !#set MULTI_PCS                ! Support for games where you play different
                                ! player characters visiting the same rooms
-!#set NEW_DESC                 ! like short_desc but doesn't demand a new line
-                               ! after being printed (experimental)
+!#set NEW_DESCRIBEPLACE        ! allows re-ordering of room contents and
+                               !  double-spaced listings
 !#set NEW_EMPTY                ! Use more robust DoEmpty behavior (see roodylib)
 !#set NEW_FUSE                 ! Experimental new fuse definition
 !#set NEW_ROOMS                ! Undoing after the first turn in a room shows
@@ -108,8 +108,6 @@
                                !  in an enterable object gives "You can't go
                                !  that way." instead of "You'll have to get
                                !  up/out."
-!#set USE_AFTER_UNDO           ! Use after_undo array to call routines
-                               !  after successful UNDOs
 !#set USE_BOXDRAW              ! Use quote box code
 !#set USE_CONFIG_SYSTEM        ! Use configuration-file-writing helper code
 !#set USE_DARK_ROOM            ! Dark rooms appear more room-like when entered

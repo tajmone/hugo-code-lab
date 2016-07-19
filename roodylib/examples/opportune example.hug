@@ -1,0 +1,288 @@
+!::
+! Opportunity System Example
+!::
+
+!:: Raise limits, if necessary (here are some of the limits you're likely to
+!   run into first).
+!$MAXROUTINES = 320
+!$MAXDICT = 1024
+!$MAXDICTEXTEND = 0 ! (needed for adding more dictionary words mid-game)
+
+!:: Flags
+!#set BETA                ! Compile with the comments-in-transcripts library
+                          !   addition (requires "beta.h")
+!#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
+                          !   available (type $? in game)
+#set VERBSTUBS           ! Include the grammar and routines from verbstubs.g
+                          !   and verbstubs.h, respectively
+!#set USE_ATTACHABLES     ! Use attachable items
+!#set USE_PLURAL_OBJECTS  ! Use plural objects
+!#set USE_ROLLABLES       ! Allow the pushing of mobile objects (needs Roodylib)
+#set USE_ROODYLIB
+#set USE_OPPORTUNE
+!#set USE_VEHICLES        ! Use vehicle objects
+#set VERSIONS            ! Print library versions at compile time
+
+!:: switches              ! example how one can add compiler switches to source
+!#switches -ls            ! print compilation stats to .LST file
+
+#ifset HUGOFIX
+#set DEBUG
+#endif
+
+!:: Constants and global variables (some constants must be set before hugolib
+!   is included):
+
+constant GAME_TITLE "Opportunity System Example"
+constant AUTHOR "Roody Yogurt"
+constant RELEASE "1.0"
+!constant BLURB "An Interactive Blah"
+!constant IFID "put-IFID here"
+!constant AFTER_PERIOD " "     ! include one space after full stops (as opposed
+                               !   to two)
+!constant INDENT_SIZE 0        ! no indentation in room descriptions and room
+                               !   content listings
+
+!:: Grammar Library Inclusions (grammar must come first)
+
+!\ Even if your game uses "verbstubs", you'd have to define "yes" and "no"
+   yourself like below, as "verbstubs.g" makes them xverbs (which do not use
+   a turn) \!
+
+verb "yes"
+	*                                       DoYes
+
+verb "no"
+	*                                       DoNo
+
+#ifset USE_ROODYLIB
+#include "roodylib.g"
+#endif
+
+! new grammar needs to be defined before the including verblib
+#include "verblib.g"        ! Verb Library
+
+#include "hugolib.h"        ! Standard  Hugo Library
+#ifset USE_ROODYLIB
+#include "roodylib.h"         ! Hugo  Library Updates
+#endif
+
+!::	Other Library Inclusions
+
+!::	Game Initialization	routine
+routine init
+{
+!: First Things First
+	SetGlobalsAndFillArrays
+!: Screen clear section
+#ifclear _ROODYLIB_H
+	CenterTitle("Hugo Interactive Fiction")
+	cls
+#ifset USE_PLURAL_OBJECTS
+	InitPluralObjects
+#endif
+#else
+	SimpleIntro
+	InitScreen
+!: Set up any special libraries
+	Init_Calls
+#endif
+!: Game opening
+	IntroText
+	MovePlayer(location)
+}
+
+
+routine SetGlobalsAndFillArrays
+{
+!\ Uncomment and modify this section if your game has scoring and ranking.
+	MAX_SCORE = 50
+	ranking[0] = "Amateur Adventurer"
+	ranking[1] = "Competent Door-Unlocker"
+	ranking[2] = "Bomb-Meddling Adventurer"
+	ranking[3] = "Master Magic Wand Finder"
+	ranking[4] = "The Genuine Article Sample Game Solver"
+	MAX_RANK = 4  \!
+! if using Roodylib, verbosity can be set to BRIEF, SUPERBRIEF, OR VERBOSE
+	verbosity = 2
+	counter = -1                    ! 1 turn before turn 0
+! statustype options: 0 = no status, 1 = score/turns, 2 = time
+! if using Roodylib, can be set to NO_STATUS, SCORE_MOVES, TIME_STATUS,
+! CUSTOM_STATUS, INFOCOM_STYLE, MILITARY_TIME
+	STATUSTYPE = INFOCOM_STYLE
+	TEXTCOLOR = DEF_FOREGROUND
+	BGCOLOR = DEF_BACKGROUND
+	SL_TEXTCOLOR = DEF_SL_FOREGROUND
+	SL_BGCOLOR = DEF_SL_BACKGROUND
+	INPUTCOLOR = MATCH_FOREGROUND
+	FORMAT = FORMAT | DESCFORM_F
+#if defined TITLECOLOR
+	TITLECOLOR = DEF_FOREGROUND
+#endif
+	prompt = ">"
+	DEFAULT_FONT = PROP_ON
+#if defined GAME_TITLE
+	display.title_caption = GAME_TITLE
+#endif
+#ifset _ROODYLIB_H
+	MakePlayer(you,2) ! sets player as you object, second person
+#else
+	player = you
+#endif
+	location = STARTLOCATION
+}
+
+routine IntroText
+{
+	"Try going south to see the system in action."
+#if defined DoVersion
+	""
+	DoVersion
+#endif
+
+}
+
+!::	Main game loop
+routine main
+{
+	counter = counter + 1
+	run location.each_turn
+	runevents
+	runscripts
+#ifset _ROODYLIB_H
+	SpeakerCheck
+#else
+	if parent(speaking) ~= location
+		speaking = 0
+#endif
+	PrintStatusLine
+#ifset _ROODYLIB_H
+	Main_Calls
+#endif
+}
+
+
+player_character you "you"
+{
+}
+
+room STARTLOCATION "Near White Wagon"
+{
+	long_desc
+		"You are standing on a gentle upslope of the grassy field, next to a
+		rather imposing trailer whose door is closed to the east. In dark
+		panorama, the field continues north and west -- and south, where a large
+		banner has been erected."
+
+	!  Going "south" four times will also leave the circus
+	s_to
+	{
+		local next_topic
+		select current_opp
+			case mystery : endflag = 3
+			case mammal : next_topic = mystery
+			case egress : next_topic = mammal
+			case 0 : next_topic = egress
+
+		if next_topic
+			NewQuestion(next_topic)
+	}
+	cant_go
+		"Sorry, you can't go anywhere else in this sample."
+}
+
+object pole "fiberglass pole"
+{
+	in STARTLOCATION
+	article "a"
+	noun "pole"
+	adjective "narrow" "fiberglass"
+	short_desc
+		"Part of a narrow pole is sticking out from under the wagon."
+	before
+	{
+		object
+		{
+			"You can't do anything with the pole in this example."
+		}
+		xobject
+		{
+			"You can't do anything with the pole in this example."
+		}
+	}
+}
+
+scenery banner_to_egress "banner"
+{
+	noun "banner" "egress"
+	article "the"
+	nearby
+	long_desc
+	"\n\"THIS WAY TO THE EGRESS.\""
+	is readable
+}
+
+replace DoYes
+{
+	if not current_opp
+		"Yes?"
+	else
+	{
+		select current_opp
+			case mammal: "Then you'd be helpless against this dangerous beast."
+			case mystery: endflag = 3
+			case egress: NewQuestion(mammal)
+	}
+	return true
+}
+
+replace DoNo
+{
+	if not current_opp
+		"You sound rather negative."
+	else
+	{
+		select current_opp
+			case egress: "Then you'd be helpless against this dangerous beast."
+			case mystery: "That's the spirit."
+			case mammal: NewQuestion(mystery)
+	}
+	return true
+}
+
+question egress
+{
+	long_desc
+		"Are you sure you're mentally and otherwise prepared to meet up with an
+		egress?"
+}
+
+question mammal
+{
+	long_desc
+		"Then you're fully aware of the ferociousness of this rare mammalian
+		species, right?"
+}
+
+question mystery
+{
+	long_desc
+		"Alright, so you know all about egresses.
+		 But do you really want to leave the circus in all of its mystery
+		 and all of its pageantry behind?"
+}
+
+object question_parse
+{
+	in preparse_instructions
+	type settings
+	execute
+	{
+		if current_opp and word[1] = "n"
+		{
+			word[1] = "no"
+			return true
+		}
+		return false
+	}
+}
