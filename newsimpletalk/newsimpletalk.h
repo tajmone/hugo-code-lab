@@ -1,10 +1,17 @@
 !\-----------------------------------------------------------------------
-NewSimpletalk.h version 2.3, based on code written by Robb Sherwin, updated and
+NewSimpletalk.h version 2.4, based on code written by Robb Sherwin, updated and
 turned into an includable library by Roody Yogurt.
 
 This extension does Photopia-style conversation menus.
 
 changelog
+
+	v 2.4 - Added DoQuickTalk routine to allow for commands like "talk <char> 1"
+	        so walkthroughs and such can work with the talk system. to use, add
+	        grammar like this to your game:
+verb "t","talk
+	* living "1"/"2"/"3"/"4"        DoQuickTalk
+	* number                        DoQuickTalk
 	v 2.3 - removed unnecessary word[2] check to allow command shortening
 	v 2.2 - fixed message routine bug
 	V 2.1 - added can_quit and loop_talk globals. can_quit defaults to true
@@ -83,14 +90,14 @@ routine Respond (char, line)
 #set _SIMPLETALK_H
 
 #ifset VERSIONS
-#message "NewSimpletalk.h version 2.3"
+#message "NewSimpletalk.h version 2.4"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj simpletalk_version "NewSimpleTalk Version 2.1"
+version_obj simpletalk_version "NewSimpleTalk Version 2.4"
 {
 	in included_extensions
 	desc_detail
@@ -116,7 +123,8 @@ array quips_array[MAX_QUIPS]
 replace DoTalk
 {
 	speaking = 0
-	if not xobject and word[2] ~= "about"
+	if (not xobject and word[2] ~= "about") or
+		(xobject >= 1 and xobject <= 4)
 	{
 		if object = player
 		{
@@ -136,10 +144,12 @@ replace DoTalk
 		else
 		{
 			local a,b
+			speaking = object
 			while true
 			{
 				b = Phototalk
 				a = higher(a,b)
+				xobject = 0
 				if not loop_talk or (loop_talk and (not MoreTalk or not b))
 					break
 				""
@@ -148,7 +158,7 @@ replace DoTalk
 			if a
 				SkipScript(object)
 #endif
-			speaking = 0 ! clear the speaking global as conversation is over
+!			speaking = 0 ! clear the speaking global as conversation is over
 		}
 		return true
 	}
@@ -182,15 +192,19 @@ routine Phototalk
 		if speaking.quip #x and (speaking.quip #x & AVAILABLE)
 		{
 			ok++
-			break
+			if not xobject
+				break
 		}
 	}
 
 ! Write contents to the screen
 	if ok
 	{
-		PhotoMessage(&PhotoTalk, 1) ! "Please select one:"
-		""
+		if not xobject or xobject < 0 or xobject > ok
+		{
+			PhotoMessage(&PhotoTalk, 1) ! "Please select one:"
+			""
+		}
 
 ! List the player's choices
 		for (x=1;  x <= speaking.#quips; x++)
@@ -198,34 +212,76 @@ routine Phototalk
 			if QuipOn(speaking, x) and z < MAX_QUIPS
 			{
 				quips_array[z++] = x
-				print "("; number z; ")";
-				SayQ(speaking,x)
+				if not xobject
+					PhotoMessage(&PhotoTalk, 2, z) ! "(#)"
+!				print "("; number z; ")";
+				if not xobject or xobject = z
+					SayQ(speaking,x)
 			}
 		}
 
-		""
-! Get the choice
-		while true
+		if not xobject
 		{
-			selected = GetDial(z)
-			if can_quit or (not can_quit and selected)
-				break
+			""
+	! Get the choice
+			while true
+			{
+				selected = GetDial(z)
+				if can_quit or (not can_quit and selected)
+					break
+			}
 		}
+		else
+			selected = xobject
+
 		""
    	if (selected ~= 0)
  		{
 			Respond(speaking, quips_array[(selected-1)])
 		}
 		else
-		{
-		PhotoMessage(&Phototalk,2) ! "Eeeagh! Stage fright! Abort!"
-		}
+			PhotoMessage(&Phototalk,3) ! "Eeeagh! Stage fright! Abort!"
 		return selected
 	}
 
-	PhotoMessage(&PhotoTalk,3) ! "You really have nothing to say right now."
+	PhotoMessage(&PhotoTalk,4) ! "You really have nothing to say right now."
 }
 
+routine DoQuickTalk
+{
+	local r
+	local i = 1
+	while word[(i+1)] ~= ""
+	{
+		i++
+	}
+		if i > 2
+		{
+			select word[i]
+				case "1": r = 1
+				case "2" : r = 2
+				case "3" : r = 3
+				case "4" : r = 4
+				case "5" : r = 5
+		}
+
+	if not r
+	{
+		if speaking
+		{
+			r = object
+			object = speaking
+		}
+		else
+		{
+			"It is unclear whom you are speaking to."
+			return
+		}
+	}
+	else
+		speaking = object
+	return Perform(&DoTalk, speaking, r)
+}
 
 routine GetDial(max)
 {
@@ -305,8 +361,9 @@ routine PhotoMessage(r, num, a, b)
 		{
 			select num
 				case 1: "Please select one:"
-				case 2: "Eeeagh! Stage fright! Abort!"
-				case 3: "You really have nothing to say right now."
+				case 2: print "("; number a; ")";
+				case 3: "Eeeagh! Stage fright! Abort!"
+				case 4: "You really have nothing to say right now."
 		}
 		case &GetDial
 		{

@@ -15,6 +15,10 @@ constant ROODYVERSION "4.1.2"
 #ifset USE_CONFIG_SYSTEM
 #set USE_TIME_SYSTEM
 #endif
+
+#ifset DEBUG
+#set HUGOFIX
+#endif
 !----------------------------------------------------------------------------
 !* SOME RANDOM CONSTANTS AND PROPERTIES AND STUFF
 !----------------------------------------------------------------------------
@@ -42,6 +46,7 @@ enumerate step * 2
 enumerate start = 32, step * 2
 {
 	FINDOBJECT_LIVING, FINDOBJECT_FOUND , FINDOBJECT_CALLED
+	FIRSTCOMMAND_F          ! first command of input?
 }
 
 ! if newmenu.h is going to be included, it's easier to just declare the
@@ -644,8 +649,8 @@ replace AssignPronoun(obj,force)
 				a = true
 		}
 
-!	if not a and NEW_PARSE & PRONOUNS_SET and not force:  return
-	if NEW_PARSE & PRONOUNS_SET and not force:  return
+!	if not a and parser_data[LAST_PARSER_STATUS] & PRONOUNS_SET and not force:  return
+	if parser_data[LAST_PARSER_STATUS] & PRONOUNS_SET and not force:  return
 	if obj is not living
 	{
 		if obj is not plural
@@ -665,7 +670,7 @@ replace AssignPronoun(obj,force)
 			him_obj = obj
 	}
 	if force
-		NEW_PARSE |= PRONOUNS_SET
+		parser_data[LAST_PARSER_STATUS] |= PRONOUNS_SET
 }
 
 !\ Roody's note: I created a routine for establishing rules for objects
@@ -826,6 +831,8 @@ replace CharMove(char, dir)
 
 	local newroom, a
 
+	general = 1
+
 	if dir.type ~= direction
 		return
 
@@ -849,7 +856,7 @@ replace CharMove(char, dir)
 			a = 0
 	}
 
-	if char in location and not a
+	if char in location and not a and general = 1
 	{
 		Message(&CharMove, 1, char, dir)
 		event_flag = true
@@ -865,7 +872,7 @@ replace CharMove(char, dir)
 	}
 #endif
 
-	if char in location and not a
+	if char in location and not a and general = 1
 	{
 		Message(&CharMove, 2, char, dir)
 		event_flag = true
@@ -874,6 +881,8 @@ replace CharMove(char, dir)
 		event_flag = true
 
 #endif  ! ifclear NO_OBJLIB
+
+	general = 0 ! always reset it
 
 	run parent(char).after
 
@@ -1832,8 +1841,11 @@ replace DoHugoFix
 
 		"Monitoring:\n\
 		\_    $on - Toggle object numbers"
-		if hugor is switchedon
-			"\_    $om - Hugor opcode monitor on/off"
+		if opcodeterp is switchedon
+		{
+			"\_    $om - Opcode monitor on/off"
+			"\_    $oa - Opcode audit"
+		}
 #ifclear NO_SCRIPTS
 	       "\_    $sc - Script monitor on/off"
 #endif
@@ -2090,13 +2102,22 @@ replace DoHugoFix
 		system(21)
 		"[Random numbers now normalized]"
 	}
+	case "$oa"
+	{
+		if opcodeterp is not switchedon
+			"[Opcode-enabled interpreter not detected. Opcode monitor not
+			turned on.]"
+		else
+			OpcodeAudit
+	}
 	case "$om"
 	{
-		if hugor is not switchedon
-			"[Hugor not detected. Opcode monitor not turned on.]"
+		if opcodeterp is not switchedon
+			"[Opcode-enabled interpreter not detected. Opcode monitor not
+			turned on.]"
 		else
 		{
-			print "[Hugor opcode monitor";
+			print "[Opcode monitor";
 			OnorOff(D_OPCODE_MONITOR)
 		}
 	}
@@ -2973,7 +2994,7 @@ routine HugoFixInit
 				numb = key - 48
 			if numb and (numb > 0) and (numb < 9)
 			{
-				if not (numb = 8 and hugor is not switchedon)
+				if not (numb = 8 and opcodeterp is not switchedon)
 				{
 					ret = numb
 					break
@@ -3010,7 +3031,7 @@ routine HugoFixInit
 routine PrintHugoFixOptions
 {
 	local total, sel = 1
-	if hugor is switchedon
+	if opcodeterp is switchedon
 		total = 9
 	else
 		total = 8
@@ -3084,7 +3105,7 @@ routine PrintHugoFixOptions
 			}
 			case 8
 			{
-				print "Hugor Opcode Monitor (";
+				print "Opcode Monitor (";
 				if (debug_flags & D_OPCODE_MONITOR)
 					print "ON";
 				else
@@ -3190,7 +3211,7 @@ replace EndGame(end_type)
 		r = ProcessKey(word[1], end_type)
 		if r = -1
 		{
-			if display.needs_repaint
+			if display.needs_repaint and is_fluid_layout is not special
 			{
 				if RepaintScreen
 				{
@@ -3327,7 +3348,7 @@ replace ExcludeFromAll(obj)
 	if verbroutine =&DoGet and (word[1] = "remove" or
 	(word[1] = "take" and word[3] = "off")) and
 		xobject is living
-#ifclear AIF
+#ifset NO_WEARALL
 		return true
 #else
 	{
@@ -3370,7 +3391,7 @@ replace ExcludeFromAll(obj)
 	if verb_check
 #endif
 	{
-#ifset AIF
+#ifclear NO_WEARALL
 ! Make >WEAR ALL and >REMOVE ALL only acknowledge clothes
 		if obj is not clothing or (obj is clothing and
 		not (takeoff_check or wear_check))
@@ -3824,6 +3845,15 @@ object parse_disamb
 			{
 				parser_data[LAST_SINGLE_OBJECT] = disamb_holder.disamb_suspects #a
 				RestoreFromOldWord
+				if actor ~= player
+				{
+					InsertWord(1,2)
+					word[2] = "~and"
+!					if last_actor
+!						word[1] = last_actor.noun
+!					else
+					word[1] = actor.noun
+				}
 				return true
 			}
 		}
@@ -3967,7 +3997,7 @@ routine AnythingTokenCheck(obj,objloc)
 #ifset NEW_EMPTY
 		case &DoEmpty
 		{
-			if not parent(obj) or not FindObject(parent(obj),location)
+			if not parent(obj) or not FindObject(parent(obj),location,true)
 				failed_check = true
 #ifset DEBUG
 				if debug_flags & D_FINDOBJECT
@@ -4055,7 +4085,7 @@ replace HoursMinutes(val)
 	{
 		while hours > 12
 		{ hours -= 12 }
-		elseif hours = 0:  hours = 12
+		if hours = 0:  hours = 12
 	}
 	else
 	{
@@ -4066,7 +4096,11 @@ replace HoursMinutes(val)
 		if hours < 10:  print "0";
 	}
 
-	print number hours; ":";
+	print number hours;
+#ifset NO_MILITARY_COLON
+	if not military
+#endif
+	print ":";
 	if minutes < 10
 		print "0";
 	print number minutes; " ";
@@ -4081,6 +4115,10 @@ replace HoursMinutes(val)
 		else
 			print "a.m.";
 	}
+#ifset NO_MILITARY_COLON
+	else
+		print "hours";
+#endif
 }
 
 ! Roody's note: this version doesn't reset event_flag when it's set to 2 and
@@ -4103,7 +4141,9 @@ replace MovePlayer(loc, silent, ignore)
 	if parent(loc) = 0
 		real_loc = loc
 	else
-		real_loc = parent(loc)
+		real_loc = parent(loc) ! no need to check deeper as the default Hugo
+		                       ! library doesn't really support being inside
+		                       ! an object within an object
 
 #ifset USE_ATTACHABLES
 	if ObjectisAttached(player, location, real_loc)
@@ -4201,8 +4241,15 @@ replace MovePlayer(loc, silent, ignore)
 		if lig and not silent
 		{
 #ifset NEW_ROOMS
-			if not location.first_visit
+			local firsttime
+#ifset MULTI_PCS
+			firsttime = not ObjectIsMovedVisited(location)
+#else
+			firsttime = location is not visited
+#endif
+			if not location.first_visit or firsttime
 				location.first_visit = counter + 1
+			location.first_visit #2 = counter + 1
 #endif
 #ifset MULTI_PCS
 			MakeMovedVisited(location)
@@ -4219,22 +4266,24 @@ replace MovePlayer(loc, silent, ignore)
 	return ret
 }
 
-global NEW_PARSE
+! some new globals mainly used by SpeakTo, although last_actor has
+! some additional uses
 global last_actor
 global last_verbroutine
 global previous_object
 global previous_xobject
 
+! These constants originally were used for a NEW_PARSE global but now is
+! used by parser_data[LAST_PARSER_STATUS], an existing but not-utilized
+! parser thing in hugolib
 enumerate start = 1, step *2
 {
-	WORDSSAVED_F            ! locks in the first actor, object, etc. called
-	MULTISPEAKTOAGAIN_F = 4 ! continued speakto commands *not* in a multicommand
 	PARSE$_F                ! was there a parse$ string in last command?
-	MULTICOMMAND_F          ! is a multiple-command line being interpreted?
+	                        ! 2 is reserved by PRONOUNS_SET
+	MULTICOMMAND_F = 4      ! is a multiple-command line being interpreted?
 	LAST_TURN_TRUE_F        ! did the last turn return true?
 	HIDE_COMMAND_F          ! set this if you want to temporarily hide
 	                        ! commands when SHOW_COMMANDS is set
-	SPEAKTO_F               ! order being parsed
 }
 
 ! Roody's note: Took out Parse's HugoFix code, as it tries to print parse$
@@ -4243,11 +4292,11 @@ replace Parse
 {
 	local a
 	local reparse
-	local temp_verb, temp_obj, temp_xobj
 	local JumpToEnd
+	local not_character_order
+	local command_words
 
 	ResetParse
-	NEW_PARSE = NEW_PARSE & ~SPEAKTO_F
 
 	list_nest = 0
 	event_flag = 0
@@ -4269,24 +4318,9 @@ replace Parse
 	last_verbroutine = verbroutine
 
 	! Allow the player object to override the parsing cycle completely
-	temp_verb = verbroutine
-	temp_obj = object
-	temp_xobj = xobject
-	verbroutine = &PreParse
-	object = nothing
-	xobject = nothing
-	if player.before
-	{
-		verbroutine = temp_verb
-		object = temp_obj
-		xobject = temp_xobj
-		parser_data[PARSER_STATUS] = 0
-		parser_data[LAST_PARSER_STATUS] = 0
+	! (moved to its own routine to lighten the local variable burden)
+	if PlayerPreParseOverride
 		return false
-	}
-	verbroutine = temp_verb
-	object = temp_obj
-	xobject = temp_xobj
 
 	if PreParseInstructions: reparse = true
 	if PreParse:  reparse = true            ! easily replaceable routine
@@ -4295,16 +4329,20 @@ replace Parse
 ! input refers to an unnecessary item of scenery (for example) which is
 ! nonetheless mentioned in the location description.
 
-	local command_words
 	! figure out the words in the current command
 	command_words = CurrentCommandWords
+
+	if VerbCheck(word[1]) and word[1] ~= "~and"
+		not_character_order = true
 	for (a=2; a<=command_words; a++)
 	{
 		local error
+		if VerbCheck(word[a]) and word[a] ~= "~and"
+			not_character_order = true
 		if word[a] = "then"  ! Allow for "then..." and "and then..."
 		{
 			! end of this command
-			word[a] = "."
+			word[a] = ""
 			command_words = a - 1
 			if word[(a-1)] = "~and"
 			{
@@ -4331,37 +4369,36 @@ replace Parse
 		}
 		elseif word[a] = "~and" and VerbCheck(word[a+1])
 		{
-		! this checks to make sure a character isn't ordered with an xverb
-		! command
-			if XVerbCheck(word[a+1])
+			if word[(a+1)] = "~and"
 			{
-				local safe
-				if last_actor and last_actor ~= player and
-					(word[(a+1)] = "g" or word[a+1] = "again") and
-					parser_data[PARSER_STATUS] ~= PARSER_RESET
-				{
-					if ObjWord(word[(a-1)], last_actor) = noun
-						safe = true
-				}
-				if not safe
-				{
-					ParseError(6) ! "That doesn't make any sense."
-					error = true
-				}
+				DeleteWord((a+1),1)
+				command_words--
 			}
-		! this runs the command through OrdersPreParse
-			elseif word[a+1] ~= "then"
+			elseif not_character_order
 			{
-				if word[(a+1)] = "~and"
+				word[a] = "then"
+				a--
+			}
+			else
+			{
+				! pass the phrase through the command parsing routine
+				if OrdersPreParse((a+1),command_words)
+					reparse = true
+				! and then check for commanding the NPC to do an xverb
+				if XVerbCheck(word[a+1])
 				{
-					DeleteWord((a+1),1)
-					command_words--
-				}
-				else
-				{
-					NEW_PARSE = NEW_PARSE | SPEAKTO_F
-					if OrdersPreParse((a+1),command_words)
-						reparse = true
+					local safe
+					if last_actor and last_actor ~= player and
+						(word[(a+1)] = "g" or word[a+1] = "again")
+					{
+						if ObjWord(word[(a-1)], last_actor) !  = noun
+							safe = true
+					}
+					if not safe
+					{
+						ParseError(6) ! "That doesn't make any sense."
+						error = true
+					}
 				}
 			}
 		}
@@ -4376,14 +4413,12 @@ replace Parse
 
 	! Last player-specified object
 	if object > 0 and object < objects and
-	not (NEW_PARSE & PRONOUNS_SET)
+		not (parser_data[LAST_PARSER_STATUS] & PRONOUNS_SET)
 		AssignPronoun(object)
 
 	! Must do this after AssignPronoun, and reset it to 0
 	! after both of Perform and ParseError:
 	parser_data[PARSER_STATUS] = PARSER_ACTIVE
-
-	parser_data[LAST_PARSER_STATUS] = 0
 
 !  MultiCommandInstructions returns false if a character is given an xverb
 !  command
@@ -4402,28 +4437,21 @@ replace Parse
 	elseif x = 2
 		reparse = true
 
-	if not (NEW_PARSE & SPEAKTO_F) and last_actor and last_actor ~= player
-		AssignPronoun(last_actor)
-
 	! To repeat last command
 	if (word[1] = "again" or word[1] = "g") and word[2] = ""
 	{
-		! if the last command had string grammar in it, the turn can't be
-		! repeated
-		if (NEW_PARSE & PARSE$_F)
+		if (parser_data[LAST_PARSER_STATUS] & PARSE$_F)
 		{
-			NEW_PARSE = NEW_PARSE & ~PARSE$_F
+			parser_data[LAST_PARSER_STATUS] &= ~PARSE$_F
 			RLibMessage(&Parse,1) ! "You will need to type that in again."
 			word[1] = ""            ! force ParseError(0)
 			words = 0
 			customerror_flag = true
 			return true
 		}
-		RestoreFromOldWord
-		! in the instance of CHARACTER, SOME ACTION followed by >AGAIN
-		! the next turn
-		if (NEW_PARSE & MULTISPEAKTOAGAIN_F) and ! speakto_again
-			(NEW_PARSE & WORDSSAVED_F)
+		RestoreFromOldWord(0,1) ! restore one command
+		if last_actor and last_actor ~= player and
+			parser_data[PARSER_STATUS] & FIRSTCOMMAND_F
 		{
 			if word[1]
 			{
@@ -4431,11 +4459,11 @@ replace Parse
 				word[2] = "~and"
 			}
 			word[1] = last_actor.noun
-			NEW_PARSE = NEW_PARSE & ~MULTISPEAKTOAGAIN_F ! clear it
 		}
-		elseif not oldword[0] or not (NEW_PARSE & WORDSSAVED_F)
+		if not oldword[0]
 			words = 0
-
+		else
+			command_words = CurrentCommandWords
 		reparse = true
 		JumpToEnd = true
 	}
@@ -4443,14 +4471,14 @@ replace Parse
 #ifclear NO_UNDO
 	if not (word[1] = "undo" and word[2] = "")
 #endif
-		NEW_PARSE = (NEW_PARSE & ~WORDSSAVED_F) & ~PARSE$_F
+		parser_data[LAST_PARSER_STATUS] &= ~PARSE$_F
 	if not JumpToEnd
 	{
 #ifclear NEW_STYLE_PRONOUNS
 		local n, number_pronouns
 #endif
 		local count
-		for (count=2; count<=command_words and word[count]~=""; count++)
+		for (count=2; count<=words and word[count]~=""; count++)
 		{
 			select word[count]
 				! Rename pronouns to appropriate objects
@@ -4496,7 +4524,7 @@ replace Parse
 							number_pronouns++
 							if n > 1
 								count = count + (n - 1)
-							NEW_PARSE |= PRONOUNS_SET
+							parser_data[LAST_PARSER_STATUS] |= PRONOUNS_SET
 							reparse = true
 						}
 					}
@@ -4519,18 +4547,6 @@ replace Parse
 #ifset USE_CHECKHELD
 		ParseCheckHeld
 #endif
-
-		! Store current command for future reference
-		! old word storage code. now replaced in Perform
-!		if not (NEW_PARSE & NEWPARSE_F) and not XVerbCheck(word[1])
-!		{
-! 			local ow = 1 ! oldword variable
-!			a = 1
-!			while word[a] ~= ""
-!				oldword[ow++] = word[a++]
-!			oldword[ow--] = ""
-!			oldword[0] = ow
-!		}
 	}
 	! old "LeaveParse area
 
@@ -4592,16 +4608,14 @@ routine XverbCheck(a)
 
 routine MultiCommandInstructions(n) ! n is CurrentCommandWords
 {
-	if not NEW_PARSE = NEW_PARSE & LAST_TURN_TRUE_F ! last_turn_true
-		NEW_PARSE = NEW_PARSE & ~MULTICOMMAND_F !multicommand = false
-	NEW_PARSE = NEW_PARSE & ~LAST_TURN_TRUE_F
-	if not (NEW_PARSE & MULTICOMMAND_F) ! multicommand
+	if not (parser_data[LAST_PARSER_STATUS] & LAST_TURN_TRUE_F) ! last_turn_true
+		parser_data[LAST_PARSER_STATUS] &= ~MULTICOMMAND_F !multicommand = false
+	parser_data[LAST_PARSER_STATUS] &= ~LAST_TURN_TRUE_F
+	if not (parser_data[LAST_PARSER_STATUS] & MULTICOMMAND_F) ! multicommand
 	{
+		parser_data[PARSER_STATUS] |= FIRSTCOMMAND_F
 		if n < words
-			NEW_PARSE = NEW_PARSE | MULTICOMMAND_F ! multicommand = true
-		if last_actor and last_actor ~= player and (word[1] = "g","again") and
-			not (NEW_PARSE & MULTICOMMAND_F) ! multicommand
-			NEW_PARSE = NEW_PARSE | MULTISPEAKTOAGAIN_F
+			parser_data[LAST_PARSER_STATUS] |= MULTICOMMAND_F ! multicommand = true
 	}
 	else
 	{
@@ -4610,17 +4624,19 @@ routine MultiCommandInstructions(n) ! n is CurrentCommandWords
 			""
 #endif
 		if n = words
-			NEW_PARSE = NEW_PARSE & ~MULTICOMMAND_F ! multicommand = false
+			parser_data[LAST_PARSER_STATUS] &= ~MULTICOMMAND_F ! multicommand off
 		if last_actor and last_actor ~= player
 		{
-			NEW_PARSE = NEW_PARSE | SPEAKTO_F
-			if XverbCheck(word[1]) and not (word[1] = "g","again")
+			if not (word[1] = "g","again")
 			{
-				NEW_PARSE = NEW_PARSE & ~MULTICOMMAND_F ! multicommand = false
-				return false
+				if OrdersPreparse(1,n)
+					return 2
+				elseif XverbCheck(word[1])
+				{
+					parser_data[LAST_PARSER_STATUS] &= ~MULTICOMMAND_F ! multi off
+					return false
+				}
 			}
-			elseif OrdersPreparse(1,n)
-				return 2
 		}
 	}
 	return true
@@ -4636,7 +4652,7 @@ routine OrdersPreParse(b,e)
 
 routine PrintCurrentCommand(print_prompt)
 {
-	if (NEW_PARSE & HIDE_COMMAND_F)
+	if (parser_data[LAST_PARSER_STATUS] & HIDE_COMMAND_F)
 		return false
 	FONT(ITALIC_ON)
 	if print_prompt
@@ -4670,37 +4686,56 @@ routine PrintCurrentCommand(print_prompt)
 
 routine SaveOldWord
 {
-	local ow = 1, a
-	a = 1
+	local ow = 1
 	if word[1] = "g", "again"
 		return
-	while word[a] ~= ""
+	while ow <= words
 	{
-		if word[a] = -1
-			NEW_PARSE = NEW_PARSE | PARSE$_F
-		oldword[ow++] = word[a++]
+		if word[ow] = -1
+			parser_data[LAST_PARSER_STATUS] |= PARSE$_F
+		oldword[ow] = word[ow]
+		ow++
 	}
-	oldword[(ow+1)]= ""
-	oldword[ow] = "" ! oldword[ow--] = ""  ! old code
-	oldword[0] = words  ! oldword[0] = ow ! old code
+	oldword[0] = words
 }
 
-routine RestoreFromOldWord
+routine RestoreFromOldWord(partial, single_command)
 {
-	local ow = 1,a
-	while oldword[ow+1] ~= ""
-		ow++
-	if ow>1
-		InsertWord(1,(ow-1))
-	for (a=1; a<=ow; a++)
-		word[a] = oldword[a]
+	local a, n = 1
+	if single_command
+	{
+		while oldword[(n+1)] ~= "" and n < oldword[0]
+		{
+			n++
+		}
+		if n > 1
+			InsertWord(1, (n-1))
+	}
+	else
+	{
+		words = oldword[0] - partial
+		n = words
+	}
+	for (a=1; a<=n; a++)
+	{
+		word[a] = oldword[(partial + a)]
+	}
 }
 
 ! Roody's note: Now prints parse$ if parser monitoring is on
 ! and various other little fixes suggested by Mike Snyder
 replace ParseError(errornumber, obj)
 {
-	PrintStatusLine ! redraw PrintStatusLine in case screen size changed
+	if is_fluid_layout is not special
+		PrintStatusLine ! redraw PrintStatusLine in case screen size changed
+	if word[1] = "*"
+	{
+		if betalib is special
+			RLibMessage(&DoScriptOnOff, 4) ! Comment recorded!
+		else
+			RLibMessage(&DoScriptOnOff, 5) ! Comment not recorded!
+		return
+	}
 #ifset DEBUG
 	if debug_flags & D_PARSE
 	{
@@ -4727,34 +4762,12 @@ replace ParseError(errornumber, obj)
 			if (p>1)
 				"(* Not an \Iactual\i referable token.)"
 		}
-		! can't remember why I needed this code
-		! this section so we print parse$ only once
-!		if string(_temp_string,parse$) and
-!			not (parser_data[PARSER_STATUS] & 32)
-!		{
-			print "[parse$ = \""; parse$; "\"]"
-!			parser_data[PARSER_STATUS] |= 32
-!		}
+		print "[parse$ = \""; parse$; "\"]"
 		print "[ParseError errornumber = "; number errornumber; "]"
 		print "[ParseError object = "; obj.name; "]"
 		Font(BOLD_OFF)
 	}
 #endif
-
-	NEW_PARSE = (NEW_PARSE & ~WORDSSAVED_F)
-
-	local r
-	r = BeforeParseError(errornumber,obj)
-	if word[1] = "*"
-	{
-		if betalib is special
-			RLibMessage(&DoScriptOnOff, 3) ! Comment recorded!
-		else
-			RLibMessage(&DoScriptOnOff, 4) ! Comment not recorded!
-		r = true
-	}
-	if r
-		customerror_flag = true
 
 	if errornumber >= 100
 	{
@@ -4773,7 +4786,7 @@ replace ParseError(errornumber, obj)
 		parser_data[PARSER_STATUS] = PARSER_RESET
 		return true
 	}
-
+	local r
 	r = NewParseError(errornumber, obj)
 	if r
 	{
@@ -4807,7 +4820,6 @@ replace ParseError(errornumber, obj)
 					errornumber = 6
 			}
 			elseif actor = player and
-!				not (parser_data[PARSER_STATUS] & FINDOBJECT_NONLIVING) and
 				(parser_data[PARSER_STATUS] & FINDOBJECT_LIVING)
 			{
 				obj = last_actor
@@ -4906,7 +4918,7 @@ replace ParseError(errornumber, obj)
 			else
 			{
 !\
-			  	print CThe(player); \
+				print CThe(player); \
 					MatchPlural(player, "hasn't", "haven't");
 					print " seen any";
 #ifclear NEW_STYLE_PRONOUNS
@@ -4921,11 +4933,11 @@ replace ParseError(errornumber, obj)
 					print ", nor"; IsorAre(player, true); " "; The(player); \
 					" likely to, even if such a thing exists."
 \!
-			  	print CThe(player); \
+				print CThe(player); \
 					MatchPlural(player, "hasn't", "haven't");
 					print " encountered any";
 #ifclear NEW_STYLE_PRONOUNS
-				if NEW_PARSE & PRONOUNS_SET
+				if parser_data[LAST_PARSER_STATUS] & PRONOUNS_SET
 					print "thing like that";
 				else
 #endif
@@ -4961,16 +4973,23 @@ replace ParseError(errornumber, obj)
 			}
 			"?"
 		}
+#else
+		case 8
+	{
+	!  if Roodylib's disambiguation system is turned off, we make a guess
+	!  that the player will only be providing one extra word
+		InsertWord(1,1)
+		return false
+	}
 #endif
 		case 9
 		{
 			local v
-!			x = CurrentCommandWords
 			if word[1] = "take" and (word[2] = "off" or word[3] = "off")
 			{
 				v = " off"
 			}
-#ifclear AIF
+#ifset NO_WEARALL
 			local c
 			if verbroutine =&DoGet and (word[1] = "remove" or
 				(word[1] = "take" and word[3] = "off")) and
@@ -5035,8 +5054,7 @@ replace ParseError(errornumber, obj)
 				" seen ";
 			else
 				" encountered ";
-			if (obj and obj is living and obj.pronoun #2 ~= "it") ! or
-!			(parser_data[PARSER_STATUS] & FINDOBJECT_LIVING)
+			if (obj and obj is living and obj.pronoun #2 ~= "it")
 				print "anybody";
 			else: print "anything";
 			print " like that";
@@ -5054,7 +5072,7 @@ replace ParseError(errornumber, obj)
 				ParseError(10, obj)
 			}
 			elseif parent(obj) ~= 0 and FindObject(parent(obj), location) and
-				parent(obj) is openable ! and parent(obj) ~= parent(player)
+				parent(obj) is openable
 			{
 				if CheckReach(parent(obj))
 				{
@@ -5095,9 +5113,7 @@ replace ParseError(errornumber, obj)
 #ifset USE_CHECKHELD
 				if verbroutine = &DoDrop_CheckHeld, &DoPutIn_CheckHeld,
 					&DoPutonGround_CheckHeld
-				{
 					ParseError(15, obj)
-				}
 				else
 				{
 #endif
@@ -5118,9 +5134,7 @@ replace ParseError(errornumber, obj)
 		case 12
 		{
 			if not ParseError_ObjectIsKnown(obj)
-			{
 				ParseError(10, obj)
-			}
 			else
 			{
 				print CThe(actor); \
@@ -5138,9 +5152,7 @@ replace ParseError(errornumber, obj)
 		case 14
 		{
 			if not ParseError_ObjectIsKnown(obj)
-			{
 				ParseError(10, obj)
-			}
 			elseif xobject is living
 			{
 				print CThe(xobject); \
@@ -5158,13 +5170,9 @@ replace ParseError(errornumber, obj)
 		case 15
 		{
 			if not ParseError_ObjectIsKnown(obj)
-			{
 				ParseError(10, obj)
-			}
 			elseif obj = player
-			{
 				ParseError(12, obj)
-			}
 			else
 			{
 				print CThe(actor); IsorAre(actor); " not
@@ -5185,21 +5193,27 @@ replace ParseError(errornumber, obj)
 	return true                             ! message already printed
 }
 
-! Roody's note: This only exists here to have a NewParseError replacement
-! routine all set up to be copied and pasted into your ParseError-replacing
-! game
+! Roody's note: NewParseError now handles some of the parsing so be sure
+! to copy this code into your replacement (it was put in NewParseError just
+! in case you need to change the parsing rules yourself for something)
 replace NewParseError(errornumber,obj)
 {
+
+	! let's clear some parsing related stuff
+	if not (errornumber = 8,1)
+	{
+#ifclear NO_DISAMB_HELP
+		disamb_holder is not special
+#endif
+		parser_data[LAST_PARSER_STATUS] = 0
+		oldword[0] = 0
+	}
+
 	select errornumber
 		case else : return false
 	return true
 }
 
-!\ Roody's note - BeforeParseError is a routine solely for being replaced.
-Use it for any code you want to run before parser error messages are printed.
-\!
-routine BeforeParseError(errornumber,obj)
-{}
 
 ! Roody's note: Removes the jump command... just because.
 replace Perform(action, obj, xobj, queue, isxverb)
@@ -5236,6 +5250,8 @@ replace Perform(action, obj, xobj, queue, isxverb)
 
 	parser_data[VERB_IS_XVERB] = isxverb
 
+!  These temp objects guarantee we go back to whatever the previous
+!  settings were before Perform was called
 	objtemp = object
 	xobjtemp = xobject
 	verbtemp = verbroutine
@@ -5248,17 +5264,17 @@ replace Perform(action, obj, xobj, queue, isxverb)
 
 #ifset NEW_STYLE_PRONOUNS
 	if object.type = it_object or xobject.type = it_object
-		ApplyPronouns(obj, xobj)
+		ApplyPronouns(object, xobject)
 #endif
 
-	if not (NEW_PARSE & WORDSSAVED_F) and not isxverb
+!  some stuff we do when Perform is called by the engine
+	if (parser_data[PARSER_STATUS] & PARSER_ACTIVE) and not isxverb
 	{
 		last_actor = actor
-		NEW_PARSE &= ~PRONOUNS_SET
+		parser_data[LAST_PARSER_STATUS] &= ~PRONOUNS_SET
 		SetPronouns
-		NEW_PARSE |= PRONOUNS_SET
+		parser_data[LAST_PARSER_STATUS] |= PRONOUNS_SET
 		parser_data[PARSER_STATUS] &= ~PARSER_ACTIVE
-		NEW_PARSE = NEW_PARSE | WORDSSAVED_F
 		SaveOldWord
 #ifset CONTINUE_UNDO
 		if continue_undo
@@ -5292,7 +5308,7 @@ replace Perform(action, obj, xobj, queue, isxverb)
 	if not r ! if action not stopped by before routines
 	{
 		r = call action                 ! object.after and xobject.after
-						! run by verbroutine
+		                                ! run by verbroutine
 #ifclear NO_XVERBS
 		if restoring
 			verbroutine = &DoRestore
@@ -5320,10 +5336,15 @@ replace Perform(action, obj, xobj, queue, isxverb)
 
 	if queue = -1
 		last_object = -1
+
 	parser_data[PARSER_STATUS] = PARSER_RESET
 	return r
 }
 
+! Roody's note: SetPronouns exists as its own routine so you can easily
+! establish rules for what object gets the pronoun depending on the verb.
+! For instance, in >PUT OBJECT IN THING, you may want to set the pronoun to
+! THING instead of OBJECT
 routine SetPronouns
 {
 	AssignPronoun(object)
@@ -5353,7 +5374,7 @@ routine ApplyPronouns(obj,xobj)
 	}
 	if number_pronouns
 	{
-		NEW_PARSE |= PRONOUNS_SET
+		parser_data[LAST_PARSER_STATUS] |= PRONOUNS_SET
 		PrintReplacedPronouns(number_pronouns)
 	}
 }
@@ -5538,8 +5559,17 @@ replace ShortDescribe(obj)
 	obj is not quiet
 	{
 #ifset NEW_DESCRIBEPLACE
+		local x
 		if (FORMAT & DESCFORM_D) and not (FORMAT & LIST_F)
-			""
+		{
+			for x in obj
+			{
+				if x is not hidden
+					break
+			}
+			if x
+				""
+		}
 #endif
 		list_nest = (LIST_F = (FORMAT & LIST_F))
 !		if FORMAT & LIST_F
@@ -5560,7 +5590,28 @@ replace ShortDescribe(obj)
 ! player tries talking to a character.
 replace SpeakTo(char)
 {
-	local a, v, TryOrder, IgnoreResponse, retval, stay, same, different
+	local TryOrder, IgnoreResponse, retval, stay, same, different
+
+#ifset NEW_STYLE_PRONOUNS
+	if actor.type = it_object  ! >HIM, DO THING
+	{
+		ParseError(6)  ! "That doesn't make any sense."
+		return
+	}
+#endif
+	last_actor = actor
+	if verbroutine = &DoAgain
+	{
+		verbroutine = last_verbroutine
+		object = previous_object
+		xobject = previous_xobject
+		RestoreFromOldWord(0,1) ! restore one command
+!\ Roody's note: We don't need to, but I restore the command just in case
+   authors are checking phrasing, like how >READ THING gets directed to
+	>LOOK and authors check word[1] to determine if "read" was used  \!
+	}
+	else
+		SaveOldWord
 
 #ifset USE_CHECKHELD
 	if verbroutine = &DoDrop_CheckHeld
@@ -5572,7 +5623,6 @@ replace SpeakTo(char)
 	elseif verbroutine = &DoWear_CheckHeld
 		verbroutine = &DoWear
 #endif
-
 #ifset VERBSTUBS
 	if verbroutine = &DoHelpChar and object = player
 	{
@@ -5581,31 +5631,15 @@ replace SpeakTo(char)
 	}
 #endif
 
-	if verbroutine = &DoAgain
-	{
-		verbroutine = last_verbroutine
-		object = previous_object
-		xobject = previous_xobject
-		RestoreFromOldWord
-	}
-	else
-		SaveOldWord
+#ifset USE_CHECKHELD
+	ResetCheckHeld
+#endif
 
-	NEW_PARSE = NEW_PARSE | WORDSSAVED_F
 	parser_data[PARSER_STATUS] &= ~PARSER_ACTIVE
 
 #ifset NEW_STYLE_PRONOUNS
-	local objtemp, xobjtemp, actortemp
-	objtemp = object
-	xobjtemp = xobject
-	actortemp = actor
-
 	if object.type = it_object or xobject.type = it_object
-		ApplyPronouns(objtemp, xobjtemp)
-#endif
-
-#ifset USE_CHECKHELD
-	ResetCheckHeld
+		ApplyPronouns(object, xobject)
 #endif
 
 #ifset DEBUG
@@ -5625,36 +5659,6 @@ replace SpeakTo(char)
 	}
 #endif
 
-	v = verbroutine
-	verbroutine = &SpeakTo
-	retval = player.before
-	if retval
-		a = player
-	else
-	{
-		retval = location.before
-		if retval
-			a = location
-	}
-	verbroutine = v
-
-	if not retval
-		retval = actor.before
-
-	if retval
-	{
-#ifset DEBUG
-		if debug_flags & D_PARSE
-		{
-			print "\B["; a.name;
-			if debug_flags & D_OBJNUM
-				print " ["; number a; "]";
-			print ".before returned "; number retval; "]\b"
-		}
-#endif
-		return retval
-	}
-
 	if char is not living
 	{
 		if word[1] = ""
@@ -5664,6 +5668,9 @@ replace SpeakTo(char)
 		return
 	}
 
+	if object
+		parser_data[LAST_SINGLE_OBJECT] = object
+	parser_data[LAST_PARSER_STATUS] &= ~PRONOUNS_SET
 	AssignPronoun(char)
 
 	! Handle player/typist-related ParseError messages:
@@ -5672,15 +5679,13 @@ replace SpeakTo(char)
 	elseif not ObjectisKnown(object) and not FindObject(object, location)
 		ParseError(10, object)
 	else
-	    stay = true
+		stay = true
 
 	if not stay
 	{
-	   speaking = 0
-	   return
+		speaking = 0
+		return
 	}
-
-	last_actor = actor
 
 	if char is unfriendly
 		IgnoreResponse = true
@@ -5732,8 +5737,10 @@ replace SpeakTo(char)
 
 			case &DoTalk
 			{
-				if xobject
+				if xobject and object ~= player
 					ParseError(6)
+				elseif xobject and object = player
+					return Perform(&DoAsk, char, xobject)
 				else
 					return Perform(&DoAsk, char, object)
 			}
@@ -5782,7 +5789,10 @@ replace SpeakTo(char)
 		speaking = 0  ! clear the speaking global
 	}
 	else
+	{
 		SetPronouns
+		parser_data[LAST_PARSER_STATUS] |= PRONOUNS_SET
+	}
 	return retval
 }
 
@@ -5803,31 +5813,6 @@ replace VerbHeldMode(w)
 }
 #endif  ! ifset USE_CHECKHELD
 
-!----------------------------------------------------------------------------
-!* "SHOW_COMMANDS"
-!----------------------------------------------------------------------------
-!\
-Roody's note: With the SHOW_COMMANDS flag on, lines with multiple commands get
-the current command printed at each step.  Also, >UNDO prints the action being
-undone.  Now, since Hugo's parser uses a combination of synonyms and removals,
-printing the command is an imperfect science.  Any author who turns this on has
-to be okay with the fact that the output will look pretty dumb from time to
-time.  Here are some examples of things that wouldn't print right:
-
-"get apple and orange" will become "get apple, orange"
-"get all from box but rat" will become "get all from box except rat"
-
-Well, I'm sure there are plenty of other examples but that's all I can think
-of right now.
-
-Anyhow, the following commands are called by the player_character object
-in the "replace objlib.h code" section.
-\!
-
-#ifset SHOW_COMMANDS
-
-
-#endif ! ifset SHOW_COMMANDS
 !----------------------------------------------------------------------------
 !* "NEW_STYLE_PRONOUNS"
 !----------------------------------------------------------------------------
@@ -5883,6 +5868,9 @@ object it_object "that" ! to match "You don't see that." ParseError message.
 	is known, hidden
 	nouns "it"
 	type it_object
+#ifset ROUTINE_GRAMMAR_HELPER
+	grammar_rules 0
+#endif
 	misc { return it_obj }
 	parse_rank 1000
 	found_in
@@ -5951,6 +5939,106 @@ replace ObjectisLight(obj)
 #endif	! NEW_STYLE_PRONOUNS
 
 !----------------------------------------------------------------------------
+!* ROUTINE GRAMMAR HELPER
+!----------------------------------------------------------------------------
+!\ Roody's note- Using routines as grammar tokens is one of my favorite unsung
+features of Hugo. It's a nice way to do things you can't normally do with
+regular grammar tokens, like only accept objects of a certain type.
+
+Since the objects sent to grammar token routines are the same that would be
+accepted by the "anything" token, authors might spend a fair amount of time
+weeding out unwanted objects.
+
+To this end, the code below attempts to make it easy to disallow various types
+of objects, giving responses consistent to normally-called ParseError messages.
+Its mask usage even allows objects that require multiple grammar tokens
+or attributes
+\!
+
+#ifset NEW_EMPTY
+#set ROUTINE_GRAMMAR_HELPER
+#endif
+
+#ifset ROUTINE_GRAMMAR_HELPER
+global TOKEN
+
+property grammar_rules
+
+enumerate step *2
+{
+	TOKEN_RESET,		! 0, for reset
+!	ANYTHING_T = 1,   ! accept anything objects
+	HELD_T = 1,	     	! force held
+	NOTHELD_T
+!	,	! force unheld
+!	ATTRIBUTE_T,	! force attribute
+}
+
+!  sample grammar routine:
+!routine SampleRoutineGrammar(obj)
+!{
+!	TOKEN = ATTRIBUTE_T | HELD_T
+!	return CheckObject(obj, 0, openable)
+!}
+
+!\ set goal_obj if the routine requires a special object
+	(goal_obj is the object you would have used if you were doing
+	object-as-grammar-token)
+ att1 through att3 can be used for necessary attributes\!
+
+routine CheckObject(obj,goal_obj, att1, att2, att3)
+{
+	local ret
+#ifset NEW_STYLE_PRONOUNS
+	if obj.type = it_object
+	{
+		obj = obj.misc
+!		obj.grammar_rules = (obj.misc).grammar_rules
+	}
+#endif
+	if obj.grammar_rules
+		TOKEN = obj.grammar_rules
+	else
+		TOKEN = TOKEN_RESET
+
+!	if not (TOKEN & ANYTHING_T)
+!	{
+!		if not FindObject(obj,location)
+!		{
+!			ParseError(11,obj)  ! You don't see that.
+!			return false
+!		}
+!	}
+
+	if not Contains(player, obj) and (TOKEN & HELD_T)
+		ParseError(15, obj) ! You're not holding that.
+	elseif Contains(player, obj) and (TOKEN & NOTHELD_T)
+		ParseError(11, obj)  ! You don't see that.
+!#ifset NEW_STYLE_PRONOUNS
+!	elseif ((obj = it_object and it_obj = goal_obj) or obj = goal_obj)
+!		ret = true
+!#else
+	elseif (obj = goal_obj)
+		ret = true
+!#endif
+	elseif goal_obj
+		ParseError(12,obj)  ! You can't do that with that.
+!	elseif (TOKEN & ATTRIBUTE_T)
+!	{
+		elseif (att1 and obj is not att1) or (att2 and obj is not att2) or
+		(att3 and obj is not att3)
+			ParseError(12, obj) ! "you can't do that with that."
+		else
+			ret = true
+!	}
+!	else
+!		ret = true
+	TOKEN = TOKEN_RESET
+	return ret
+}
+#endif  ! ifset ROUTINE_GRAMMAR_HELPER
+
+!----------------------------------------------------------------------------
 !* "NEW_EMPTY" system
 !----------------------------------------------------------------------------
 !\ Roody's note- I found the pre-existing DoEmpty grammar and verb routines
@@ -5972,11 +6060,7 @@ various behaviors:
 
 #ifset NEW_EMPTY
 
-#ifclear ROUTINE_GRAMMAR_HELPER
-#set ROUTINE_GRAMMAR_HELPER
-#endif
-
-property empty_type
+property empty_type alias grammar_rules
 constant NO_EMPTY_T 16 ! new grammar helper token for "no emptying" containers
 
 class unheld_to_player
@@ -6083,97 +6167,30 @@ class no_empty
 
 routine CheckEmpty(obj)
 {
-	if obj.empty_type
-	{
-		TOKEN = obj.empty_type
-		if not CheckObject(obj)
-			return false
-		elseif obj.empty_type = NO_EMPTY_T
-		{
-			ParseError(12, obj)
-			return false
-		}
-		return true
-	}
-	elseif not CheckObject(obj)
+!	if obj.empty_type
+!	{
+!		TOKEN = obj.empty_type
+!		if not CheckObject(obj)
+!			return false
+!		elseif obj.empty_type = NO_EMPTY_T
+!		{
+!			ParseError(12, obj)
+!			return false
+!		}
+!		return true
+!	}
+!	elseif not CheckObject(obj)
+!		return false
+	if not CheckObject(obj)
 		return false
+	elseif obj.empty_type = NO_EMPTY_T
+	{
+		ParseError(12, obj)
+		return false
+	}
 	return true
 }
 #endif NEW_EMPTY
-
-!----------------------------------------------------------------------------
-!* ROUTINE GRAMMAR HELPER
-!----------------------------------------------------------------------------
-!\ Roody's note- Using routines as grammar tokens is one of my favorite unsung
-features of Hugo. It's a nice way to do things you can't normally do with
-regular grammar tokens, like only accept objects of a certain type.
-
-Since the objects sent to grammar token routines are the same that would be
-accepted by the "anything" token, authors might spend a fair amount of time
-weeding out unwanted objects.
-
-To this end, the code below attempts to make it easy to disallow various types
-of objects, giving responses consistent to normally-called ParseError messages.
-Its mask usage even allows objects that require multiple grammar tokens
-or attributes
-\!
-
-#ifset ROUTINE_GRAMMAR_HELPER
-global TOKEN
-
-enumerate step *2
-{
-	TOKEN_RESET,		! 0, for reset
-	ANYTHING_T = 1,   ! accept anything objects
-	HELD_T,	     	! force held
-	NOTHELD_T,	! force unheld
-	ATTRIBUTE_T,	! force attribute
-}
-
-!  sample grammar routine:
-!routine SampleRoutineGrammar(obj)
-!{
-!	TOKEN = ATTRIBUTE_T | HELD_T
-!	return CheckObject(obj, 0, openable)
-!}
-
-!\ set goal_obj if the routine requires a special object
-	(goal_obj is the object you would have used if you were doing
-	object-as-grammar-token)
- att1 through att3 can be used for necessary attributes\!
-
-routine CheckObject(obj,goal_obj, att1, att2, att3)
-{
-	local ret
-	if not FindObject(obj,location) and not (TOKEN & ANYTHING_T)
-		ParseError(11,obj)  ! You don't see that.
-	elseif not Contains(player, obj) and (TOKEN & HELD_T)
-		ParseError(15, obj) ! You're not holding that.
-	elseif Contains(player, obj) and (TOKEN & NOTHELD_T)
-		ParseError(11, obj)  ! You don't see that.
-#ifset NEW_STYLE_PRONOUNS
-	elseif ((obj = it_object and it_obj = goal_obj) or obj = goal_obj)
-		ret = true
-#else
-	elseif (obj = goal_obj)
-		ret = true
-#endif
-	elseif goal_obj
-		ParseError(12,obj)  ! You can't do that with that.
-	elseif (TOKEN & ATTRIBUTE_T)
-	{
-		if (att1 and obj is not att1) or (att2 and obj is not att2) or
-		(att3 and obj is not att3)
-			ParseError(12, obj) ! "you can't do that with that."
-		else
-			ret = true
-	}
-	else
-		ret = true
-	TOKEN = TOKEN_RESET
-	return ret
-}
-#endif  ! ifset ROUTINE_GRAMMAR_HELPER
 
 !----------------------------------------------------------------------------
 !* NEW PRINTSTATUSLINE
@@ -6335,6 +6352,9 @@ replace PrintStatusline
 
 	if not window_top
 		window_top = 1
+
+	if not TERP
+		run roodylib.execute
 
 	! clear/remove the window if the status window height has changed
 	if (newstatusheight < display.statusline_height) and not system(61) and
@@ -6510,7 +6530,11 @@ routine GetStatusLength(len)
 	elseif STATUSTYPE = 2,16, 18
 	{
 		if (STATUSTYPE & MILITARY_TIME)
+#ifset NO_MILITARY_COLON
+			sum = 11
+#else
 			sum = 6
+#endif
 		else
 		{
 			local num
@@ -6758,34 +6782,80 @@ object roodylib "roodylib"
 #ifset USE_SCOPE_REACT
 			OrganizeScopeObjects
 #endif
+			local opcodeterp_check,x, opcodeterp_check2, force
+			opcodeterp is not switchedon
+			opcodeterp.terp_name = 0
 			if system(61)
 			{
 				if IsGLK
 					TERP = GLK_TERP
 				else
 					TERP = SIMPLE_TERP
-				hugor is not switchedon
 			}
 			else
-			{
-				local hugor_check
 				TERP = NORMAL_TERP
-				readfile "HrCheck"
+			for x in opcodeterp
+			{
+				x is not switchedon
+			}
+			readfile "HrCheck"
+			{
+				opcodeterp_check = readval
+			}
+			if opcodeterp_check
+			{
+				opcodeterp is switchedon
+				opcodeterp.terp_name = "Hugor"
+				opcodeterp.control_file = "HrCtlAPI"
+				force = ExecOpCode(is_opcode_available, is_opcode_available)
+				if not force
 				{
-					hugor_check = readval
-				}
-				if hugor_check
-					hugor is switchedon
-				else
-					hugor is not switchedon
-				if hugor is switchedon
-				{
-					ExecOpcode(getversion)
-					ExecOpcode(get_os)
-					ExecOpcode(full_opacity)
-					self.did_print = 1
+					for x in opcodeterp
+					{
+						if x is hugor_default
+						{
+							x is special
+							x is switchedon
+						}
+					}
 				}
 			}
+			if not force
+			{
+				readfile "OpCheck"
+				{
+					opcodeterp_check2 = readval
+				}
+				if opcodeterp_check2
+				{
+					opcodeterp is switchedon
+					opcodeterp.terp_name = 0 ! "Hugor"
+					opcodeterp.control_file = "OpCtlAPI"
+					force = ExecOpCode(is_opcode_available, is_opcode_available)
+				}
+			}
+			if force
+			{
+				for x in opcodeterp
+				{
+					if ExecOpCode(is_opcode_available,x)
+						x is switchedon
+				}
+			}
+			else
+				is_opcode_available is not switchedon
+			if is_opcode_available is switchedon
+			{
+				is_fluid_layout is special
+				hidden_cursor_check is special
+				screenreader_capable is special
+			}
+			ExecOpcode(getversion)
+			ExecOpcode(get_os)
+			ExecOpcode(full_opacity)
+			self.did_print = 1
+			if opcodeterp is switchedon
+				self.did_print = 1
 		}
 	}
 	did_print 0
@@ -6892,16 +6962,23 @@ global TERP
 
 property version alias n_to
 property os alias ne_to
+property terp_name alias e_to
+property control_file alias se_to
 
-object hugor "Hugor interpreter monitor"
+object opcodeterp "opcode interpreter monitor"
 {
+	terp_name 0
 	os 0
 	version 0 0 0
 	type settings
+	in settings
+	control_file 0 ! "HrCtlAPI"
 }
 
 property opcode_results
 property opcode_value alias size
+property opcode_type alias w_to
+attribute hugor_default
 
 class opcode
 {
@@ -6910,30 +6987,49 @@ class opcode
 	opcode_value 0
 }
 
-opcode getversion "hugor version opcode"
+opcode is_opcode_available "opcode availability opcode"
 {
-	in hugor
+	opcode_value 1
+	save_info
+	{
+		local ret
+		ret = readval
+		return ret
+	}
+	opcode_type is_opcode_available
+	is switchedon
+}
+
+opcode getversion "version opcode"
+{
+	in opcodeterp
 	opcode_value 100
 	save_info
 	{
-		hugor.version = readval
-		hugor.version #2 = readval
-		hugor.version #3 = readval
+		opcodeterp.version = readval
+		opcodeterp.version #2 = readval
+		opcodeterp.version #3 = readval
 	}
+	opcode_type getversion
+	is hugor_default
 }
 
-opcode get_os "hugor OS opcode"
+opcode get_os "Get OS opcode"
 {
 	nearby
 	opcode_value 200
 	save_info
-		hugor.os = readval
+		opcodeterp.os = readval
+	opcode_type get_os
+	is hugor_default
 }
 
-opcode op_abort "hugor op abort"
+opcode op_abort "Op abort"
 {
 	nearby
 	opcode_value 300
+	opcode_type op_abort
+	is hugor_default
 }
 
 property block alias n_to ! (true to stop action, false: code continues while
@@ -6942,7 +7038,7 @@ property duration alias ne_to ! in milliseconds
 property start_opacity alias e_to ! -1 -> 255 (-1 to keep at current opacity)
 property end_opacity alias se_to ! 0... 255
 
-opcode fade_screen "hugor fade screen opcode"
+opcode fade_screen "fade screen opcode"
 {
 	nearby
 	opcode_value 400
@@ -6973,6 +7069,8 @@ opcode fade_screen "hugor fade screen opcode"
 			start_alpha = -9999
 		writeval self.duration , start_alpha, self.end_opacity, self.block
 	}
+	opcode_type fade_screen
+	is hugor_default
 }
 
 fade_screen full_opacity "restore full opacity opcode"
@@ -6984,35 +7082,43 @@ fade_screen full_opacity "restore full opacity opcode"
 	end_opacity 255
 }
 
-opcode open_URL "hugor open URL opcode"
+opcode open_URL "open URL opcode"
 {
-	in hugor
+	in opcodeterp
 	opcode_value 500
+	opcode_type open_URL
+	is hugor_default
 }
 
-opcode fullscreen "hugor fullscreen opcode"
+opcode set_fullscreen "Set Fullscreen opcode"
 {
 	nearby
 	opcode_value 600
 	execute
 		writeval 1
+	opcode_type set_fullscreen
+	is hugor_default
 }
 
-opcode windowed "hugor windowed opcode"
+opcode windowed "Windowed opcode"
 {
 	nearby
 	opcode_value 600
 	execute
 		writeval 0
+	opcode_type windowed
+	is hugor_default
 }
 
-opcode clipboard "hugor clipboard opcode"
+opcode clipboard "Clipboard opcode"
 {
 	nearby
 	opcode_value 700
+	opcode_type clipboard
+	is hugor_default
 }
 
-opcode is_music_playing "hugor music detector"
+opcode is_music_playing "music detector opcde"
 {
 	nearby
 	opcode_value 800
@@ -7030,9 +7136,11 @@ opcode is_music_playing "hugor music detector"
 #endif
 		return ret
 	}
+	opcode_type is_music_playing
+	is hugor_default
 }
 
-opcode is_sample_playing "hugor sample detector"
+opcode is_sample_playing "sound sample detector"
 {
 	nearby
 	opcode_value 900
@@ -7050,6 +7158,120 @@ opcode is_sample_playing "hugor sample detector"
 #endif
 		return ret
 	}
+	opcode_type is_sample_playing
+	is hugor_default
+}
+
+opcode is_fluid_layout "Screen Fluidity opcode"
+{
+	nearby
+	opcode_value 1000
+	opcode_type is_fluid_layout
+	save_info
+	{
+		local ret
+		ret = readval
+		if ret
+			self is special
+		else
+			self is not special
+		return ret
+	}
+}
+
+property rgb alias n_to
+
+opcode set_color "Set Color opcode"
+{
+	nearby
+	opcode_value 1100
+	rgb 0 0 0
+	opcode_type set_color
+	execute
+	{
+		! This just checks to make sure that somebody didn't accidentally
+		! run ExecOpcode on this class object as it would hide all text on
+		! the screen
+		if self = set_color
+		{
+#ifset DEBUG
+			if debug_flags & D_OPCODE_MONITOR
+			{
+				print "[Do not execute opcode
+				\""; self.name;"\" itself. Create a set_color
+				object with timing and fade values you want. Fade canceled.]"
+			}
+#endif
+			return
+		}
+		writeval self.rgb , self.rgb #2, self.rgb #3
+	}
+}
+
+opcode is_fullscreen "Fullscreen Check opcode"
+{
+	nearby
+	opcode_value 1200
+	opcode_type is_fullscreen
+	save_info
+	{
+		local ret
+		ret = readval
+		return ret
+	}
+}
+
+opcode hidden_cursor_check "Does Terp Hide Paused Cursors? opcode"
+{
+	nearby
+	opcode_value 1300
+	opcode_type hidden_cursor_check
+	is hugor_default
+	save_info
+	{
+		local ret
+		ret = readval
+		if ret
+			self is special
+		else
+			self is not special
+		return ret
+	}
+}
+
+opcode top_justified_check "Does Terp handle top justified text ok?"
+{
+	nearby
+	opcode_value 1400
+	opcode_type top_justified_check
+	is hugor_default
+	save_info
+	{
+		local ret
+		ret = readval
+		if ret
+			self is special
+		else
+			self is not special
+		return ret
+	}
+}
+
+opcode screenreader_capable "Does terp work with screenreaders?"
+{
+	nearby
+	opcode_value 1500
+	opcode_type screenreader_capable
+	save_info
+	{
+		local ret
+		ret = readval
+		if ret
+			self is special
+		else
+			self is not special
+		return ret
+	}
 }
 
 routine ExecOpcode(op_file,str)
@@ -7065,7 +7287,18 @@ routine ExecOpcode(op_file,str)
 #endif
 		return
 	}
-	writefile "HrCtlAPI"
+	if op_file.opcode_type is not switchedon
+	{
+#ifset DEBUG
+		if debug_flags & D_OPCODE_MONITOR
+		{
+			print "[Opcode \""; op_file.name ;"\" not supported by
+			interpreter.]"
+		}
+#endif
+		return
+	}
+	writefile opcodeterp.control_file
 	{
 		writeval op_file.opcode_value
 		if str
@@ -7074,7 +7307,7 @@ routine ExecOpcode(op_file,str)
 			run op_file.execute
 	}
 	local failure, result
-	readfile "HrCtlAPI"
+	readfile opcodeterp.control_file
 	{
 		failure = readval
 		if failure
@@ -7085,7 +7318,7 @@ routine ExecOpcode(op_file,str)
 				select failure
 					case 10 : print "[Incorrect number of parameters for \
 					opcode "; op_file.name; " ["; number op_file;"]"
-					case 20 : print "[Hugor returned unexpected byte count \
+					case 20 : print "[Interpreter returned unexpected byte count \
 					for opcode "; op_file.name; " ["; number op_file;"]"
 					case 30
 					{
@@ -7126,6 +7359,42 @@ routine ExecOpcode(op_file,str)
 	return result
 }
 
+routine OpCodeAudit
+{
+	local x
+	"Opcodes supported by this interpreter:\n"
+	Indent
+	print is_opcode_available.name;
+	print to 45;
+	if is_opcode_available is switchedon
+	{
+		color 10
+		print "supported"
+	}
+	else
+	{
+		color 12
+		print "not supported"
+	}
+	color TEXTCOLOR, BGCOLOR
+	for x in opcodeterp
+	{
+		Indent
+		print x.name;
+		print to 45;
+		if x is switchedon
+		{
+			color 10
+			print "supported"
+		}
+		else
+		{
+			color 12
+			print "not supported"
+		}
+		color TEXTCOLOR, BGCOLOR
+	}
+}
 !----------------------------------------------------------------------------
 !* NEW MENU
 !----------------------------------------------------------------------------
@@ -7240,6 +7509,7 @@ routine MakeMenu(menu_title, width, recurse)
 		if not (cheap or (TERP & SIMPLE_TERP))
 		{
 			window 0
+			color MENU_TEXTCOLOR, MENU_BGCOLOR
 			cls
 		}
 		category = Menu(menu_title, width, old_category)
@@ -7269,7 +7539,8 @@ routine MakeMenu(menu_title, width, recurse)
 				}
 				do
 				{
-					if display.needs_repaint and not cheap
+					if display.needs_repaint and not cheap and
+						is_fluid_layout is not special
 					{
 						color MENU_BGCOLOR, MENU_BGCOLOR
 						RlibMessage(&MakeMenu,3) ! "[WINDOW RESIZED]"
@@ -7375,13 +7646,18 @@ replace Menu(menu_par, width, selection)
 	! Default selection is first child if not otherwise given
 	if selection = 0:  selection = child(menu_par)
 
+	while not selection.option_available
+	{
+		selection = younger(selection)
+	}
+
 	Font(BOLD_OFF | ITALIC_OFF | UNDERLINE_OFF | PROP_OFF)
 	while true
 	{
 		if not (cheap or system(61)) ! system(61)
 		{
 			color MENU_BGCOLOR, MENU_BGCOLOR
-			if display.needs_repaint
+			if display.needs_repaint and is_fluid_layout is not special
 			{
 				window 0
 				display.needs_repaint = false
@@ -7607,7 +7883,7 @@ routine CheapMenu(menu_par,num)
 		if num > 9
 		{
 			GetInput
-			if word[1] = "q"
+			if word[1] = "q","quit"
 			{
 				""
 				return 0
@@ -7717,7 +7993,8 @@ routine ShowPage(page)
 	}
 	do
 	{
-		if display.needs_repaint and not cheap
+		if display.needs_repaint and not cheap and
+			is_fluid_layout is not special
 		{
 			color BGCOLOR, BGCOLOR
 			RlibMessage(&MakeMenu,3) ! "[WINDOW RESIZED]"
@@ -7812,6 +8089,140 @@ routine SetPageColors(page)
 }
 #endif ! USE_NEWMENU
 
+!----------------------------------------------------------------------------
+!* FOLLOW
+!----------------------------------------------------------------------------
+! This is code from Kent Tessman's "Future Boy!" adapted for general use.
+#ifset USE_FOLLOW
+
+! If your game happens to have more than 8 possible followers at a given time,
+! define MAX_FOLLOWERS as something larger before roodylib is included
+#if undefined MAX_FOLLOWERS
+constant MAX_FOLLOWERS 8
+#endif
+
+array follower_list[MAX_FOLLOWERS]
+array moved_follower[MAX_FOLLOWERS]
+attribute following
+global followers
+global following_paused
+
+property follow_message		! for locations, a suffix such as
+									! " you down the stairs."
+
+property disallow_follow 	! return true if circumstances disallow
+									! following (for characters or locations)
+
+property pause_following	! for NPCs
+
+routine AddFollower(char)
+{
+	if followers = MAX_FOLLOWERS or char is following
+		return false
+	follower_list[followers++] = char
+	char is following
+	return true
+}
+
+routine RemoveFollower(char)
+{
+	local i
+	for (i=0; i<MAX_FOLLOWERS; i++)
+	{
+		if follower_list[i] = char
+		{
+			while (i < MAX_FOLLOWERS-2)
+			{
+				follower_list[i] = follower_list[i+1]
+				i++
+			}
+			follower_list[MAX_FOLLOWERS-1] = 0
+			followers--
+			char is not following
+			return
+		}
+	}
+}
+
+!\
+	StartFollowing and StopFollowing are just two "helper" routines so authors
+	don't need to remember that the following mechanism is handled by a
+	daemon (and therefore needs to be activated or deactivated)
+\!
+
+routine StartFollowing
+{
+	return Activate(follow_daemon)
+}
+
+routine StopFollowing
+{
+	return Deactivate(follow_daemon)
+}
+
+daemon follow_daemon
+{}
+
+event in follow_daemon
+{
+	! Had to add DoCrawl for >CRAWL beneath the trees
+!	if (verbroutine = &DoGo, &DoExit, &DoCrawl) and location ~= old_location
+! ^ Future Boy! has a DoCrawl verb
+	if (verbroutine = &DoGo, &DoExit, &DoEnter) and location ~= old_location
+		MoveFollowers
+}
+
+routine MoveFollowers
+{
+	local i, mf
+
+	if followers = 0
+		return
+
+	if location.disallow_follow
+		return
+
+	for (i=0; i<followers; i++)
+	{
+		if follower_list[i] in old_location and
+			follower_list[i] not in location and
+			not follower_list[i].pause_following and
+			not follower_list[i].disallow_follow
+		{
+			move follower_list[i] to location
+			moved_follower[mf] = follower_list[i]
+			mf++
+		}
+	}
+
+	if (mf)
+	{
+		print ""
+		RLibMessage(&MoveFollowers,1,mf) ! "So-and-so follows you."
+	}
+}
+
+
+#if undefined PrintArrayList
+! taken from misc.h ... called from MoveFollowers:
+
+! PrintArrayList(list, count)
+! Prints count elements of the array list.
+
+routine PrintArrayList(list, count)
+{
+	local i
+	for (i=1; i<=count; i++)
+	{
+		if i > 1:  " ";
+		The(array list[i-1])
+		if i < count and count > 2:  ",";
+		if i = count-1:  print " "; AND_WORD;
+	}
+	return false
+}
+#endif ! if undefined PrintArrayList
+#endif
 !----------------------------------------------------------------------------
 !* FOOTNOTES
 !----------------------------------------------------------------------------
@@ -8168,9 +8579,14 @@ routine Epigram(quotefile, pauseflag)
 
 routine TitleEpigram(quotefile)
 {
+	local force_simple
 	InitScreen
-	nextepigram = quotefile
-	Box(quotefile, true)
+#ifclear NO_ACCESSIBILITY
+	force_simple = (cheap = 1)
+#endif
+	force_simple = system(61) or force_simple
+!	nextepigram = quotefile
+	Box(quotefile, true, force_simple)
 	""
 	InitScreen
 }
@@ -8331,7 +8747,7 @@ routine SimpleIntro
 \!
 routine InitScreen
 {
-	local simple_port
+	local simple_port, relocate
 #ifset NO_ACCESSIBILITY
 	local cheap
 #endif
@@ -8371,13 +8787,14 @@ routine InitScreen
 		CenterTitle("",0,1,1) ! Draw an empty window
 	else
 		CenterTitle(CheapTitle,0,1,1) ! See CheapTitle routine
+	relocate = (LinesFromTop ~= display.windowlines)
 #ifclear NO_ACCESSIBILITY
-	if not system(61) and not (cheap & CHEAP_ON)
+	if not system(61) and not (cheap & CHEAP_ON) and relocate
 		locate 1, LinesFromTop
 	elseif (cheap & CHEAP_ON) or simple_port ! non-glk simple port
 		""
 #else
-	if not system(61)
+	if not system(61) and relocate
 		locate 1,LinesFromTop
 	elseif simple_port
 		""
@@ -8395,7 +8812,7 @@ routine CheapTitle
 
 routine LinesFromTop
 {
-	if not (display.hasvideo or hugor is switchedon)
+	if not (display.hasvideo or top_justified_check is special)
 		return display.windowlines
 	else
 		return 2
@@ -8415,14 +8832,15 @@ routine IsGlk
 
 routine ClearWindow
 {
-	local a
+	local a, relocate
 #ifclear NO_ACCESSIBILITY
 	a = cheap
 #endif
 	if not (a = 1)
 	{
+		relocate = (LinesFromTop ~= display.windowlines)
 		cls
-		if (display.hasvideo or hugor is switchedon)
+		if relocate
 			locate 1, LinesFromTop
 	}
 }
@@ -8748,7 +9166,7 @@ routine DrawCheap ! this is basically InitScreen, slightly modified
 	CenterTitle(CheapTitle,0,1,1) ! See RoodyLib's CheapTitle routine
 }
 
-routine DoInfo
+routine DoA11y
 {
 	DoAccessibilityHelp
 }
@@ -8768,8 +9186,10 @@ routine DoAccessibilityHelp
 	window."
 		return
 	}
-	"The following commands exist to make playing this game with screen
-	readers or in console windows more convenient:\n"
+!	"The following commands exist to make playing this game with screen
+!	readers or console environments more convenient:\n"
+	"Players using screen readers or an interpreter within a console
+	environment may be interested in the following commands:\n"
 	Indent
 	"\BPROMPT\b - Toggles between the > prompt and a \"Your command... \" prompt."
 	Indent
@@ -8881,6 +9301,29 @@ routine DoStatus
 !----------------------------------------------------------------------------
 !* PREPARSE CODE
 !----------------------------------------------------------------------------
+! Roody's note: Created PlayerPreParseOverride only
+!  because Parse was running out of local variables and
+!  I wanted to keep the code semi-legible
+routine PlayerPreParseOverride
+{
+	local temp_verb, temp_obj, temp_xobj, ret
+
+	temp_verb = verbroutine
+	temp_obj = object
+	temp_xobj = xobject
+	verbroutine = &PreParse
+	object = nothing
+	xobject = nothing
+	if player.before
+	{
+		parser_data[PARSER_STATUS] = 0
+		ret = true
+	}
+	verbroutine = temp_verb
+	object = temp_obj
+	xobject = temp_xobj
+	return ret
+}
 
 routine PreParseInstructions
 {
@@ -8899,14 +9342,12 @@ object preparse_instructions
 }
 
 #ifclear NO_FANCY_STUFF
-! Roody's note: setting the AIF switch allows wearing and removing "all"
-! (haha not specifically promoting AIF just thought the switch name would
-!  be funny)
 
-! Anyhow, we use preparse stuff here because "remove"'s grammar is a little
-! unforgiving when it using "all" and held items, so we switch it to "take
-! off", which expects the item to be held.
-#ifset AIF
+! Roody's note: We do some parser trickery because >REMOVE BLANK usually
+! defaults to unheld items, so we change >REMOVE ALL (which usually applies
+! to worn items), to >TAKE OFF ALL
+
+#ifclear NO_WEARALL
 object parse_remove
 {
 	in preparse_instructions
@@ -8933,16 +9374,17 @@ object parse_orders
 	type settings
 	execute
 	{
-		local a
+		local a, command_words
 		if word[1] = "tell", "order", "instruct", "ask", "command"
 		{
 			for (a=3; a<=words; a++)
 			{
-				if word[a] = "to"
+				if word[a] = "to" and VerbCheck(word[(a+1)])
 				{
+					command_words = CurrentCommandWords
 					word[a] = "~and"
 					DeleteWord(1)   ! "tell", "order", etc.
-!					OrdersPreParse(a,command_words)
+					OrdersPreParse(a+1,command_words)
 					return true
 				}\
 				if word[a] = "", "then"
@@ -8967,8 +9409,13 @@ object parse_redraw
 	{
 		if display.needs_repaint
 		{
-			if RepaintScreen
-				RedrawScreen
+			if is_fluid_layout is not special
+			{
+				if RepaintScreen
+					RedrawScreen
+			}
+			else
+				display.needs_repaint = false
 		}
 		return false
 	}
@@ -9035,14 +9482,46 @@ routine RepaintScreen
 routine ShowCommand
 {
 	print prompt;
-	local i = 1, showfullstops
+	local i = 1, showfullstops, v, skip_word
 	if INPUTCOLOR ~= MATCH_FOREGROUND
 		color INPUTCOLOR
 	while word[i] ~= ""
 	{
-		print word[i];
+		if word[i] ~= "~and"
+			v = v or VerbCheck(word[i])
+		select word[i]
+			case "~and"
+			{
+				if not VerbCheck(word[(i+1)]) or
+					(v and word[(i-1)] = "~and") or
+					(VerbCheck(word[(i+1)]) and v)
+				{
+					if word[(i+1)] = "~and"
+						skip_word = true
+					else
+						print "and";
+				}
+				else
+				{
+					print ",";
+!					if word[(i+1)] = "~and"
+!						print " ";
+				}
+			}
+			case "~all"
+				print "all";
+			case "~except" : print "except";
+			case "~oops" : print "oops";  ! hopefully never called
+			case "~any" : print "any";
+			case else
+				print word[i];
 		if word[++i] ~= ""
-			print " ";
+		{
+			if skip_word
+				skip_word = false
+			elseif not (word[i] = "~and" and VerbCheck(word[(i+1)]) and not v)
+				print " ";
+		}
 		elseif word[++i] ~= ""
 		{
 			showfullstops = true
@@ -9050,9 +9529,9 @@ routine ShowCommand
 		}
 		if word[i] = "" and showfullstops
 			print ".";
-		color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 	}
 	print ""
+	color TEXTCOLOR, BGCOLOR, INPUTCOLOR
 }
 
 !----------------------------------------------------------------------------
@@ -9519,8 +9998,29 @@ routine PrepWord(str1,str2,str3)
 
 event
 {
-	NEW_PARSE = NEW_PARSE | LAST_TURN_TRUE_F
-!	last_turn_true = true
+	parser_data[LAST_PARSER_STATUS] |= LAST_TURN_TRUE_F
+#ifclear NO_DISAMB_HELP
+	if disamb_holder is special
+	{
+		local i
+		i = 1
+		while i < oldword[0]
+		{
+			if oldword[i] = ""
+			{
+				RestorefromOldWord(i)
+				break
+			}
+			i++
+		}
+		disamb_holder is not special
+		! because of an obscure case where someone uses the
+		! engine disambiguation so Perform doesn't properly set
+		! pronouns, we'll clear this so Parse will set pronouns
+		! to the last object
+		parser_data[LAST_PARSER_STATUS] &= ~PRONOUNS_SET
+	}
+#endif
 }
 
 !----------------------------------------------------------------------------
@@ -9537,9 +10037,26 @@ event
 property first_visit
 replace room
 {
-	first_visit 0
+	first_visit 0 0
 	type room
 	is static, light, open
+}
+
+!\ RoomTurnCount keeps track of the number of consecutive turns spent in
+the current room. This exists so authors don't have to use the misc property
+to keep track of turn count for each_turn stuff. \!
+
+routine RoomTurnCount
+{
+	return (counter - location.first_visit #2)
+}
+
+!\ FirstVisit returns true if the current turn is also the first time
+in the room (in case you want different behavior on other visits). \!
+
+routine FirstVisit
+{
+	return (location.first_visit = location.first_visit #2)
 }
 #endif
 
@@ -10130,6 +10647,7 @@ property over_max alias sw_to
 
 replace plural_class "(plural_class)"
 {
+	is openable
 	type plural_class
 	in_scope 0                      ! may be an actor at some point
 	size 0                          ! must be weightless
@@ -10645,7 +11163,7 @@ replace ParsePluralObjects
 			2ndpass = true
 		}
 	}
-	NEW_PARSE |= PRONOUNS_SET  ! since we rebuilt object(s)
+	parser_data[LAST_PARSER_STATUS] |= PRONOUNS_SET  ! since we rebuilt object(s)
 
 	return true
 }
@@ -10988,7 +11506,7 @@ replace PlayMusic(resfile, song, volume, loop, force)
 		{
 			music resfile, song, vol
 #ifset USE_JUKEBOX
-			if not system_status and not hugor is switchedon
+			if not system_status and not is_music_playing is switchedon
 				GetCurrentTime(song_start)
 #endif
 		}
@@ -11565,7 +12083,8 @@ replace DoGet
 	}
 	elseif object is living and object is static
 	{
-		VMessage(&DoGet, 3)     ! player trying to get character
+		if CheckReach(object)
+			VMessage(&DoGet, 3)     ! player trying to get character
 		return false
 	}
 
@@ -12209,7 +12728,7 @@ replace DoLook
 		if i and object ~= player and not skip_ahead
 		{
 			if count = 1
-				NEW_PARSE &= ~PRONOUNS_SET
+				parser_data[LAST_PARSER_STATUS] &= ~PRONOUNS_SET
 			local tempformat
 			tempformat = FORMAT
 			FORMAT = FORMAT | NOINDENT_F
@@ -12218,7 +12737,7 @@ replace DoLook
 				print ""
 			WhatsIn(object,has_children)
 			FORMAT = tempformat
-			NEW_PARSE |= PRONOUNS_SET
+			parser_data[LAST_PARSER_STATUS] |= PRONOUNS_SET
 		}
 
 		run object.after
@@ -12305,13 +12824,13 @@ replace DoLookIn
 				FORMAT = FORMAT | NOINDENT_F
 				list_nest = 0
 
-				NEW_PARSE &= ~PRONOUNS_SET
+				parser_data[LAST_PARSER_STATUS] &= ~PRONOUNS_SET
 				local i
 				i = WhatsIn(object)
 				if not i
 					VMessage(&DoLookIn, 2)   ! "It's empty."
 				elseif i = 1
-					NEW_PARSE |= PRONOUNS_SET
+					parser_data[LAST_PARSER_STATUS] |= PRONOUNS_SET
 
 				FORMAT = tempformat
 			}
@@ -12435,13 +12954,16 @@ replace DoOpen
 #else
 		object is moved
 #endif
-		local i
+		local x, i
 		if not Contains(object,player) and object is not transparent
 		{
-			for i in object
+			for x in object
 			{
-				if i is not hidden
-					break
+				if x is not hidden
+				{
+					i = true
+					x is not already_listed
+				}
 			}
 		}
 		if i
@@ -12456,7 +12978,6 @@ replace DoOpen
 				VMessage(&DoOpen, 4)     ! "Opened."
 			else
 			{
-				local x
 				list_count = 0
 				for x in object
 				{
@@ -12464,10 +12985,10 @@ replace DoOpen
 						list_count++
 				}
 				if list_count = 1
-					NEW_PARSE &= ~PRONOUNS_SET
+					parser_data[LAST_PARSER_STATUS] &= ~PRONOUNS_SET
 				RLibMessage(&DoOpen,1) ! "opening the <blank> reveals"
 				ListObjects(object)
-				NEW_PARSE |= PRONOUNS_SET
+				parser_data[LAST_PARSER_STATUS] |= PRONOUNS_SET
 				skip_ahead = true
 			}
 		}
@@ -12480,13 +13001,13 @@ replace DoOpen
 		{
 			print ""
 			if children(object) = 1
-				NEW_PARSE &= ~PRONOUNS_SET
+				parser_data[LAST_PARSER_STATUS] &= ~PRONOUNS_SET
 			tempformat = FORMAT
 			FORMAT = FORMAT | NOINDENT_F
 			list_nest = 0
 			WhatsIn(object)
 			FORMAT = tempformat
-			NEW_PARSE |= PRONOUNS_SET
+			parser_data[LAST_PARSER_STATUS] |= PRONOUNS_SET
 		}
 	}
 	if light_check
@@ -12589,7 +13110,7 @@ replace DoRestart
 		elseif not FindLight(location)
 			""
 #endif
-		DescribePlace
+		DescribePlace(location, true)
 #ifset NEW_FUSE
 		fake_runevents
 #endif
@@ -12657,13 +13178,17 @@ replace DoScriptOnOff
 		else
 		{
 			betalib is special
+#ifset BETA
+			RLibMessage(&DoScriptOnOff, 2) ! "Transcription on. Type * ..."
+#else
 			VMessage(&DoScriptOnOff, 2) ! "Transcription on."
+#endif
 		}
 	}
 	elseif word[2] = "off"
 	{
 		if betalib is not special
-			RLibMessage(&DoScriptOnOff, 2) ! "Transcription is not currently on."
+			RLibMessage(&DoScriptOnOff, 3) ! "Transcription is not currently on."
 		elseif (not scriptoff)
 			VMessage(&DoScriptOnOff, 3) ! Unable to end transcription."
 		else
@@ -12748,7 +13273,7 @@ replace DoUndo
 	if not UNDO_OFF
 	{
 		SaveSettings("undo")
-		NEW_PARSE = NEW_PARSE & ~PARSE$_F
+		parser_data[LAST_PARSER_STATUS] &= ~PARSE$_F
 		if undo
 		{
 			LoadSettings
@@ -12782,7 +13307,8 @@ routine ContinueUndoFailure
 
 routine PrintCommand(arr,n)
 {
-	while array arr[n] ~= "" and n < array arr[]
+	while array arr[n] ~= "" and n < array arr[] and
+		array arr[n] ~= "then"
 	{
 		select array arr[n]
 			case "~and"
@@ -12818,7 +13344,7 @@ object undolib "undolib"
 			return false
 		if ContinueUndoCheck
 			return true
-		if NEW_PARSE & PARSE$_F
+		if parser_data[LAST_PARSER_STATUS] & PARSE$_F
 			return false
 #ifset SHOW_COMMANDS
 		if oldword[1] or (last_actor and last_actor ~= player)
@@ -12901,10 +13427,10 @@ routine UndoResponse
 	elseif not FindLight(location)
 		""
 #endif
-	NEW_PARSE |= PRONOUNS_SET
+	parser_data[LAST_PARSER_STATUS] |= PRONOUNS_SET
 	v = verbroutine
 	verbroutine = &DoLookAround
-	DescribePlace
+	DescribePlace(location, true)
 	verbroutine = v
 #ifset NEW_FUSE
 	fake_runevents
@@ -12990,6 +13516,50 @@ replace DoWait(count)                   ! count argument is from DoWaitUntil
 	}
 	event_flag = 0
 	return true
+}
+
+! Roody's note: I noticed the original routine doesn't technically stop
+! waiting when the character gets there
+replace DoWaitforChar
+{
+	local count
+
+	if object is not living
+	{
+		ParseError(6)
+		return false
+	}
+
+	if object in location
+	{
+		VMessage(&DoWaitforChar, 1)      ! "They're right here..."
+		return true
+	}
+
+	VMessage(&DoWait, 1)                     ! "Time passes..."
+	event_flag = 0
+	do
+	{
+		Main
+		if object in location
+		{
+			! character has arrived
+			VMessage(&DoWaitforChar, 2)
+			event_flag = 2
+!			return
+		}
+		if event_flag
+		{
+			if not KeepWaiting
+				return
+		}
+		count++
+	}
+	while (STATUSTYPE=2 and count<60) or (STATUSTYPE~=2 and count<20)
+
+	VMessage(&DoWaitforChar, 3)     ! char. hasn't arrived yet
+
+	event_flag = 0
 }
 
 !----------------------------------------------------------------------------
@@ -13369,7 +13939,7 @@ replace Describeplace(place, long)
 		place = location
 
 	if AssignPronounsToRoom
-		NEW_PARSE &= ~PRONOUNS_SET
+		parser_data[LAST_PARSER_STATUS] &= ~PRONOUNS_SET
 
    ! Since, for example, a room description following entering via
    ! DoGo does not trigger before/after properties tied to looking
@@ -13699,7 +14269,7 @@ replace Describeplace(place, long)
 
 		print newline
 		need_newline = false
-		NEW_PARSE |= PRONOUNS_SET
+		parser_data[LAST_PARSER_STATUS] |= PRONOUNS_SET
 	}
 }
 #else
@@ -13734,7 +14304,7 @@ replace Describeplace(place, long)
 	describeplace_settings.describe_loc = place
 
 	if AssignPronounsToRoom
-		NEW_PARSE &= ~PRONOUNS_SET
+		parser_data[LAST_PARSER_STATUS] &= ~PRONOUNS_SET
 
 	! Since, for example, a room description following entering via
 	! DoGo does not trigger before/after properties tied to looking
@@ -15271,9 +15841,9 @@ routine ClearPronoun(obj)
 
 routine CoolPause(pausetext,page,no_newline)
 {
-#ifset NO_ACCESSIBILITY
-	local cheap
-#endif
+!#ifset NO_ACCESSIBILITY
+!	local cheap
+!#endif
 
 #ifclear NO_ACCESSIBILITY
 	if (cheap & CHEAP_ON)
@@ -15444,7 +16014,7 @@ routine HiddenPause
 #endif
 	key = system(11) ! READ_KEY
 	if system_status or system(61)  or ! MINIMAL_INTERFACE
-	hugor is switchedon
+	hidden_cursor_check is special
 	{
 		pause
 		key = word[0]
@@ -15953,6 +16523,8 @@ routine IsTimeLonger(first, second)
 		return true
 	elseif first.tm_hour > second.tm_hour
 		return true
+	elseif first.tm_minute > second.tm_minute
+		return true
 	elseif first.tm_second > second.tm_second
 		return true
 	else
@@ -15994,7 +16566,7 @@ routine PlayJukebox
 			jukebox is not switchedon
 			return
 		}
-		if not hugor is switchedon
+		if not is_music_playing is switchedon
 		{
 			current_song_length.tm_minute = a.length
 			current_song_length.tm_second = a.length #2
@@ -16051,7 +16623,7 @@ routine PlaySong(songfile,loop)
 
 routine CheckSongEnd
 {
-	if hugor is switchedon
+	if is_music_playing is switchedon
 	{
 		if not ExecOpCode(is_music_playing)
 			audio.current_music = 0
@@ -16418,16 +16990,19 @@ routine DoVersion
 	OtherNotes
 }
 
-routine HugorInfo
+routine TerpInfo
 {
-	if hugor is not switchedon
+	if opcodeterp is not switchedon
 		return
 !	select hugor.os
 !		case 1 : print "Windows ";
 !		case 2 : print "MacOS ";
 !		case 3 : print "Linux ";
-	print "Hugor v"; number hugor.version ;"."; \
-		number hugor.version #2 ; "."; number hugor.version #3
+	if opcodeterp.terp_name = "Hugor"
+	{
+		print " / Hugor v"; number opcodeterp.version ;"."; \
+		number opcodeterp.version #2 ; "."; number opcodeterp.version #3
+	}
 }
 ! Roody's note: I changed TITLECOLOR to a global. Set it to something else in
 ! SetGlobalsAndFillArrays if you'd like to provide a special title color.
@@ -16468,10 +17043,9 @@ routine PrintBanner
 {
 	print BANNER; " / ";
 	print "Roodylib "; ROODYVERSION ;
-	if hugor is switchedon
+	if opcodeterp is switchedon
 	{
-		print " / Hugor v"; number hugor.version ;"."; \
-			number hugor.version #2 ; "."; number hugor.version #3
+		TerpInfo
 	}
 	print newline
 }
@@ -16526,16 +17100,32 @@ routine DemoNotes
 }
 #endif ! DEMO_VERSION
 
-! Roody's note: This routine exists solely to be replaced, if you'd like other
-! trailing text to the DoVersion response.
+! Roody's note: This routine provides "new players type COMMAND" text. I use
+! it to list the command for accessibility options in interpreters that may
+! support screenreader.  If your game has help/about text, replace this
+! routine and change the commented line to fit your game.
 routine OtherNotes
 {
-	local a
+	local a, b
+!	a = "New players type \"help\""
 #ifclear NO_ACCESSIBILITY
-	a++
+	if screenreader_capable is special or (TERP & GLK_TERP) or
+		(TERP & SIMPLE_TERP)
+		b++
 #endif
-	if a
-		"(New players type \"INFO\")"
+	if a or b
+	{
+		print "(";
+		if a
+			print a;
+		if a and b
+			print "."; AFTER_PERIOD;
+		if b
+			print "Type \"a11y\" for accessibility commands";
+		if a and b
+			print ".";
+		")"
+	}
 }
 #endif ! if defined GAME_TITLE
 #endif ! ifclear NO_VERSION
@@ -16581,22 +17171,28 @@ routine RLibMessage(r, num, a, b)
 #if defined GAME_TITLE
 					print " for "; GAME_TITLE ;
 #endif
-					if (TERP & NORMAL_TERP) and hugor is not switchedon
+					if (TERP & NORMAL_TERP) and opcodeterp is not switchedon
 					{
 						"."
 						return
 					}
 					print " (";
-					if hugor is switchedon
+					if opcodeterp is switchedon
 					{
-						print "Hugor v"; number hugor.version ;"."; \
-							number hugor.version #2 ; "."; \
-							number hugor.version #3 ; " ";
-						select hugor.version
+						if opcodeterp.terp_name = "Hugor"
+						{
+							print "Hugor v"; number opcodeterp.version ;"."; \
+								number opcodeterp.version #2 ; "."; \
+								number opcodeterp.version #3 ; " ";
+						}
+						select opcodeterp.os
 							case 0: print "Unknown";
 							case 1: print "Windows";
 							case 2: print "MacOS";
 							case 3: print "Linux";
+							case 4: print "iOS";
+							case 5: print "Android";
+							case 6: print "Browser";
 					}
 					else
 					{
@@ -16604,7 +17200,9 @@ routine RLibMessage(r, num, a, b)
 							case SIMPLE_TERP: print "minimal Hugo port";
 							case GLK_TERP : print "glk Hugo port";
 					}
-					print ")"
+					print "). Preface input with an asterisk to
+				leave notes for the author ("; prompt ;"* the potato isn't
+				edible!)."
 				}
 				case 3 : "No transcript started."
 		}
@@ -16614,8 +17212,12 @@ routine RLibMessage(r, num, a, b)
 			select num
 				case 1
 				{
-					print capital The(a) ; IsorAre(a,true); \
-					" inside "; The(parent(a)); "."
+					print capital The(a) ; IsorAre(a,true);
+					if parent(a).prep
+						print " "; parent(a).prep; " ";
+					else
+						print " inside ";
+					print The(parent(a)); "."
 				}
 		}
 		case &CoolPause
@@ -17080,9 +17682,12 @@ routine RLibMessage(r, num, a, b)
 		{
 			select num
 				case 1: "Transcription is already on."
-				case 2: "Transcription is not currently on."
-				case 3: "Comment recorded!"
-				case 4: "Comment not recorded! (Transcription is not on.)"
+				case 2: print "Transcription on. Preface input with an asterisk to
+				leave notes for the author ("; prompt ;"* the potato isn't
+				edible!)."
+				case 3: "Transcription is not currently on."
+				case 4: "Comment recorded!"
+				case 5: "Comment not recorded! (Transcription is not on.)"
 		}
 #endif ! NO_XVERBS
 #ifset SCORE_NOTIFY
@@ -17209,7 +17814,8 @@ routine RLibMessage(r, num, a, b)
 				case 1
 				{  ! "You are wearing";
 					if (FORMAT & USECHARNAMES_F)
-						print capital a.name;
+!						print capital a.name;
+						CArt(a)
 					else
 						print capital a.pronoun;
 						IsOrAre(a,1)
@@ -17315,10 +17921,34 @@ routine RLibMessage(r, num, a, b)
 				case 1: print "\I...and now returning to the story.\i"
 		}
 #endif
+#ifset USE_FOLLOW
+	case &MoveFollowers
+	{
+		select num
+			case 1:
+			{
+				print capital PrintArrayList(moved_follower, a);
+				" follow";
+				if a = 1 and moved_follower[0] is not plural:  "s";
+				if not location.follow_message
+				{
+					print " ";
+					if player_person = 1,2
+						print player.pronoun #2;
+					else
+						print player.name;
+					"."
+				}
+				event_flag = true
+			}
+	}
+#endif
 		case &Parse
 		{
 			select num
 				case 1: "You will need to type that in again."
+				case 2: "Unfortunately, you can't use quoted text in a
+				queued command like that. Sorry."
 		}
 #ifset NO_FANCY_STUFF
 		case &PrintStatusLine
@@ -17410,9 +18040,9 @@ routine RLibMessage(r, num, a, b)
 
 routine NewRlibMessages(r, num, a, b)
 {
-   select r
+	select r
 		case else : return false
-   return true ! this line is only reached if we replaced something
+	return true ! this line is only reached if we replaced something
 }
 
 #ifclear NO_OBJLIB

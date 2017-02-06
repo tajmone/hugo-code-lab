@@ -1,5 +1,5 @@
 !\-----------------------------------------------------------------------
-Simpletalk.h version 2.4, based on code written by Robb Sherwin, updated and
+Simpletalk.h version 2.5, based on code written by Robb Sherwin, updated and
 turned into an includable library by Roody Yogurt.
 
 This is a simplified version of Sherwin's Phototalk port. This one drops support
@@ -7,6 +7,13 @@ for contextualized multiple-choice menus (which it seems the original Inform 6
 version had) and is just a bare-bones list-all-available-quips system.
 
 changelog
+	v 2.5 - Added DoQuickTalk routine to allow for commands like "talk <char> 1"
+	        so walkthroughs and such can work with the talk system. to use, add
+	        grammar like this to your game:
+verb "t","talk
+	* living "1"/"2"/"3"/"4"        DoQuickTalk
+	* number                        DoQuickTalk
+
 	v 2.4 - removed unnecessary word[2] check to allow command shortening
 	v 2.3 - fixed a message routine bug
 	v 2.2 - added event_flag check so external things can kick the player out of
@@ -104,14 +111,14 @@ routine SetUpQuips
 #set _SIMPLETALK_H
 
 #ifset VERSIONS
-#message "Simpletalk.h version 2.4"
+#message "Simpletalk.h version 2.5"
 #endif
 
 #ifset USE_EXTENSION_CREDITING
 #ifclear _ROODYLIB_H
 #message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
 #endif
-version_obj simpletalk_version "SimpleTalk Version 2.4"
+version_obj simpletalk_version "SimpleTalk Version 2.5"
 {
 	in included_extensions
 	desc_detail
@@ -130,7 +137,8 @@ constant SPOKEN 2
 replace DoTalk
 {
 	speaking = 0
-	if not xobject and word[2] ~= "about"
+	if (not xobject and word[2] ~= "about") or
+		(xobject >= 1 and xobject <= 4)
 	{
 		if object is unfriendly
 		{
@@ -151,12 +159,13 @@ replace DoTalk
 		else
 		{
 			local a,b
-			! speaking = object ! this speech system doesn't really need to keep
+			speaking = object ! this speech system doesn't really need to keep
 							! track of who's speaking
 			while true
 			{
 				b = Phototalk
 				a = higher(a,b)
+				xobject = 0
 				if loop_talk and (not MoreTalk or not b)
 					break
 				elseif not loop_talk
@@ -204,40 +213,60 @@ routine Phototalk
 		}
 	}
 
+	local t
 ! Check and make sure you have something to say.
 	for (x=y; x<(y+quips[object.charnumber]); x++)
 	{
 		if (QuipOn(object,x-y))
 		{
+			t = x-y
 			ok++
-			break
+#ifclear AUTOMATIC_SAY
+			if not xobject
+				break
+#endif
 		}
 	}
 
 ! Write contents to the screen
 	if ok
 	{
-		PhotoMessage(&PhotoTalk, 1) ! "Please select one:"
-		""
+#ifset AUTOMATIC_SAY
+		if ok = 1 and not xobject and not BeenSpoken(object,t)
+			xobject = 1
+#endif
+		if not xobject or xobject < 0 or xobject > ok
+		{
+			PhotoMessage(&PhotoTalk, 1) ! "Please select one:"
+			""
+		}
 
-! List the player's choices
+		! List the player's choices
 		for (x=y;  x < (y+(quips[object.charnumber])); x++)
 		{
 			if (QuipOn(object,x-y))
 			{
 				z++
-				print "("; number z; ")";
-				SayQ(object.charnumber,x-y)
+				if not xobject
+					PhotoMessage(&PhotoTalk, 2, z) ! "(#)"
+				if not xobject or xobject = z
+					SayQ(object.charnumber,x-y)
 			}
 		}
 
-		""
-		while true
+		if not xobject
 		{
-			selected = GetDial(z)
-			if can_quit or (not can_quit and selected)
-				break
+			""
+			while true
+			{
+				selected = GetDial(z)
+				if can_quit or (not can_quit and selected)
+					break
+			}
 		}
+		else
+			selected = xobject
+
 		""
    	if (selected ~= 0)
  		{
@@ -256,15 +285,49 @@ routine Phototalk
 		}
 		else
 		{
-		PhotoMessage(&Phototalk,2) ! "Eeeagh! Stage fright! Abort!"
+		PhotoMessage(&Phototalk,3) ! "Eeeagh! Stage fright! Abort!"
 		}
 
 		return selected
 	}
 
-	PhotoMessage(&PhotoTalk,3) ! "You really have nothing to say right now."
+	PhotoMessage(&PhotoTalk,4) ! "You really have nothing to say right now."
 }
 
+routine DoQuickTalk
+{
+	local r
+	local i = 1
+	while word[(i+1)] ~= ""
+	{
+		i++
+	}
+		if i > 2
+		{
+			select word[i]
+				case "1": r = 1
+				case "2" : r = 2
+				case "3" : r = 3
+				case "4" : r = 4
+		}
+
+	if not r
+	{
+		if speaking
+		{
+			r = object
+			object = speaking
+		}
+		else
+		{
+			"It is unclear whom you are speaking to."
+			return
+		}
+	}
+	else
+		speaking = object
+	return Perform(&DoTalk, speaking, r)
+}
 
 routine MoreTalk
 {
@@ -389,8 +452,12 @@ routine PhotoMessage(r, num, a, b)
 		{
 			select num
 				case 1: "Please select one:"
-				case 2: "Eeeagh! Stage fright! Abort!"
-				case 3: "You really have nothing to say right now."
+				case 2
+				{
+					print "("; number a; ")";
+				}
+				case 3: "Eeeagh! Stage fright! Abort!"
+				case 4: "You really have nothing to say right now."
 
 		}
 		case &GetDial
@@ -423,7 +490,9 @@ true if a replacement message exists for routine <r> \!
 
 routine NewPhotoMessages(r, num, a, b)
 {
-	return false
+	select r
+	case else : return false
+	return true
 }
 
 #endif

@@ -137,7 +137,7 @@ routine IntroText
 	"\n\"Initial text goes here.\""
 	print ""    ! For a blank line between the intro and the game title
 
-	Version
+	DoVersion
 	"\n\"Secondary text goes here.\""
 
 }
@@ -265,7 +265,7 @@ routine Respond (char_num, line)
 }
 
 
-routine Version
+routine DoVersion
 {
 	color LIGHT_RED
 	print "\BSimpletalk\b"

@@ -1,0 +1,38 @@
+!First create a "known" and "moved" attribute for every playable character
+
+attribute laurel_known
+attribute hardy_known
+attribute laurel_moved
+attribute hardy_moved
+
+replace MakeMovedVisited(obj)
+{
+	select player
+		case laurel: obj is laurel_moved
+		case hardy: obj is hardy_moved
+}
+
+replace ObjectIsMovedVisited(obj)
+{
+	local x
+	select player
+		case laurel: x = obj is laurel_moved
+		case hardy: x = obj is hardy_moved
+	return x
+}
+
+replace MakeKnown(obj)
+{
+	select player
+		case laurel: obj is laurel_known
+		case hardy: obj is hardy_known
+}
+
+replace ObjectIsKnown(obj)
+{
+	local x
+	select player
+		case laurel: x = obj is hardy_known
+		case hardy: x = obj is hardy_known
+	return x
+}

@@ -11,6 +11,7 @@
 constant GAME_TITLE "GAME TITLE"
 constant AUTHOR "YOUR NAME"
 constant RELEASE "1.0"
+!constant FIRST_PUBLICATION "(year)"  ! for previously released games
 !constant BLURB "An Interactive Blah"
 !constant IFID "put-IFID here"
 
@@ -18,10 +19,12 @@ constant RELEASE "1.0"
 #include "flags.hug"   ! edit "flags.hug to fit your game
 
 #ifset HDX
-#switches -d              ! if the -d switch is not set in the compiler itself,
-                          ! #set HDX will produce a Hugo Debuggable Executable
-                          ! (.HDX) with extension .HEX
-#endif                    ! Sneaky!
+#switches -ds              ! if the -d switch is not set in the compiler itself,
+                           ! #set HDX will produce a Hugo Debuggable Executable
+                           ! (.HDX) with extension .HEX
+#else                      ! Sneaky!
+#switches -s               ! Print compilation statistics
+#endif
 
 !:: Grammar Library Inclusions (grammar must come first)
 #include "grammar.g"

@@ -1,5 +1,5 @@
 !::
-! New Game (Shell)
+! Follow System Example
 !::
 
 !:: Raise limits, if necessary (here are some of the limits you're likely to
@@ -19,11 +19,14 @@
 !#set USE_PLURAL_OBJECTS  ! Use plural objects
 !#set USE_ROLLABLES       ! Allow the pushing of mobile objects (needs Roodylib)
 #set USE_ROODYLIB
+#set USE_FOLLOW
+#set LIST_CLOTHES_FIRST
+#set NEW_DESCRIBEPLACE
 !#set USE_VEHICLES        ! Use vehicle objects
 #set VERSIONS            ! Print library versions at compile time
 
 !:: switches              ! example how one can add compiler switches to source
-#switches -s              ! print compilation statistics
+!#switches -ls            ! print compilation stats to .LST file
 
 #ifset HUGOFIX
 #set DEBUG
@@ -32,10 +35,9 @@
 !:: Constants and global variables (some constants must be set before hugolib
 !   is included):
 
-constant GAME_TITLE "GAME TITLE"
-constant AUTHOR "YOUR NAME"
+constant GAME_TITLE "Follow System Example"
+constant AUTHOR "Roody Yogurt"
 constant RELEASE "1.0"
-!constant FIRST_PUBLICATION "(year)"  ! for previously released games
 !constant BLURB "An Interactive Blah"
 !constant IFID "put-IFID here"
 !constant AFTER_PERIOD " "     ! include one space after full stops (as opposed
@@ -47,7 +49,11 @@ constant RELEASE "1.0"
 #ifset USE_ROODYLIB
 #include "roodylib.g"
 #endif
+verb "follow"
+	* object              DoFollow
 
+verb "stop"
+	*                      DoStop
 ! new grammar needs to be defined before the including verblib
 #include "verblib.g"        ! Verb Library
 
@@ -84,21 +90,13 @@ routine init
 
 routine SetGlobalsAndFillArrays
 {
-!\ Uncomment and modify this section if your game has scoring and ranking.
-	MAX_SCORE = 50
-	ranking[0] = "Amateur Adventurer"
-	ranking[1] = "Competent Door-Unlocker"
-	ranking[2] = "Bomb-Meddling Adventurer"
-	ranking[3] = "Master Magic Wand Finder"
-	ranking[4] = "The Genuine Article Sample Game Solver"
-	MAX_RANK = 4  \!
 ! if using Roodylib, verbosity can be set to BRIEF, SUPERBRIEF, OR VERBOSE
 	verbosity = 2
 	counter = -1                    ! 1 turn before turn 0
-! statustype options: 0 = no status, 1 = score/turns, 2 = time
 ! if using Roodylib, can be set to NO_STATUS, SCORE_MOVES, TIME_STATUS,
 ! CUSTOM_STATUS, INFOCOM_STYLE, MILITARY_TIME
 	STATUSTYPE = 1
+	FORMAT = FORMAT | DESCFORM_D
 	TEXTCOLOR = DEF_FOREGROUND
 	BGCOLOR = DEF_BACKGROUND
 	SL_TEXTCOLOR = DEF_SL_FOREGROUND
@@ -122,7 +120,10 @@ routine SetGlobalsAndFillArrays
 
 routine IntroText
 {
-	"Intro text goes here."
+	"Welcome to the Roodylib following example. To get the giant to follow you,
+	type \"GIANT, FOLLOW ME.\" You can command him to stop following with
+	\"GIANT, STOP.\""
+	StartFollowing  ! starts the follow system
 #if defined DoVersion
 	""
 	DoVersion
@@ -156,4 +157,123 @@ player_character you "you"
 
 room STARTLOCATION "Start Location"
 {
+	long_desc
+		"There's a stairwell down, a door barely big enough for you to the north,
+		and a large archway to the east."
+	e_to east_room
+	d_to basement
+	n_to small_room
+	follow_message
+	{
+		select old_location
+			case basement : " you up the stairs."
+			case else : " you."
+	}
+}
+
+character friendlygiant "friendly giant"
+{
+	article "the"
+	adjective "friendly"
+	noun "giant"
+	in STARTLOCATION
+	list_contents
+		return ListClothesFirst(self)
+	order_response
+	{
+		! a response to GIANT, FOLLOW ME
+		if verbroutine = &DoFollow and object = player  ! DoFollow can be found in verbstub
+		{
+			if self is following
+				"The giant says, \"I'm already following you!\""
+			else
+			{
+				"The giant says, \"OK!\""
+				AddFollower(self)
+			}
+			return true
+		}
+		elseif verbroutine = &DoStop ! DoStop is made up for this example
+		{
+			if self is not following
+				"The giant says, \"I wasn't following you!\""
+			else
+			{
+				"The giant says, \"OK!\""
+				RemoveFollower(self)
+			}
+			return true
+		}
+		return false ! for other commands, do the normal behavior
+	}
+}
+
+object hat "hat"
+{
+	article "a"
+	noun "hat"
+	in friendlygiant
+	is clothing worn
+}
+
+object bar "candybar"
+{
+	in friendlygiant
+	noun "candybar"
+	article "a"
+}
+
+object table "table"
+{
+	noun "table"
+	article "the"
+	is platform enterable
+	in east_room
+}
+
+room east_room "East Room"
+{
+	long_desc
+		"An exit to the west leads back to the first room."
+	w_to startlocation
+}
+
+room basement "Basement"
+{
+	long_desc
+		"A stairwell leads back up to the other room."
+	follow_message
+		" you down the stairs."
+	u_to startlocation
+}
+
+room small_room "Small Room"
+{
+	long_desc
+		"An exit leads back to the south."
+	disallow_follow
+		return true !  the giant is too big for this room
+	s_to startlocation
+}
+
+routine DoStop
+{
+	"Stop what?"
+	return false
+}
+
+routine DoFollow
+{
+	if object = player
+		"You can't follow yourself."
+	elseif object is not living
+	{
+		"You can't follow that."
+	}
+	elseif object is following
+	{
+		"The giant is already following you."
+	}
+	else
+		"He's not going anywhere."
 }

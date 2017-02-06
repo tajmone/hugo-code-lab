@@ -113,15 +113,15 @@ verb "remove"
 verb "take"
 	*                                                       DoVague
 	* "inventory"                                           DoInventory
-#ifset USE_CHECKHELD
-	* "off" multiheld                                       DoTakeOff_Checkheld
-	* multiheld "off"                                       DoTakeOff_Checkheld
-#elseif set AIF
-	* "off" multiheld                                       DoTakeOff
-	* multiheld "off"                                       DoTakeOff
-#else
+#ifset NO_WEARALL
 	* "off" held                                       DoTakeOff
 	* held "off"                                       DoTakeOff
+#elseif set USE_CHECKHELD
+	* "off" multiheld                                       DoTakeOff_Checkheld
+	* multiheld "off"                                       DoTakeOff_Checkheld
+#else
+	* "off" multiheld                                       DoTakeOff
+	* multiheld "off"                                       DoTakeOff
 #endif
 
 ! Roody's note: Pre-defining "empty" before verblib.g. Alterred to not
@@ -130,6 +130,13 @@ verb "take"
 ! in roodylib.h.
 verb "empty", "unload"
 	*                                                       DoVague
+! Send >UNLOAD OBJECT to DoEmptyoOrGet, which dispatches to DoEmpty or DoGet
+!	* object                                                DoEmpty
+#ifset NEW_EMPTY
+	* (CheckEmpty)						DoEmpty ! DoEmptyOrGet
+#else
+	* object                DoEmpty
+#endif
 #ifset NEW_EMPTY
 	* (CheckEmpty) "on"/"onto" "ground"/"floor"             DoEmptyGround
 #else
@@ -138,13 +145,7 @@ verb "empty", "unload"
 	* multi "from"/"off"/"on"/"in" parent                    DoGet
 	* multi "offof"/"outof" parent                         DoGet
 	* multi "from" "offof"/"outof"/"on"/"in" parent         DoGet
-! Send >UNLOAD OBJECT to DoEmptyoOrGet, which dispatches to DoEmpty or DoGet
-!	* object                                                DoEmpty
-#ifset NEW_EMPTY
-	* (CheckEmpty)						DoEmpty ! DoEmptyOrGet
-#else
-	* object                DoEmpty
-#endif
+
 
 ! Defining the no-object version of DoEnter before hugolib.g to make use of
 ! some enter-object-detecting code in DoEnter
@@ -223,8 +224,11 @@ xverb "clear","clearscreen"
 	* "never"/"off"/"normal"           DoAccessibility
 
 
-xverb "info"
-	*	DoInfo
+xverb "a11y"
+	*               DoA11y
+
+xverb "accessibility"
+	*               DoA11y
 
 xverb "prompt"
 	*	             DoPrompt
@@ -423,6 +427,9 @@ xverb "$nr"
 
 xverb "$nu"
 	* anything                              DoHugoFix
+
+xverb "$oa"
+	*                                       DoHugoFix
 
 xverb "$om"
 	*                                       DoHugoFix

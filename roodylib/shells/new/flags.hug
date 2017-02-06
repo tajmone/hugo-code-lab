@@ -66,8 +66,6 @@
 !----------------------------------------------------------------------------
 
 #ifset USE_ROODYLIB
-!#set AIF                      ! allow >REMOVE ALL and >WEAR ALL ("aif" is a
-                               ! joke, I swear!)
 !#set AMERICAN_ENGLISH         ! Use American English quotation mark rules
 !#set AUTOMATIC_EXAMINE        ! un-examined items are examined when picked up
 !#set BETA                     ! Compile with the comments-in-transcripts
@@ -94,6 +92,7 @@
 !#set NO_MODE_CHANGE           ! Disallow >BRIEF, SUPERBRIEF, and VERBOSE
 !#set NO_SORTING               ! Don't use array and property sorting routines
 !#set NO_VERSION               ! Don't use Roodylib's DoVersion routine
+!#set NO_WEARALL               ! Disallow >WEAR ALL
 !#set NO_XYZZY                 ! Don't use >XYZZY response code
 !#set OBJECT_SORTING           ! Use object-sorting system
 !#set ROTATE_DESC              ! Use description-rotating routines
@@ -115,6 +114,7 @@
                                !  exits (like a ladder or bleachers)
 !#set USE_EXTENSION_CREDITING  ! Use routines for listing all included
                                ! libraries
+!#set USE_FOLLOW               ! Use following-characters code
 !#set USE_FOOTNOTES            ! Use footnote code
 !#set HITCHHIKER_STYLE         ! All footnotes available all the time
 !#set USE_JUKEBOX              ! Use Roodylib music player manager

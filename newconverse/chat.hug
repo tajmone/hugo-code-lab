@@ -1,0 +1,401 @@
+! chat.hug - simple example for the 'converse' lib
+! Version 1.8, by Roody Yogurt (roodyyogurt@gmail.com)
+! Version 1.0, Copyright 2001 by Christopher Tate <ctate@acm.org>
+!
+! Updated by Roody Yogurt to work with 'newconverse', 2012
+!
+! This is an extremely rough demonstration of the "converse.h" conversation
+! library in Hugo.
+#set HUGOFIX
+#set	VERBSTUBS
+!#set NO_UNDO
+
+#ifset HUGOFIX
+#set DEBUG
+#endif
+
+!-----
+! put custom grammar here, if desired
+!-----
+!#include "roodylib.g"
+#include "newconverse.g"
+#include "verblib.g"		! grammar first, of course
+	! and the converse-system grammar
+
+#include "hugolib.h"
+!#include "roodylib.h"
+constant UNDO_WORDS 10
+!#include "undolib.h"
+#include "newconverse.h"
+
+
+routine init
+{
+	window 0
+	cls
+	DEFAULT_FONT = PROP_ON
+	FORMAT = FORMAT | DESCFORM_F
+	Font(DEFAULT_FONT)
+	STATUSTYPE = 1
+	verbosity = 2
+	! name of game, etc.
+	"\BA Simple Chat\b"
+	"Copyright (c) 2001 by Christopher Tate, <ctate@acm.org>"
+	print BANNER
+	player = you							! initialize player bookkeeping
+	location = gloomyHall
+	old_location = location
+	move player to location
+	FindLight(location)
+	DescribePlace(location)
+	location is visited
+	CalculateHolding(player)
+	counter = -1
+	prompt = "> "
+#ifset _ROODYLIB_H
+	Init_Calls
+#endif
+}
+
+routine main
+{
+	counter	= counter +	1
+	run	location.each_turn
+	runevents
+	RunScripts
+	if speaking	not	in location
+		speaking = 0
+	PrintStatusLine
+#ifset _ROODYLIB_H
+	Main_Calls
+#endif
+}
+
+replace talkoptions
+{
+	inherits defaultoptions
+	top_menu 1     ! should conversation menu be in status bar?
+	show_topics 1  ! should it show available topics to talk about?
+	topic_change 1 ! is topic-changing allowed?
+	conv_force 1 ! are only conversation commands allowed?
+	auto 0 ! when a topic is depleted, should it auto-switch to next topic?
+	stop_undo 0 ! should it disallow UNDO during conversations?
+	can_quit 1 ! can the player >END CONVERSATION (or otherwise leave it)?
+#ifset _UNDOLIB_H
+	skip_back 1
+#endif
+}
+
+!#ifclear _ROODYLIB_H
+!replace PreParse
+!{
+!	return ConversePreParse
+!}
+!#endif
+
+! the player
+
+player_character you "you"
+{
+	! intentionally empty
+}
+
+NPC man "hunched figure"
+{
+	nouns "man", "him", "figure", "hands"
+	adjectives "shadowed", "hunched", "sitting", "seated"
+	article "the"
+	long_desc : "Guttering shadows obscure the man's face, revealing only
+					 highlights of his features:  a thin, hooked nose; hollow cheeks;
+					 wild eyebrows; a sharp chin."
+	greeted
+	{
+		"The man's eyes catch the torchlight for a moment as he looks up at you."
+
+		! greeted{} is called after the 'speaking' global is set, so we can
+		! establish a topic of conversation here and know that it will apply to
+		! this NPC.  We test self.current_topic because for this particular NPC,
+		! we want conversations to pick up where they left off.
+
+		if self.current_topic = 0
+			SetCurrentTopic(manTopic)
+	}
+	current_topic 0			! initial state
+	in gloomyHall
+	is quiet, hidden			! he's not carrying anything, so this is irrelevant,
+									! but still...
+}
+
+! two rooms, so you can leave the NPC to end the conversation
+
+room gloomyHall "Gloomy Hall"
+{
+	long_desc
+	{
+		! ends without a newline so the description of the man who's sitting in
+		! the chair here will appear as part of the room description, not as a
+		! separate 'things in the room' entry.
+
+		"Rough vaults form the walls here, rising into sooty gloom high above.
+		Torches spaced around the hall throw uneasy pools of ruddy light onto the
+		floor.";
+		if man in self
+			" In the center of the room, a shadowed figure sits hunched
+			within the confines of a massive chair.";
+		""
+	}
+
+	e_to sideChamber
+	cant_go : "There is a side chamber to the east, but no other exits."
+}
+
+room sideChamber "Side Chamber"
+{
+	long_desc
+	{
+		"The ceiling is lower here, black with years (centuries?) of smoke."
+	}
+
+	after
+	{
+		! when the player comes here after the man gets up and leaves, the game
+		!  ends.
+		location
+		{
+			if self is special
+			{
+				""		! blank line
+				Indent		! properly start the next paragraph
+				"You step into the side chamber, and stop short.  The man is gone.
+				The torches burn undisturbed, the soot-rimed walls and ceiling are
+				unmarked; yet he is not here.  Slowly, you turn back into the
+				larger room.  Time already seems an insubstantial thing; you have
+				all the time in the world."
+				endflag = 3		! immediate end of game, no win/lose message.
+			}
+		}
+	}
+
+	w_to gloomyHall
+	cant_go : "You can only retrace your steps to the west."
+}
+
+! some props - they're scenery, since they're really environmental rather than
+! things for the player to mess with.
+
+scenery torch "torch"
+{
+	nouns "torch", "torches", "sconce", "sconces", "light", "lights"
+	adjective "iron", "burning", "flickering", "guttering"
+	article "the"
+	long_desc : "The torches are set firmly into iron sconces bolted to the
+					 walls."
+
+	found_in gloomyHall, sideChamber
+}
+
+scenery soot "soot"
+{
+	nouns "soot", "grime"
+	adjectives "sooty", "grimy", "black", "thick"
+	article "the"
+	long_desc : "The entire room is caked with it:  thick and grimy, the
+					 inevitable detritus of torchlight."
+
+	found_in gloomyHall, sideChamber
+}
+
+scenery chair "chair"
+{
+	nouns "chair", "throne", "seat"
+	adjectives "massive", "stone", "wood", "wooden"
+	article "the"
+	long_desc
+	{
+		"Closer inspection reveals that the chair (throne?) is of stone, not wood.
+		 Beneath the man's inert hands the armrests glow in the torchlight, their
+		 patina worn smooth by the rub of countless sleeves.  Elusive
+		 glints beneath the caked soot hint at long-vanished paint, or gilt."
+	}
+	in gloomyHall
+}
+
+! the NPC
+
+
+
+! Conversational topics
+!
+! Note that the topic objects have exactly the same nouns/adjectives as their
+! corresponding 'real' objects.  This ensures that the player gets the expected
+! topic when using words that refer to the 'real' object.  If you need to select
+! different Topic objects based on the use of the same terms in different
+! contexts, override the Topic objects' parse_rank{} functions to do whatever
+! game-state checking is necessary.
+
+! the man himself - used as default topic
+Topic manTopic "himself"
+{
+	nouns "man", "him", "figure", "hands", "man", "himself"
+	adjectives "shadowed", "hunched", "sitting", "seated"
+	in Conversation
+	related_object man
+}
+
+Assertion man_assert_who
+{
+	in manTopic
+	pretext "You ask, "
+	menu_choice "Who are you?"
+	menu_response : "The figure's head tips sideways slightly.  \"I am myself.
+						  Who are you?  You could give me a name, but it would mean
+						  nothing to me.  How should a name for me mean anything
+						  to you?\""
+}
+
+Assertion man_assert_how
+{
+	in manTopic
+	menu_choice "How did you get here?"
+	menu_response
+	{
+		"\"The same way you did, I expect.  My parents met, engaged in intimacy;
+		in the due course of time....\"  He begins to laugh, waving one hand
+		feebly in your direction.  \"You should \Isee\i the look on your face.\"
+		He shakes his head, still chuckling.  \"There is no more of an answer,
+		really -- I got here by sitting in this chair, and now I am talking to
+		you.\""
+
+		! He pointed out the chair, so let the conversation flow
+		SetCurrentTopic(chairTopic)
+	}
+}
+
+! the chair
+Topic chairTopic "chair"
+{
+	nouns "chair", "throne", "seat"
+	adjectives "massive", "stone", "wood", "wooden"
+	in Conversation
+}
+
+Assertion chair_assert_throne
+{
+	in chairTopic
+	menu_choice "Is that a throne?"
+	menu_response	! full response
+	{
+		"The man shifts slightly; you are unsure whether the corner of his mouth
+		twitched.  \"That would depend on who is sitting here, wouldn't it?\""
+	}
+}
+
+Assertion chair_assert_howlong
+{
+	in chairTopic
+	menu_choice "How long have you been sitting here?"
+	menu_response
+	{
+		"\"A good long time, it seems.  Though I've no idea what you might
+		consider to be 'long,' of course.\""
+		chair_assert_time is not visited		! once you ask this question, the new
+														!  one becomes available
+	}
+}
+
+Assertion chair_assert_time
+{
+	in chairTopic
+	is visited
+	needscomma 1
+	posttext " you say."
+	menu_choice "On that thing, I'd say ten minutes would be a long time."
+	menu_response
+	{
+		"The man laughs, and straightens.  \"Perhaps you're right.  And perhaps
+		that means I should go, now that you've come and reminded me that time is,
+		indeed, relative.\"  With that, he rises, winks somberly at you, and
+		strides away into the side chamber to the east."
+		DoStopTalk(true)
+!		speaking = 0    ! let newconverse.h know the conversation is over
+		move man to nothing		! he's gone now
+		sideChamber is special	! mark the end-of-game flag
+	}
+}
+
+! conversation about the torches
+Topic torchTopic "torch"
+{
+	nouns "torch", "torches", "sconce", "sconces", "light", "lights"
+	adjective "iron", "burning", "flickering", "guttering"
+	in Conversation
+	is not transparent		! subtopics are not directly accessible to the player
+}
+
+Assertion torch_assert_light
+{
+	menu_choice "Seems rather dim here, even with all these torches."
+	menu_response
+	{
+		"The figure raises a hand slightly, sketches a brief gesture.  \"As you
+		can see, there's little chance for light to escape once it reaches the
+		walls.\""
+
+		! Direct the player to a new topic when this assertion is said.  Note
+		! that this works even though sootTopic's container, torchTopic, is marked
+		! 'not transparent', which prevents the player from invoking >TOPIC
+		! directly on its subtopics.
+		SetCurrentTopic(sootTopic)
+	}
+	in torchTopic
+}
+
+Assertion torch_assert_still_burning
+{
+	menu_choice "Who keeps the torches burning?"
+	menu_response
+	{
+		"\"They keep themselves burning, of course.  One can't burn in proxy of
+		 someone else.\""
+		if torch_assert_light is not visited
+			CueAssertion(speaking, torch_assert_light)
+	}
+	in torchTopic
+}
+
+Assertion torch_assert_old_fashioned
+{
+	menu_choice "Torches seem rather old-fashioned."
+	menu_response : "His eyebrows rise.  \"And is that such a bad thing?  You'd
+						  think that newer is necessarily better, to hear you talk.
+						  Tell that to a cabinet-maker and see if he can keep
+						  a straight face.\""
+	needscomma 1
+	posttext " you say."
+	in torchTopic
+}
+
+! a nominal subtopic, to demonstrate topic backtracking
+Topic sootTopic "soot"
+{
+	nouns "soot", "grime"
+	adjectives "sooty", "grimy", "black", "thick"
+	in torchTopic
+}
+
+Assertion soot_assert_walls
+{
+	in sootTopic
+	menu_choice "Is this soot all over everything?"
+	menu_response : "He chuckles.  \"Try burning torches in \Iyour\i house and
+						  see what happens.\""
+}
+
+Assertion soot_assert_clean
+{
+	in sootTopic
+	menu_choice "Why not clean more often?"
+	menu_response : "\"That would ruin the ambiance, don't you think?  And
+						 besides, everything would just turn black again; why
+						 bother?\""
+}
