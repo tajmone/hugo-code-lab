@@ -109,7 +109,7 @@ routine SetGlobalsAndFillArrays
 	player = you
 	location = bedroom
 	loop_talk = true
-	can_quit = false
+	can_quit = true
 }
 
 !::	Main game loop

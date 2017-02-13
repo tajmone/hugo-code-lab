@@ -213,13 +213,11 @@ routine Phototalk
 		}
 	}
 
-	local t
 ! Check and make sure you have something to say.
 	for (x=y; x<(y+quips[object.charnumber]); x++)
 	{
 		if (QuipOn(object,x-y))
 		{
-			t = x-y
 			ok++
 #ifclear AUTOMATIC_SAY
 			if not xobject
@@ -232,7 +230,7 @@ routine Phototalk
 	if ok
 	{
 #ifset AUTOMATIC_SAY
-		if ok = 1 and not xobject and not BeenSpoken(object,t)
+		if ok = 1 and not xobject ! and not BeenSpoken(object,t)
 			xobject = 1
 #endif
 		if not xobject or xobject < 0 or xobject > ok

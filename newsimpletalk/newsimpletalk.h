@@ -192,14 +192,20 @@ routine Phototalk
 		if speaking.quip #x and (speaking.quip #x & AVAILABLE)
 		{
 			ok++
+#ifclear AUTOMATIC_SAY
 			if not xobject
 				break
+#endif
 		}
 	}
 
 ! Write contents to the screen
 	if ok
 	{
+#ifset AUTOMATIC_SAY
+		if ok = 1 and not xobject ! and (BeenSpoken(object,t) or not can_quit)
+			xobject = 1
+#endif
 		if not xobject or xobject < 0 or xobject > ok
 		{
 			PhotoMessage(&PhotoTalk, 1) ! "Please select one:"
@@ -249,22 +255,29 @@ routine Phototalk
 
 routine DoQuickTalk
 {
-	local r
+	local r, x, n
 	local i = 1
 	while word[(i+1)] ~= ""
 	{
 		i++
 	}
-		if i > 2
-		{
-			select word[i]
-				case "1": r = 1
-				case "2" : r = 2
-				case "3" : r = 3
-				case "4" : r = 4
-				case "5" : r = 5
-		}
+	if i > 2
+	{
+		r = WordIsNumber(word[i])
+	}
 
+	for (x=1 ;x<=object.#quips ;x++ )
+	{
+		if (object.quip #x & AVAILABLE)
+		{
+			n++
+		}
+	}
+	if r > n
+	{
+		"That is not a valid conversation choice."
+		return false
+	}
 	if not r
 	{
 		if speaking
@@ -394,4 +407,29 @@ routine NewPhotoMessages(r, num, a, b)
 	return false
 }
 
+#if undefined WordIsNumber
+routine WordisNumber(w)
+{
+	select w
+	case "zero", "0":       return 0
+	case "one", "1":        return 1
+	case "two", "2":        return 2
+	case "three", "3":      return 3
+	case "four", "4":       return 4
+	case "five", "5":       return 5
+	case "six", "6":        return 6
+	case "seven", "7":      return 7
+	case "eight", "8":      return 8
+	case "nine", "9":       return 9
+	case "ten", "10":       return 10
+	case -1
+	{
+		local a
+		a = StringToNumber(parse$)
+		if a
+			return a
+	}
+	return -1
+}
+#endif  ! WordIsNumber
 #endif

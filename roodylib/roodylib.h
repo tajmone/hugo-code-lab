@@ -848,8 +848,7 @@ replace CharMove(char, dir)
 			if char in location or newroom = location
 			{
 				self = a
-				""
-				OMessage(door, 5)
+				RlibOMessage(door, 3)
 			}
 		}
 		elseif newroom = location or char in location
@@ -10221,7 +10220,7 @@ replace door "door"
 			! Notify the player that the player or a character
 			! has gone through the door:
 			!
-			OMessage(door, 5)
+			RlibOMessage(door, 3)
 			general = 2
 		}
 
@@ -12490,25 +12489,43 @@ replace DoInventory
 	return true
 }
 
-! Roody's note: This version of DoListen is more friendly to room-listening.
+! Roody's note: This version of DoListen gives more default responses.
 replace DoListen
 {
-	if not object
+	if object
 	{
-		if not location.after
+		if not object.after
 		{
-			RLibMessage(&DoListen, 1)  ! "You hear nothing unexpected."
-			return true
+			if object is living and object ~= player
+				RLibMessage(&DoListen, 1)  ! "So-and-so is quiet."
+			else
+				RLibMessage(&DoListen, 2)  ! "That would serve no purpose."
 		}
-		verbroutine = ""
-		return true
 	}
-	elseif not object.after
-!		VMessage(&DoListen, 2)   ! "Not making any sound..."
-		RLibMessage(&DoListen, 2)  ! "That would serve no purpose."
-	! we have to clear verbroutine or else location.after.DoListen will run again
-	verbroutine = ""
+	else
+		RLibMessage(&DoListen, 3)  ! "You hear nothing unexpected."
 	return true
+}
+
+!\ Roody's note:  RoomSounds exists just for a quick way to do location
+sounds (responses for >LISTEN without specific objects).  Add it to a room's
+before property like so:
+
+	before
+	{
+		RoomSounds(location)
+		{
+			"No sounds but the wind."
+		}
+	}
+\!
+
+routine RoomSounds(obj)
+{
+	if verbroutine = &DoListen and not object
+		return location
+	else
+		return false
 }
 
 !\ Roody's note: The following DoUnlock and DoLock routines allow for multiple
@@ -15155,8 +15172,10 @@ routine DoPushDirTo
 			RLibMessage(&DoPushDirto,4) ! "The [x] slows to a stop."
 		return true
 	}
+#ifset USE_ATTABLES
 	elseif player in location
 		MoveAllAttachables(object, k, location, true)
+#endif
 	! Hopefully, it didn't get to Perform(&DoGo) only to have the command
 	! fail, but if it does, we silently move the attachables back to the
 	! first room
@@ -17582,14 +17601,16 @@ routine RLibMessage(r, num, a, b)
 		case &DoListen
 		{
 			select num
-				case 1   ! default location-listening
+				case 1   ! default character-listening
+					print CThe(object); IsorAre(object,true); " quiet."
+				case 2   ! default object-listening
+					"That would serve no purpose."
+				case 3   ! default location-listening
 				{
 					print capital player.pronoun #1;
 					MatchPlural(player, "hears", "hear")
 					" nothing unexpected."
 				}
-				case 2   ! default object-listening
-					"That would serve no purpose."
 		}
 		case &DoLookUnder
 		{
@@ -18077,6 +18098,25 @@ routine RlibOMessage(obj, num, a, b)
 				if a
 					print " with "; The(a);
 				" first)"
+			}
+			case 3
+			{
+				if actor ~= player
+					""
+				CThe(actor)
+				print " open"; MatchSubject(actor); " "; \
+				The(self); " and ";
+
+				if actor in location
+					print "leave"; MatchSubject(actor);
+				elseif location = self.between #((parent(actor) = \
+					self.between #1) + 1)
+					print "come"; MatchSubject(actor); " in";
+				print ", closing it behind ";
+				if actor is not plural or actor = player
+					print actor.pronoun #4; "."
+				else
+					print "themselves."
 			}
 	}
 #ifset USE_VEHICLES
