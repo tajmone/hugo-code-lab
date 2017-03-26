@@ -19,7 +19,7 @@
 !#set USE_PLURAL_OBJECTS  ! Use plural objects
 !#set USE_ROLLABLES       ! Allow the pushing of mobile objects (needs Roodylib)
 #set USE_ROODYLIB
-#set USE_OPPORTUNE
+!#set USE_OPPORTUNE
 !#set USE_VEHICLES        ! Use vehicle objects
 #set VERSIONS            ! Print library versions at compile time
 
@@ -68,6 +68,7 @@ verb "no"
 #endif
 
 !::	Other Library Inclusions
+#include "opportune.h"
 
 !::	Game Initialization	routine
 routine init

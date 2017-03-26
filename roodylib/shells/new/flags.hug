@@ -77,8 +77,6 @@
                                ! player characters visiting the same rooms
 !#set NEW_DESCRIBEPLACE        ! allows re-ordering of room contents and
                                !  double-spaced listings
-!#set NEW_EMPTY                ! Use more robust DoEmpty behavior (see roodylib)
-!#set NEW_FUSE                 ! Experimental new fuse definition
 !#set NEW_ROOMS                ! Undoing after the first turn in a room shows
                                ! the initial_desc, not the long_desc
 !#set NEW_STYLE_PRONOUNS       ! Use New Style Pronouns (see roodylib comments)
@@ -97,8 +95,6 @@
 !#set OBJECT_SORTING           ! Use object-sorting system
 !#set ROTATE_DESC              ! Use description-rotating routines
 !#set NEW_ROTATE               ! Use alternate description rotation routine, ha
-!#set ROUTINE_GRAMMAR_HELPER   ! Use Routine Grammar Helper (see comments)
-!#set SCORE_NOTIFY             ! Use score change notification code
 !#set SHOW_COMMANDS            ! UNDOs and multiple command lines will show
                                ! the turn being processed
 !#set SKIP_DOORS               ! Player can walk through closed, unlocked doors
@@ -107,16 +103,10 @@
                                !  in an enterable object gives "You can't go
                                !  that way." instead of "You'll have to get
                                !  up/out."
-!#set USE_BOXDRAW              ! Use quote box code
 !#set USE_CONFIG_SYSTEM        ! Use configuration-file-writing helper code
 !#set USE_DARK_ROOM            ! Dark rooms appear more room-like when entered
 !#set USE_ELEVATED_PLATFORMS   ! Allows enterable platforms for which >DOWN
                                !  exits (like a ladder or bleachers)
-!#set USE_EXTENSION_CREDITING  ! Use routines for listing all included
-                               ! libraries
-!#set USE_FOLLOW               ! Use following-characters code
-!#set USE_FOOTNOTES            ! Use footnote code
-!#set HITCHHIKER_STYLE         ! All footnotes available all the time
 !#set USE_JUKEBOX              ! Use Roodylib music player manager
 !#set USE_NEWMENU              ! Use Roodylib's menu system replacement
 !#set USE_RELATIVE_DESCRIPTIONS ! Default room descriptions are different

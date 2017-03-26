@@ -36,3 +36,12 @@ replace ObjectIsKnown(obj)
 		case hardy: x = obj is hardy_known
 	return x
 }
+
+#ifset HUGOFIX
+routine MakeUnknown(obj)
+{
+	select player
+		case laurel: obj is not laurel_known
+		case hardy: obj is not hardy_known
+}
+#endif

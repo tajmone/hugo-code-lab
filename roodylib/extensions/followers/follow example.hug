@@ -19,7 +19,7 @@
 !#set USE_PLURAL_OBJECTS  ! Use plural objects
 !#set USE_ROLLABLES       ! Allow the pushing of mobile objects (needs Roodylib)
 #set USE_ROODYLIB
-#set USE_FOLLOW
+
 #set LIST_CLOTHES_FIRST
 #set NEW_DESCRIBEPLACE
 !#set USE_VEHICLES        ! Use vehicle objects
@@ -61,6 +61,7 @@ verb "stop"
 #ifset USE_ROODYLIB
 #include "roodylib.h"         ! Hugo  Library Updates
 #endif
+#include "followers.h"
 
 !::	Other Library Inclusions
 

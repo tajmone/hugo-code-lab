@@ -6,6 +6,29 @@
 #message "extraroutines.hug Version 1.2"
 #endif
 
+!\ Roody's note: ClearArray, as you might guess, clears arrays of values.
+I made it mainly to stop having to write array-clearing loops each time.
+
+	Originally, it looped through the entire array, but doing so in a large
+	string array like _temp_string is a real memory-killer. Now it clears
+	until it gets two empty slots.\!
+
+routine ClearArray(array_to_be_cleared)
+{
+	local n,t
+	for (n=0;n< array array_to_be_cleared[] ; n++ )
+	{
+		if	array array_to_be_cleared[n] = 0
+			t++
+		else
+		{
+			array array_to_be_cleared[n] = 0
+			t = 0
+		}
+		if t = 2
+			break
+	}
+}
 
 ! CenterLine is a one-line only version of CenterTitle, printing
 ! string "a" in the center of the current line. Its accuracy will
@@ -168,6 +191,18 @@ routine GetPrompt(p)
 	input
 }
 
+!\ IsNear - new approximation routine. returns true if
+value fir is within value range of value sec \!
+
+#ifclear NO_AUX_MATH
+routine IsNear(fir,sec,range)
+{
+	if (abs(fir - sec) <= range)
+		return true
+	else
+		return false
+}
+#endif
 
 ! Roody's note: IsYounger by Kent Tessman for Future Boy!
 ! IsYounger
