@@ -212,7 +212,7 @@ xverb "cheap", "cheapmode"
 	* "on"/"off"				DoCheapOnOff
 xverb "cheap", "cheapmode"
 	* "mode" "on"/"off"		DoCheapOnOff
-#ifset NEW_MENU
+#ifset USE_NEWMENU
 xverb "cheap","simple"
 	* "menu"/"menus"		DoCheapOnOff
 #endif

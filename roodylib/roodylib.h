@@ -6269,12 +6269,14 @@ object roodylib "roodylib"
 !				hidden_cursor_check is special
 !				screenreader_capable is special
 			}
-			ExecOpcode(getversion)
-			ExecOpcode(get_os)
-			ExecOpcode(full_opacity)
-			self.did_print = 1
+
 			if opcodeterp is switchedon
+			{
+				ExecOpcode(getversion)
+				ExecOpcode(get_os)
+				ExecOpcode(full_opacity)
 				self.did_print = 1
+			}
 		}
 	}
 	did_print 0
